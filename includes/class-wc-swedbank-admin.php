@@ -6,6 +6,7 @@ defined( 'ABSPATH' ) || exit;
 
 use WC_Order;
 use Exception;
+use SwedbankPay\Core\Log\LogLevel;
 
 class WC_Swedbank_Admin {
 	/**
@@ -33,6 +34,8 @@ class WC_Swedbank_Admin {
 		add_action( 'wp_ajax_swedbank_pay_capture', array( $this, 'ajax_swedbank_pay_capture' ) );
 		add_action( 'wp_ajax_swedbank_pay_cancel', array( $this, 'ajax_swedbank_pay_cancel' ) );
 		add_action( 'wp_ajax_swedbank_pay_refund', array( $this, 'ajax_swedbank_pay_refund' ) );
+
+		add_action( 'woocommerce_order_status_changed', __CLASS__ . '::order_status_changed_transaction', 0, 3 );
 	}
 
 	/**
@@ -93,9 +96,9 @@ class WC_Swedbank_Admin {
 	 * @return void
 	 */
 	public static function order_meta_box_payment_actions( $order ) {
-		$order      = wc_get_order( $order );
- 		$payment_id = $order->get_meta( '_payex_payment_id' );
-		if ( empty( $payment_id ) ) {
+		$order            = wc_get_order( $order );
+		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
+		if ( empty( $payment_order_id ) ) {
 			return;
 		}
 
@@ -108,7 +111,7 @@ class WC_Swedbank_Admin {
 		// Fetch payment info
 		try {
 			/** @var \WC_Gateway_Swedbank_Pay_Checkout $gateway */
-			$result = $gateway->core->fetchPaymentInfo( $payment_id );
+			$result = $gateway->core->fetchPaymentInfo( $payment_order_id . '/paid' );
 		} catch ( \Exception $e ) {
 			// Request failed
 			return;
@@ -120,7 +123,6 @@ class WC_Swedbank_Admin {
 				'gateway'    => $gateway,
 				'order'      => $order,
 				'order_id'   => $order->get_id(),
-				'payment_id' => $payment_id,
 				'info'       => $result,
 			),
 			'',
@@ -198,6 +200,12 @@ class WC_Swedbank_Admin {
 			exit( 'No naughty business' );
 		}
 
+		remove_action(
+			'woocommerce_order_status_changed',
+			__CLASS__ . '::order_status_changed_transaction',
+			0
+		);
+
 		$order_id = (int) $_REQUEST['order_id'];
 		$order    = wc_get_order( $order_id );
 
@@ -221,6 +229,12 @@ class WC_Swedbank_Admin {
 			exit( 'No naughty business' );
 		}
 
+		remove_action(
+			'woocommerce_order_status_changed',
+			__CLASS__ . '::order_status_changed_transaction',
+			0
+		);
+
 		$order_id = (int) $_REQUEST['order_id'];
 		$order    = wc_get_order( $order_id );
 
@@ -243,6 +257,12 @@ class WC_Swedbank_Admin {
 		if ( ! wp_verify_nonce( $_REQUEST['nonce'], 'swedbank_pay' ) ) {
 			exit( 'No naughty business' );
 		}
+
+		remove_action(
+			'woocommerce_order_status_changed',
+			__CLASS__ . '::order_status_changed_transaction',
+			0
+		);
 
 		$order_id = (int) $_REQUEST['order_id'];
 		$order    = wc_get_order( $order_id );
@@ -284,6 +304,42 @@ class WC_Swedbank_Admin {
 
 		/** @var \WC_Payment_Gateway $gateway */
 		return $gateways[ $order->get_payment_method() ];
+	}
+
+	public static function order_status_changed_transaction( $order_id, $old_status, $new_status ) {
+		$order = wc_get_order( $order_id );
+		if ( in_array( $order->get_payment_method(), WC_Swedbank_Plugin::PAYMENT_METHODS, true ) ) {
+			$gateway = self::get_payment_method( $order );
+
+			$gateway->core->log( LogLevel::INFO, 'Order status change trigger: ' . $new_status );
+
+			try {
+				switch ( $new_status ) {
+					case 'processing':
+					case 'completed':
+						$gateway->core->log( LogLevel::INFO, 'Try to capture...' );
+
+						$gateway->capture_payment( $order );
+						$order->add_order_note( __('Payment has been captured.') );
+						break;
+					case 'cancelled':
+						$gateway->core->log( LogLevel::INFO, 'Try to cancel...' );
+
+						$gateway->cancel_payment( $order );
+						$order->add_order_note( __('Payment has been cancelled.') );
+						break;
+					case 'refunded':
+						$gateway->core->log( LogLevel::INFO, 'Try to refund...' );
+
+						$gateway->process_refund( $order_id );
+						$order->add_order_note( __('Payment has been refunded.') );
+						break;
+				}
+			} catch ( \Exception $exception ) {
+				$order->add_order_note( 'Error: ' . $exception->getMessage() );
+				\WC_Admin_Meta_Boxes::add_error( $exception->getMessage() );
+			}
+		}
 	}
 }
 

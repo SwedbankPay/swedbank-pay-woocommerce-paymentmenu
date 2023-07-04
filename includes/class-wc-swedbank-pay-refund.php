@@ -334,7 +334,7 @@ class WC_Swedbank_Pay_Refund {
 			$refund = new WC_Order_Refund( $refund_id );
 			if ( $refund->get_id() ) {
 				$refund->update_meta_data( '_transaction_id', $transaction_id );
-				$refund->save_meta_data();
+				$refund->save();
 			}
 		}
 	}

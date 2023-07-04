@@ -15,12 +15,12 @@ class WC_Swedbank_Plugin {
 		'payex_checkout',
 	);
 
-	const PLUGIN_NAME = 'Swedbank Pay Checkout plugin';
+	const PLUGIN_NAME = 'Swedbank Pay Payment Menu';
 	const SUPPORT_EMAIL = 'support.ecom@payex.com';
 	const DB_VERSION = '1.0.0';
-	const DB_VERSION_SLUG = 'swedbank_pay_checkout_version';
-	const ADMIN_SUPPORT_PAGE_SLUG = 'swedbank-pay-checkout-support';
-	const ADMIN_UPGRADE_PAGE_SLUG = 'swedbank-pay-checkout-upgrade';
+	const DB_VERSION_SLUG = 'swedbank_pay_menu_version';
+	const ADMIN_SUPPORT_PAGE_SLUG = 'swedbank-pay-menu-support';
+	const ADMIN_UPGRADE_PAGE_SLUG = 'swedbank-pay-menu-upgrade';
 
 	/**
 	 * @var WC_Background_Swedbank_Pay_Queue
@@ -31,6 +31,13 @@ class WC_Swedbank_Plugin {
 	 * Constructor
 	 */
 	public function __construct() {
+		// Check if the checkout plugin is active
+		if ( in_array( 'swedbank-pay-checkout/swedbank-pay-woocommerce-checkout.php', get_option( 'active_plugins' ) ) ) { //phpcs:ignore
+			add_action( 'admin_notices', __CLASS__ . '::check_backward_compatibility', 40 );
+
+			return;
+		}
+
 		// Includes
 		$this->includes();
 
@@ -41,7 +48,6 @@ class WC_Swedbank_Plugin {
 		);
 		add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
 		add_action( 'woocommerce_init', array( $this, 'woocommerce_init' ) );
-		add_action( 'woocommerce_loaded', array( $this, 'woocommerce_hook_loaded' ) );
 
 		// Filters
 		add_filter( 'swedbank_pay_generate_uuid', array( $this, 'generate_uuid' ), 10, 1 );
@@ -93,15 +99,9 @@ class WC_Swedbank_Plugin {
 
 		require_once( dirname( __FILE__ ) . '/functions.php' );
 		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-transactions.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-subscriptions.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-checkin.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-instant-checkout.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-payment-url.php' );
 		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-instant-capture.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-invoice-fee.php' );
 		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-admin.php' );
 		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-refund.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-shortcode-checkout.php' );
 	}
 
 	/**
@@ -152,14 +152,6 @@ class WC_Swedbank_Plugin {
 	public function woocommerce_init() {
 		include_once( dirname( __FILE__ ) . '/class-wc-background-swedbank-pay-queue.php' );
 		self::$background_process = new WC_Background_Swedbank_Pay_Queue();
-	}
-
-	/**
-	 * WooCommerce Loaded: load classes
-	 */
-	public function woocommerce_hook_loaded() {
-		// Includes
-		include_once( dirname( __FILE__ ) . '/class-wc-payment-token-swedbank-pay.php' );
 	}
 
 	/**
@@ -477,6 +469,29 @@ class WC_Swedbank_Plugin {
 						'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=general' ) ) . '">',
 						'</a>'
 					);
+				?>
+			</p>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Compatibility check.
+	 *
+	 * @return void
+	 */
+	public static function check_backward_compatibility()
+	{
+		?>
+		<div id="message" class="updated woocommerce-message">
+			<p class="main">
+				<strong><?php echo esc_html__( 'Problems with plugin compatibility.', 'swedbank-pay-woocommerce-checkout' ); ?></strong>
+			</p>
+			<p>
+				<?php
+				echo esc_html__( 'We\'ve detected that you\'ve used an older version of the Swedbank Pay Checkout integration.', 'swedbank-pay-woocommerce-checkout' );
+				echo '<br />';
+				echo esc_html__( 'Please disable "Swedbank Pay Checkout" plugin.', 'swedbank-pay-woocommerce-checkout' );
 				?>
 			</p>
 		</div>

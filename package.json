@@ -1,6 +1,5 @@
 {
   "name": "swedbank-pay-woocommerce-checkout",
-  "version": "7.1.2",
   "description": "",
   "main": "gulpfile.js",
   "dependencies": {

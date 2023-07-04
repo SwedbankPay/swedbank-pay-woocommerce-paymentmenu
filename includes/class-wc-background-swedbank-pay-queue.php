@@ -80,13 +80,13 @@ class WC_Background_Swedbank_Pay_Queue extends WC_Background_Process {
 			$key ) ); // @codingStandardsIgnoreLine.
 		// phpcs:enable
 
-        // Check the records
+		// Check the records
 		$sorting_flow = array();
 		foreach ( $data as $id => $result ) {
 			$task = array_filter( (array) maybe_unserialize( $result->$value_column ) );
 			if ( ! is_array( $task ) ||
 				empty( $task[0]['webhook_data'] ) ||
-			    null === json_decode( $task[0]['webhook_data'], true )
+				null === json_decode( $task[0]['webhook_data'], true )
 			) {
 				// Remove invalid record from the database
 				// phpcs:disable
@@ -153,7 +153,7 @@ class WC_Background_Swedbank_Pay_Queue extends WC_Background_Process {
 
 			$gateways = WC()->payment_gateways()->payment_gateways();
 
-			/** @var \WC_Gateway_Swedbank_Pay_Cc $gateway */
+			/** @var \WC_Gateway_Swedbank_Pay_Checkout $gateway */
 			$gateway = isset( $gateways[ $item['payment_method_id'] ] ) ? $gateways[ $item['payment_method_id'] ] : false;
 			if ( ! $gateway ) {
 				throw new \Exception(

@@ -287,6 +287,15 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 		$data             = $this->prepare( $data );
 		$data['order_id'] = $order_id;
 
+		$saved = $this->get_by( 'number', $data['number'] );
+		if ( $saved ) {
+			// Data should be updated
+			$data['updated'] = gmdate( 'Y-m-d H:i:s' );
+			$this->update( $saved['transaction_id'], $data );
+
+			return (int) $saved['transaction_id'];
+		}
+
 		$saved = $this->get_by( 'id', $id );
 		if ( ! $saved ) {
 			$data['created'] = gmdate( 'Y-m-d H:i:s' );

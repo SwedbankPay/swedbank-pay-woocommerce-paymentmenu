@@ -1,17 +1,17 @@
 <?php // phpcs:disable
 /*
- * Plugin Name: Swedbank Pay Checkout
+ * Plugin Name: Swedbank Pay Payment Menu
  * Plugin URI: https://www.swedbankpay.com/
- * Description: Provides the Swedbank Pay Checkout for WooCommerce.
+ * Description: Provides the Swedbank Pay Payment Menu for WooCommerce.
  * Author: Swedbank Pay
  * Author URI: https://profiles.wordpress.org/swedbankpay/
  * License: Apache License 2.0
  * License URI: http://www.apache.org/licenses/LICENSE-2.0
- * Version: 7.1.2
+ * Version: 1.0.0
  * Text Domain: swedbank-pay-woocommerce-checkout
  * Domain Path: /languages
  * WC requires at least: 5.5.1
- * WC tested up to: 7.5.1
+ * WC tested up to: 7.6.1
  */
 
 use SwedbankPay\Checkout\WooCommerce\WC_Swedbank_Plugin;
@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
 
 include_once( dirname( __FILE__ ) . '/includes/class-wc-swedbank-plugin.php' );
 
-class WC_Swedbank_Pay_Checkout extends WC_Swedbank_Plugin {
+class WC_Swedbank_Pay_Payment_Menu extends WC_Swedbank_Plugin {
 	const TEXT_DOMAIN = 'swedbank-pay-woocommerce-checkout';
 	// phpcs:enable
 
@@ -29,6 +29,10 @@ class WC_Swedbank_Pay_Checkout extends WC_Swedbank_Plugin {
 	 */
 	public function __construct() {
 		define( 'SwedbankPay\Checkout\WooCommerce\PLUGIN_PATH', plugin_basename( __FILE__ ) );
+
+		if ( in_array( 'swedbank-pay-checkout/swedbank-pay-woocommerce-checkout.php', get_option( 'active_plugins' ) ) ) { //phpcs:ignore
+			return;
+		}
 
 		parent::__construct();
 
@@ -70,8 +74,9 @@ class WC_Swedbank_Pay_Checkout extends WC_Swedbank_Plugin {
 		include_once( dirname( __FILE__ ) . '/includes/class-wc-gateway-swedbank-pay-checkout.php' );
 
 		// Register Gateway
-		WC_Swedbank_Pay_Checkout::register_gateway( 'WC_Gateway_Swedbank_Pay_Checkout' );
+		WC_Swedbank_Pay_Payment_Menu::register_gateway( 'WC_Gateway_Swedbank_Pay_Checkout' );
 	}
+
 }
 
-new WC_Swedbank_Pay_Checkout();
+new WC_Swedbank_Pay_Payment_Menu();

@@ -22,7 +22,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 	const CAPTURE_FEE = 'fee';
 
 	/**
-	 * @var \WC_Gateway_Swedbank_Pay_Cc
+	 * @var \WC_Gateway_Swedbank_Pay_Checkout
 	 */
 	private $gateway;
 
@@ -30,7 +30,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 	 * Constructor.
 	 */
 	public function __construct() {
-		add_action( 'woocommerce_order_status_on-hold', array( $this, 'maybe_capture_instantly' ), 50, 1 );
+		add_action( 'woocommerce_order_status_on-hold', array( $this, 'maybe_capture_instantly' ), 50, 10 );
 	}
 
 	/**
@@ -54,20 +54,15 @@ class WC_Swedbank_Pay_Instant_Capture {
 
 		$this->gateway = $this->get_payment_method( $order );
 
-		$payment_id = $this->gateway->core->getPaymentIdByPaymentOrder( $payment_order_id );
-		if ( empty( $payment_id ) ) {
-			return;
-		}
-
 		// Fetch transactions list
-		$transactions = $this->gateway->core->fetchTransactionsList( $payment_id );
+		$transactions = $this->gateway->core->fetchFinancialTransactionsList( $payment_order_id );
 		$this->gateway->core->saveTransactions( $order->get_id(), $transactions );
 
 		// Check if have captured transactions
 		$hasCaptured = false;
 		foreach ( $transactions as $transaction ) {
 			if ( \SwedbankPay\Core\Api\TransactionInterface::TYPE_CAPTURE === $transaction->getType() &&
-			     $transaction->isCompleted()
+				 $transaction->isCompleted()
 			) {
 				$hasCaptured = true;
 				break;
@@ -95,6 +90,13 @@ class WC_Swedbank_Pay_Instant_Capture {
 	 * @throws \Exception
 	 */
 	private function instant_capture( $order ) {
+		remove_action(
+			'woocommerce_order_status_changed',
+			'SwedbankPay\Checkout\WooCommerce\WC_Swedbank_Admin::order_status_changed_transaction',
+			0,
+			3
+		);
+
 		$items = $this->get_instant_capture_items( $order );
 		$this->gateway->adapter->log( LogLevel::INFO, __METHOD__, [ $items ] );
 		if ( count( $items ) > 0 ) {
@@ -130,8 +132,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 		// Get Payment Gateway
 		$gateways = WC()->payment_gateways()->payment_gateways();
 
-		/** @var \WC_Gateway_Swedbank_Pay_Cc $gateway */
-
+		/** @var \WC_Gateway_Swedbank_Pay_Checkout $gateway */
 		if ( isset( $gateways[ $payment_method ] ) ) {
 			return $gateways[ $payment_method ];
 		}
@@ -169,7 +170,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 			}
 
 			if (null === parse_url( $image, PHP_URL_SCHEME ) &&
-			    mb_substr( $image, 0, mb_strlen(WP_CONTENT_URL), 'UTF-8' ) === WP_CONTENT_URL
+				mb_substr( $image, 0, mb_strlen(WP_CONTENT_URL), 'UTF-8' ) === WP_CONTENT_URL
 			) {
 				$image = wp_guess_url() . $image;
 			}
@@ -196,9 +197,9 @@ class WC_Swedbank_Pay_Instant_Capture {
 			$product_name = trim( $order_item->get_name() );
 
 			if ( in_array(self::CAPTURE_PHYSICAL, $this->gateway->instant_capture, true ) &&
-			     ( ! self::wcs_is_subscription_product( $product ) &&
-			       $product->needs_shipping() &&
-			       ! $product->is_downloadable() )
+				 ( ! self::wcs_is_subscription_product( $product ) &&
+				   $product->needs_shipping() &&
+				   ! $product->is_downloadable() )
 			) {
 				$items[] = array(
 					// The field Reference must match the regular expression '[\\w-]*'
@@ -219,8 +220,8 @@ class WC_Swedbank_Pay_Instant_Capture {
 
 				continue;
 			} elseif ( in_array(self::CAPTURE_VIRTUAL, $this->gateway->instant_capture, true ) &&
-			           ( ! self::wcs_is_subscription_product( $product ) &&
-			             ( $product->is_virtual() || $product->is_downloadable() ) )
+					   ( ! self::wcs_is_subscription_product( $product ) &&
+						 ( $product->is_virtual() || $product->is_downloadable() ) )
 			) {
 				$items[] = array(
 					// The field Reference must match the regular expression '[\\w-]*'
@@ -241,7 +242,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 
 				continue;
 			} elseif ( in_array( self::CAPTURE_RECURRING, $this->gateway->instant_capture, true ) &&
-			           self::wcs_is_subscription_product( $product )
+					   self::wcs_is_subscription_product( $product )
 			) {
 				$items[] = array(
 					// The field Reference must match the regular expression '[\\w-]*'
@@ -349,7 +350,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 	 */
 	private static function wcs_is_subscription_product( $product ) {
 		return class_exists( '\\WC_Subscriptions_Product', false ) &&
-		       \WC_Subscriptions_Product::is_subscription( $product );
+			   \WC_Subscriptions_Product::is_subscription( $product );
 	}
 }
 
