@@ -1,7 +1,7 @@
 {
-    "name": "swedbank-pay/woocommerce-checkout",
-    "description": "Swedbank Pay Checkout for WooCommerce",
-    "homepage": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-checkout",
+    "name": "swedbank-pay/woocommerce-payment-menu",
+    "description": "Swedbank Pay Payment Menu for WooCommerce",
+    "homepage": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-paymentmenu",
     "type": "wordpress-plugin",
     "license": "Apache-2.0",
     "prefer-stable": true,

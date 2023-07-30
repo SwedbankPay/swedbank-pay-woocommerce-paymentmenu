@@ -16,7 +16,15 @@ use SwedbankPay\Core\OrderItemInterface;
 
 defined( 'ABSPATH' ) || exit;
 
-class WC_Swedbank_Pay_Refund {
+/**
+ * @SuppressWarnings(PHPMD.CamelCaseClassName)
+ * @SuppressWarnings(PHPMD.CamelCaseMethodName)
+ * @SuppressWarnings(PHPMD.CamelCaseParameterName)
+ * @SuppressWarnings(PHPMD.CamelCasePropertyName)
+ * @SuppressWarnings(PHPMD.CamelCaseVariableName)
+ * @SuppressWarnings(PHPMD.MissingImport)
+ */
+class Swedbank_Pay_Refund {
 	public function __construct() {
 		add_action( 'woocommerce_create_refund', __CLASS__ . '::save_refund_parameters', 10, 2 );
 		add_action( 'woocommerce_order_refunded', __CLASS__ . '::remove_refund_parameters', 10, 2 );
@@ -38,7 +46,7 @@ class WC_Swedbank_Pay_Refund {
 			return;
 		}
 
-		if ( ! in_array( $order->get_payment_method(), WC_Swedbank_Plugin::PAYMENT_METHODS ) ) {
+		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS ) ) {
 			return;
 		}
 
@@ -82,7 +90,7 @@ class WC_Swedbank_Pay_Refund {
 	/**
 	 * Perform Refund.
 	 *
-	 * @param \WC_Gateway_Swedbank_Pay_Checkout $gateway
+	 * @param \Swedbank_Pay_Payment_Gateway_Checkout $gateway
 	 * @param \WC_Order $order
 	 * @param $amount
 	 * @param $reason
@@ -226,11 +234,11 @@ class WC_Swedbank_Pay_Refund {
 						}
 
 						// Get Product Class
-						$product_class = $product->get_meta( '_sb_product_class' );
+						$product_class = $product->get_meta( '_swedbank_pay_product_class' );
 
 						if ( empty( $product_class ) ) {
 							$product_class = apply_filters(
-								'sb_product_class',
+								'swedbank_pay_product_class',
 								'ProductGroup1',
 								$product
 							);
@@ -264,7 +272,7 @@ class WC_Swedbank_Pay_Refund {
 					$order_item[OrderItemInterface::FIELD_REFERENCE] = 'shipping';
 					$order_item[OrderItemInterface::FIELD_TYPE] = OrderItemInterface::TYPE_SHIPPING;
 					$order_item[OrderItemInterface::FIELD_CLASS] = apply_filters(
-						'sb_product_class_shipping',
+						'swedbank_pay_product_class_shipping',
 						'ProductGroup1',
 						$order
 					);
@@ -275,7 +283,7 @@ class WC_Swedbank_Pay_Refund {
 					$order_item[OrderItemInterface::FIELD_REFERENCE] = 'fee';
 					$order_item[OrderItemInterface::FIELD_TYPE] = OrderItemInterface::TYPE_OTHER;
 					$order_item[OrderItemInterface::FIELD_CLASS] = apply_filters(
-						'sb_product_class_fee',
+						'swedbank_pay_product_class_fee',
 						'ProductGroup1',
 						$order
 					);
@@ -286,7 +294,7 @@ class WC_Swedbank_Pay_Refund {
 					$order_item[OrderItemInterface::FIELD_REFERENCE] = 'coupon';
 					$order_item[OrderItemInterface::FIELD_TYPE] = OrderItemInterface::TYPE_OTHER;
 					$order_item[OrderItemInterface::FIELD_CLASS] = apply_filters(
-						'sb_product_class_coupon',
+						'swedbank_pay_product_class_coupon',
 						'ProductGroup1',
 						$order
 					);
@@ -297,7 +305,7 @@ class WC_Swedbank_Pay_Refund {
 					$order_item[OrderItemInterface::FIELD_REFERENCE] = 'other';
 					$order_item[OrderItemInterface::FIELD_TYPE] = OrderItemInterface::TYPE_OTHER;
 					$order_item[OrderItemInterface::FIELD_CLASS] = apply_filters(
-						'sb_product_class_other',
+						'swedbank_pay_product_class_other',
 						'ProductGroup1',
 						$order
 					);
@@ -340,4 +348,4 @@ class WC_Swedbank_Pay_Refund {
 	}
 }
 
-new WC_Swedbank_Pay_Refund();
+new Swedbank_Pay_Refund();

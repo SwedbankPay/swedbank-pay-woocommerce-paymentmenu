@@ -7,7 +7,15 @@ defined( 'ABSPATH' ) || exit;
 use SwedbankPay\Core\Log\LogLevel;
 use SwedbankPay\Core\OrderItemInterface;
 
-class WC_Swedbank_Pay_Instant_Capture {
+/**
+ * @SuppressWarnings(PHPMD.CamelCaseClassName)
+ * @SuppressWarnings(PHPMD.CamelCaseMethodName)
+ * @SuppressWarnings(PHPMD.CamelCaseParameterName)
+ * @SuppressWarnings(PHPMD.CamelCasePropertyName)
+ * @SuppressWarnings(PHPMD.CamelCaseVariableName)
+ * @SuppressWarnings(PHPMD.MissingImport)
+ */
+class Swedbank_Pay_Instant_Capture {
 	/** Payment IDs */
 	const PAYMENT_METHODS = array(
 		'payex_checkout',
@@ -22,7 +30,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 	const CAPTURE_FEE = 'fee';
 
 	/**
-	 * @var \WC_Gateway_Swedbank_Pay_Checkout
+	 * @var \Swedbank_Pay_Payment_Gateway_Checkout
 	 */
 	private $gateway;
 
@@ -43,7 +51,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 	public function maybe_capture_instantly( $order_id ) {
 		$order = wc_get_order( $order_id );
 		$payment_method = $order->get_payment_method();
-		if ( ! in_array( $payment_method, WC_Swedbank_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( ! in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 			return;
 		}
 
@@ -92,7 +100,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 	private function instant_capture( $order ) {
 		remove_action(
 			'woocommerce_order_status_changed',
-			'SwedbankPay\Checkout\WooCommerce\WC_Swedbank_Admin::order_status_changed_transaction',
+            'SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Admin::order_status_changed_transaction',
 			0,
 			3
 		);
@@ -124,7 +132,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 	 *
 	 * @param \WC_Order $order
 	 *
-	 * @return \WC_Gateway_Swedbank_Pay_Checkout|\WP_Error
+	 * @return \Swedbank_Pay_Payment_Gateway_Checkout|\WP_Error
 	 */
 	private function get_payment_method( $order ) {
 		$payment_method = $order->get_payment_method();
@@ -132,7 +140,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 		// Get Payment Gateway
 		$gateways = WC()->payment_gateways()->payment_gateways();
 
-		/** @var \WC_Gateway_Swedbank_Pay_Checkout $gateway */
+		/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
 		if ( isset( $gateways[ $payment_method ] ) ) {
 			return $gateways[ $payment_method ];
 		}
@@ -176,7 +184,7 @@ class WC_Swedbank_Pay_Instant_Capture {
 			}
 
 			// Get Product Class
-			$product_class = $product->get_meta( '_sb_product_class' );
+			$product_class = $product->get_meta( '_swedbank_pay_product_class' );
 			if ( empty( $product_class ) ) {
 				$product_class = 'ProductGroup1';
 			}
@@ -354,4 +362,4 @@ class WC_Swedbank_Pay_Instant_Capture {
 	}
 }
 
-new WC_Swedbank_Pay_Instant_Capture();
+new Swedbank_Pay_Instant_Capture();

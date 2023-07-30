@@ -14,13 +14,21 @@
  * WC tested up to: 7.6.1
  */
 
-use SwedbankPay\Checkout\WooCommerce\WC_Swedbank_Plugin;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
 include_once( dirname( __FILE__ ) . '/includes/class-wc-swedbank-plugin.php' );
 
-class WC_Swedbank_Pay_Payment_Menu extends WC_Swedbank_Plugin {
+/**
+ * @SuppressWarnings(PHPMD.CamelCaseClassName)
+ * @SuppressWarnings(PHPMD.CamelCaseMethodName)
+ * @SuppressWarnings(PHPMD.CamelCaseParameterName)
+ * @SuppressWarnings(PHPMD.CamelCasePropertyName)
+ * @SuppressWarnings(PHPMD.CamelCaseVariableName)
+ * @SuppressWarnings(PHPMD.MissingImport)
+ */
+class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	const TEXT_DOMAIN = 'swedbank-pay-woocommerce-checkout';
 	// phpcs:enable
 
@@ -74,9 +82,9 @@ class WC_Swedbank_Pay_Payment_Menu extends WC_Swedbank_Plugin {
 		include_once( dirname( __FILE__ ) . '/includes/class-wc-gateway-swedbank-pay-checkout.php' );
 
 		// Register Gateway
-		WC_Swedbank_Pay_Payment_Menu::register_gateway( 'WC_Gateway_Swedbank_Pay_Checkout' );
+		Swedbank_Pay_Payment_Menu::register_gateway('Swedbank_Pay_Payment_Gateway_Checkout');
 	}
 
 }
 
-new WC_Swedbank_Pay_Payment_Menu();
+new Swedbank_Pay_Payment_Menu();

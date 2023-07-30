@@ -1,31 +1,27 @@
 <?php
 /** @var string $action */
 /** @var string $form_url */
-/** @var array $errors */
-/** @var array $notices */
+/** @var string|null $error */
+/** @var string|null $message */
 
 defined( 'ABSPATH' ) || exit;
 
 global $wp_http_referer;
 ?>
 
-<?php if ( count( $errors ) > 0 ): ?>
+<?php if ( $error ): ?>
 	<div class="error">
-	<?php foreach ( $errors as $error ): ?>
 		<p>
 			<?php echo esc_html( $error ); ?>
 		</p>
-	<?php endforeach; ?>
 	</div>
 <?php endif; ?>
 
-<?php if ( count( $notices ) > 0 ): ?>
+<?php if ( $message ): ?>
 	<div class="updated">
-		<?php foreach ( $notices as $notice ): ?>
-			<p>
-				<?php echo esc_html( $notice ); ?>
-			</p>
-		<?php endforeach; ?>
+        <p>
+            <?php echo esc_html( $message ); ?>
+        </p>
 	</div>
 <?php endif; ?>
 

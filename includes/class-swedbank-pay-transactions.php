@@ -7,11 +7,19 @@ defined( 'ABSPATH' ) || exit;
 use WP_Error;
 use Exception;
 
-class WC_Swedbank_Pay_Transactions {
+/**
+ * @SuppressWarnings(PHPMD.CamelCaseClassName)
+ * @SuppressWarnings(PHPMD.CamelCaseMethodName)
+ * @SuppressWarnings(PHPMD.CamelCaseParameterName)
+ * @SuppressWarnings(PHPMD.CamelCasePropertyName)
+ * @SuppressWarnings(PHPMD.CamelCaseVariableName)
+ * @SuppressWarnings(PHPMD.MissingImport)
+ */
+class Swedbank_Pay_Transactions {
 	/**
 	 * The single instance of the class.
 	 *
-	 * @var WC_Swedbank_Pay_Transactions
+	 * @var Swedbank_Pay_Transactions
 	 */
 	protected static $instance = null;
 
@@ -39,7 +47,7 @@ class WC_Swedbank_Pay_Transactions {
 	 * Main WC_Swedbank_Transactions Instance.
 	 *
 	 * @static
-	 * @return WC_Swedbank_Pay_Transactions
+	 * @return Swedbank_Pay_Transactions
 	 */
 	public static function instance() {
 		if ( is_null( self::$instance ) ) {

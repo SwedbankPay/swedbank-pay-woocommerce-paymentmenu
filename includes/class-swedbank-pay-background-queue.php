@@ -12,9 +12,14 @@ if ( ! class_exists( 'WC_Background_Process', false ) ) {
 }
 
 /**
- * Class WC_Background_Swedbank_Queue
+ * @SuppressWarnings(PHPMD.CamelCaseClassName)
+ * @SuppressWarnings(PHPMD.CamelCaseMethodName)
+ * @SuppressWarnings(PHPMD.CamelCaseParameterName)
+ * @SuppressWarnings(PHPMD.CamelCasePropertyName)
+ * @SuppressWarnings(PHPMD.CamelCaseVariableName)
+ * @SuppressWarnings(PHPMD.MissingImport)
  */
-class WC_Background_Swedbank_Pay_Queue extends WC_Background_Process {
+class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 	/**
 	 * @var WC_Logger
 	 */
@@ -28,7 +33,7 @@ class WC_Background_Swedbank_Pay_Queue extends WC_Background_Process {
 
 		// Uses unique prefix per blog so each blog has separate queue.
 		$this->prefix = 'wp_' . get_current_blog_id();
-		$this->action = 'wc_swedbank_pay_queue';
+		$this->action = 'swedbank_pay_queue';
 
 		// Dispatch queue after shutdown.
 		add_action( 'shutdown', array( $this, 'dispatch_queue' ), 100 );
@@ -97,7 +102,7 @@ class WC_Background_Swedbank_Pay_Queue extends WC_Background_Process {
 			}
 
 			// Check the payment method ID
-			if ( ! in_array( $task[0]['payment_method_id'], WC_Swedbank_Plugin::PAYMENT_METHODS ) ) {
+			if ( ! in_array( $task[0]['payment_method_id'], Swedbank_Pay_Plugin::PAYMENT_METHODS ) ) {
 				// Try with another queue processor
 				continue;
 			}
@@ -153,7 +158,7 @@ class WC_Background_Swedbank_Pay_Queue extends WC_Background_Process {
 
 			$gateways = WC()->payment_gateways()->payment_gateways();
 
-			/** @var \WC_Gateway_Swedbank_Pay_Checkout $gateway */
+			/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
 			$gateway = isset( $gateways[ $item['payment_method_id'] ] ) ? $gateways[ $item['payment_method_id'] ] : false;
 			if ( ! $gateway ) {
 				throw new \Exception(
@@ -175,7 +180,7 @@ class WC_Background_Swedbank_Pay_Queue extends WC_Background_Process {
 			// Get Order by Payment Id
 			$transaction_id = $data['transaction']['number'];
 			$payment_id     = $data['payment']['id'];
-			$order_id       = sb_get_post_id_by_meta( '_payex_payment_id', $payment_id );
+			$order_id       = swedbank_pay_get_post_id_by_meta( '_payex_payment_id', $payment_id );
 			if ( ! $order_id ) {
 				throw new \Exception( sprintf( 'Error: Failed to get order Id by Payment Id %s', $payment_id ) );
 			}
@@ -186,7 +191,7 @@ class WC_Background_Swedbank_Pay_Queue extends WC_Background_Process {
 				throw new \Exception( sprintf( 'Error: Failed to get order by Id %s', $order_id ) );
 			}
 
-			$transactions = (array) $order->get_meta( '_sb_transactions' );
+			$transactions = (array) $order->get_meta( '_swedbank_pay_transactions' );
 			if ( in_array( $transaction_id, $transactions) ) {
 				$this->log( sprintf( 'Transaction #%s was processed before.', $transaction_id ) );
 

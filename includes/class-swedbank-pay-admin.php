@@ -8,7 +8,15 @@ use WC_Order;
 use Exception;
 use SwedbankPay\Core\Log\LogLevel;
 
-class WC_Swedbank_Admin {
+/**
+ * @SuppressWarnings(PHPMD.CamelCaseClassName)
+ * @SuppressWarnings(PHPMD.CamelCaseMethodName)
+ * @SuppressWarnings(PHPMD.CamelCaseParameterName)
+ * @SuppressWarnings(PHPMD.CamelCasePropertyName)
+ * @SuppressWarnings(PHPMD.CamelCaseVariableName)
+ * @SuppressWarnings(PHPMD.MissingImport)
+ */
+class Swedbank_Pay_Admin {
 	/**
 	 * Constructor
 	 */
@@ -48,7 +56,7 @@ class WC_Swedbank_Admin {
 	 */
 	public function add_valid_order_statuses( $statuses, $order ) {
 		$payment_method = $order->get_payment_method();
-		if ( in_array( $payment_method, WC_Swedbank_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 			$statuses = array_merge(
 				$statuses,
 				array(
@@ -68,14 +76,14 @@ class WC_Swedbank_Admin {
 	 * @return void
 	 */
 	public static function add_meta_boxes( $screen_id, $order ) {
-		$hook_to_check = sb_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'shop_order';
+		$hook_to_check = swedbank_pay_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'shop_order';
 		if ( $hook_to_check === $screen_id ) {
 			$order          = wc_get_order( $order );
 			$payment_method = $order->get_payment_method();
-			if ( in_array( $payment_method, WC_Swedbank_Plugin::PAYMENT_METHODS, true ) ) {
+			if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 				$payment_id = $order->get_meta( '_payex_payment_id' );
 				if ( ! empty( $payment_id ) ) {
-					$screen = sb_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'shop_order';
+					$screen = swedbank_pay_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'shop_order';
 
 					add_meta_box(
 						'swedbank_payment_actions',
@@ -110,7 +118,7 @@ class WC_Swedbank_Admin {
 
 		// Fetch payment info
 		try {
-			/** @var \WC_Gateway_Swedbank_Pay_Checkout $gateway */
+			/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
 			$result = $gateway->core->fetchPaymentInfo( $payment_order_id . '/paid' );
 		} catch ( \Exception $e ) {
 			// Request failed
@@ -143,14 +151,14 @@ class WC_Swedbank_Admin {
 
 		// Get Payment Gateway
 		$payment_method = $order->get_payment_method();
-		if ( in_array( $payment_method, WC_Swedbank_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 			// Get Payment Gateway
 			$gateway = self::get_payment_method( $order );
 			if ( ! $gateway ) {
 				return;
 			}
 
-			/** @var \WC_Gateway_Swedbank_Pay_Checkout $gateway */
+			/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
 			wc_get_template(
 				'admin/action-buttons.php',
 				array(
@@ -171,7 +179,7 @@ class WC_Swedbank_Admin {
 	 * @return void
 	 */
 	public static function admin_enqueue_scripts( $hook ) {
-		$hook_to_check = sb_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'post.php';
+		$hook_to_check = swedbank_pay_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'post.php';
 		if ( $hook_to_check === $hook ) {
 			// Scripts
 			$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
@@ -308,7 +316,7 @@ class WC_Swedbank_Admin {
 
 	public static function order_status_changed_transaction( $order_id, $old_status, $new_status ) {
 		$order = wc_get_order( $order_id );
-		if ( in_array( $order->get_payment_method(), WC_Swedbank_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 			$gateway = self::get_payment_method( $order );
 
 			$gateway->core->log( LogLevel::INFO, 'Order status change trigger: ' . $new_status );
@@ -343,4 +351,4 @@ class WC_Swedbank_Admin {
 	}
 }
 
-new WC_Swedbank_Admin();
+new Swedbank_Pay_Admin();

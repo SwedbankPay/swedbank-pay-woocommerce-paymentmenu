@@ -9,7 +9,7 @@ use Automattic\WooCommerce\Utilities\OrderUtil;
  * @see https://github.com/woocommerce/woocommerce/wiki/High-Performance-Order-Storage-Upgrade-Recipe-Book
  * @return bool
  */
-function sb_is_hpos_enabled() {
+function swedbank_pay_is_hpos_enabled() {
 	if ( ! class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' ) ) {
 		return false;
 	}
@@ -29,8 +29,8 @@ function sb_is_hpos_enabled() {
  *
  * @return null|string
  */
-function sb_get_post_id_by_meta( $key, $value ) {
-	if ( sb_is_hpos_enabled() ) {
+function swedbank_pay_get_post_id_by_meta( $key, $value ) {
+	if ( swedbank_pay_is_hpos_enabled() ) {
 		global $wpdb;
 
 		return $wpdb->get_var(

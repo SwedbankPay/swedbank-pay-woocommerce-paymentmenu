@@ -8,7 +8,15 @@ use WC_Order;
 use Automattic\Jetpack\Constants;
 use Exception;
 
-class WC_Swedbank_Plugin {
+/**
+ * @SuppressWarnings(PHPMD.CamelCaseClassName)
+ * @SuppressWarnings(PHPMD.CamelCaseMethodName)
+ * @SuppressWarnings(PHPMD.CamelCaseParameterName)
+ * @SuppressWarnings(PHPMD.CamelCasePropertyName)
+ * @SuppressWarnings(PHPMD.CamelCaseVariableName)
+ * @SuppressWarnings(PHPMD.MissingImport)
+ */
+class Swedbank_Pay_Plugin {
 
 	/** Payment IDs */
 	const PAYMENT_METHODS = array(
@@ -23,7 +31,7 @@ class WC_Swedbank_Plugin {
 	const ADMIN_UPGRADE_PAGE_SLUG = 'swedbank-pay-menu-upgrade';
 
 	/**
-	 * @var WC_Background_Swedbank_Pay_Queue
+	 * @var Swedbank_Pay_Background_Queue
 	 */
 	public static $background_process;
 
@@ -69,10 +77,6 @@ class WC_Swedbank_Plugin {
 	}
 
 	public function includes() {
-		if ( ! defined( 'VERSION' ) ) {
-			define( 'VERSION', '1.0.0' );
-		}
-
 		$vendors_dir = dirname( __FILE__ ) . '/../vendor';
 
 		// Check if the payments plugin was installed
@@ -98,10 +102,10 @@ class WC_Swedbank_Plugin {
 		}
 
 		require_once( dirname( __FILE__ ) . '/functions.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-transactions.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-instant-capture.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-admin.php' );
-		require_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-refund.php' );
+		require_once(dirname(__FILE__) . '/class-swedbank-pay-transactions.php');
+		require_once(dirname(__FILE__) . '/class-swedbank-pay-instant-capture.php');
+		require_once(dirname(__FILE__) . '/class-swedbank-pay-admin.php');
+		require_once(dirname(__FILE__) . '/class-swedbank-pay-refund.php');
 	}
 
 	/**
@@ -109,7 +113,7 @@ class WC_Swedbank_Plugin {
 	 */
 	public function install() {
 		// Install Schema
-		WC_Swedbank_Pay_Transactions::instance()->install_schema();
+		Swedbank_Pay_Transactions::instance()->install_schema();
 
 		// Set Version
 		if ( ! get_option( self::DB_VERSION_SLUG ) ) {
@@ -150,8 +154,8 @@ class WC_Swedbank_Plugin {
 	 * WooCommerce Init
 	 */
 	public function woocommerce_init() {
-		include_once( dirname( __FILE__ ) . '/class-wc-background-swedbank-pay-queue.php' );
-		self::$background_process = new WC_Background_Swedbank_Pay_Queue();
+		include_once(dirname(__FILE__) . '/class-swedbank-pay-background-queue.php');
+		self::$background_process = new Swedbank_Pay_Background_Queue();
 	}
 
 	/**
@@ -312,26 +316,17 @@ class WC_Swedbank_Plugin {
 	 * Support Page
 	 */
 	public static function support_page() {
-		// Init sessions
-		if ( session_status() === PHP_SESSION_NONE ) {
-			@session_start();
-		}
-
 		wc_get_template(
 			'admin/support.php',
 			array(
 				'form_url' => admin_url( 'admin-post.php' ),
-				'action' => self::ADMIN_SUPPORT_PAGE_SLUG,
-				'errors' => isset( $_SESSION['form_errors'] ) ? (array) $_SESSION['form_errors'] : array(),
-				'notices' => isset( $_SESSION['form_notices'] ) ? (array) $_SESSION['form_notices'] : array(),
+				'action'   => self::ADMIN_SUPPORT_PAGE_SLUG,
+                'error'    => isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['error'] ) ) : null, // WPCS: input var ok, CSRF ok.
+                'message'  => isset( $_GET['message'] ) ? sanitize_text_field( wp_unslash( $_GET['message'] ) ) : null, // WPCS: input var ok, CSRF ok.
 			),
 			'',
 			dirname( __FILE__ ) . '/../templates/'
 		);
-
-		// Reset the form
-		$_SESSION['form_errors'] = array();
-		$_SESSION['form_notices'] = array();
 	}
 
 	/**
@@ -343,8 +338,8 @@ class WC_Swedbank_Plugin {
 		}
 
 		// Run Database Update
-		include_once( dirname( __FILE__ ) . '/class-wc-swedbank-pay-update.php' );
-		WC_Swedbank_Pay_Update::update();
+		include_once(dirname(__FILE__) . '/class-swedbank-pay-update.php');
+		Swedbank_Pay_Update::update();
 
 		echo esc_html__( 'Upgrade finished.', 'swedbank-pay-woocommerce-checkout' );
 	}
@@ -357,22 +352,22 @@ class WC_Swedbank_Plugin {
 		<div id="message" class="error">
 			<p>
 				<?php
-				echo sprintf(
+				echo esc_html( sprintf(
 					/* translators: 1: plugin name */                        esc_html__(
 						'Warning! %1$s requires to update the database structure.',
 						'swedbank-pay-woocommerce-checkout'
 					),
 					self::PLUGIN_NAME
-				);
+				) );
 
-				echo ' ' . sprintf(
+				echo esc_html( ' ' . sprintf(
 					/* translators: 1: start tag 2: end tag */                        esc_html__(
 						'Please click %1$s here %2$s to start upgrade.',
 						'swedbank-pay-woocommerce-checkout'
 					),
 						'<a href="' . esc_url( admin_url( 'admin.php?page=' . self::ADMIN_UPGRADE_PAGE_SLUG ) ) . '">',
 						'</a>'
-					);
+					) );
 				?>
 			</p>
 		</div>
@@ -432,16 +427,16 @@ class WC_Swedbank_Plugin {
 				<p>
 					<?php
 					foreach ( $errors as $error ) {
-						echo $error;
+						echo esc_html( $error );
 					}
 					echo '<br />';
-					echo sprintf(
+					echo esc_html( sprintf(
 					/* translators: 1: plugin name */                        esc_html__(
-						'%1$s requires that. Please configure PHP or contact the server administrator.',
-						'swedbank-pay-woocommerce-checkout'
-					),
-						self::PLUGIN_NAME
-					);
+                        '%1$s requires that. Please configure PHP or contact the server administrator.',
+                        'swedbank-pay-woocommerce-checkout'
+                    ),
+                        self::PLUGIN_NAME
+					) );
 
 					?>
 				</p>
@@ -461,14 +456,14 @@ class WC_Swedbank_Plugin {
 			</p>
 			<p>
 				<?php
-				echo sprintf(
+				echo esc_html( sprintf(
 					/* translators: 1: start tag 2: end tag */                        esc_html__(
 						'"Number of decimals" is configured with zero value. It creates problems with rounding and checkout. Please change it to "2" on %1$sSettings page%2$s.',
 						'swedbank-pay-woocommerce-checkout'
 					),
 						'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=general' ) ) . '">',
 						'</a>'
-					);
+					) );
 				?>
 			</p>
 		</div>
@@ -506,116 +501,115 @@ class WC_Swedbank_Plugin {
 			exit( 'No naughty business' );
 		}
 
-		if ( ! extension_loaded( 'zip' ) ) {
-			$_SESSION['form_errors'] = array();
-			$_SESSION['form_errors'][] = __( 'zip extension is required to perform this operation.', 'swedbank-pay-woocommerce-checkout' );
+        $redirect = wc_clean( $_POST['_wp_http_referer'] );
 
-			wp_redirect( $_POST['_wp_http_referer'] );
-			return;
-		}
+        try {
+            if ( ! extension_loaded( 'zip' ) ) {
+                throw new \Exception(
+                    __( 'zip extension is required to perform this operation.', 'swedbank-pay-woocommerce-checkout' )
+                );
+            }
 
-		// Init sessions
-		if ( session_status() === PHP_SESSION_NONE ) {
-			@session_start();
-		}
+            // Validate the fields
+            if ( empty( $_POST['email'] ) || empty( $_POST['message'] ) ) {
+                throw new \Exception(
+                    __( 'Invalid form data', 'swedbank-pay-woocommerce-checkout' )
+                );
+            }
 
-		// Validate the fields
-		if ( empty( $_POST['email'] ) || empty( $_POST['message'] ) ) {
-			$_SESSION['form_errors'] = array();
-			$_SESSION['form_errors'][] = __( 'Invalid form data', 'swedbank-pay-woocommerce-checkout' );
+            $email = sanitize_email( wc_clean( $_POST['email'] ) );
 
-			wp_redirect( $_POST['_wp_http_referer'] );
-			return;
-		}
+            // Validate email
+            if ( ! is_email( $email ) ) {
+                throw new \Exception( __( 'Invalid email', 'swedbank-pay-woocommerce-checkout' ) );
+            }
 
-		// Validate email
-		if ( ! is_email( $_POST['email'] ) ) {
-			$_SESSION['form_errors'] = array();
-			$_SESSION['form_errors'][] = __( 'Invalid email', 'swedbank-pay-woocommerce-checkout' );
+            $message = wp_kses_post( sanitize_text_field( $_POST['message'] ) );
 
-			wp_redirect( $_POST['_wp_http_referer'] );
-			return;
-		}
+            // Export settings
+            $settings = array();
+            foreach ( self::PAYMENT_METHODS as $payment_method ) {
+                $conf = get_option( 'woocommerce_' . $payment_method . '_settings' );
+                if ( ! is_array( $conf ) ) {
+                    $conf = array();
+                }
 
-		// Export settings
-		$settings = array();
-		foreach ( self::PAYMENT_METHODS as $payment_method ) {
-			$conf = get_option( 'woocommerce_' . $payment_method . '_settings' );
-			if ( ! is_array( $conf ) ) {
-				$conf = array();
-			}
+                $settings[ $payment_method ] = $conf;
+            }
 
-			$settings[ $payment_method ] = $conf;
-		}
+            $jsonSettings = get_temp_dir() . '/settings.json';
+            file_put_contents( $jsonSettings, json_encode( $settings, JSON_PRETTY_PRINT ) );
 
-		$jsonSettings = get_temp_dir() . '/settings.json';
-		file_put_contents( $jsonSettings, json_encode( $settings, JSON_PRETTY_PRINT ) );
+            // Export system information
+            $jsonReport = get_temp_dir() . '/wc-report.json';
+            $report = wc()->api->get_endpoint_data( '/wc/v3/system_status' );
+            file_put_contents( $jsonReport, json_encode( $report, JSON_PRETTY_PRINT ) );
 
-		// Export system information
-		$jsonReport = get_temp_dir() . '/wc-report.json';
-		$report = wc()->api->get_endpoint_data( '/wc/v3/system_status' );
-		file_put_contents( $jsonReport, json_encode( $report, JSON_PRETTY_PRINT ) );
+            // Make zip
+            $zipFile = WC_LOG_DIR . uniqid( 'swedbank' ) . '.zip';
+            $zipArchive = new \ZipArchive();
+            $zipArchive->open( $zipFile,  \ZipArchive::CREATE );
 
-		// Make zip
-		$zipFile = WC_LOG_DIR . uniqid( 'swedbank' ) . '.zip';
-		$zipArchive = new \ZipArchive();
-		$zipArchive->open( $zipFile,  \ZipArchive::CREATE );
+            // Add files
+            $zipArchive->addFile( $jsonSettings, basename( $jsonSettings ) );
+            $zipArchive->addFile( $jsonReport, basename( $jsonReport ) );
 
-		// Add files
-		$zipArchive->addFile( $jsonSettings, basename( $jsonSettings ) );
-		$zipArchive->addFile( $jsonReport, basename( $jsonReport ) );
+            // Add logs
+            $files = self::get_log_files();
+            foreach ($files as $file) {
+                $zipArchive->addFile( WC_LOG_DIR . $file, basename( $file ) );
+            }
 
-		// Add logs
-		$files = self::get_log_files();
-		foreach ($files as $file) {
-			$zipArchive->addFile( WC_LOG_DIR . $file, basename( $file ) );
-		}
+            $zipArchive->close();
 
-		$zipArchive->close();
+            // Get the plugin information
+            $plugin = get_plugin_data( WP_PLUGIN_DIR . '/' . constant(__NAMESPACE__ . '\PLUGIN_PATH')  );
 
-		// Get the plugin information
-		$plugin = get_plugin_data( WP_PLUGIN_DIR . '/' . constant(__NAMESPACE__ . '\PLUGIN_PATH')  );
+            // Make message
+            $message = sprintf(
+                "Date: %s\nFrom: %s\nMessage: %s\nSite: %s\nPHP version: %s\nWC Version: %s\nWordPress Version: %s\nPlugin Name: %s\nPlugin Version: %s",
+                date( 'Y-m-d H:i:s' ),
+                $email,
+                $message,
+                get_option( 'siteurl' ),
+                phpversion(),
+                Constants::get_constant( 'WC_VERSION' ),
+                get_bloginfo( 'version' ),
+                $plugin['Name'],
+                $plugin['Version']
+            );
 
-		// Make message
-		$message = sprintf(
-			"Date: %s\nFrom: %s\nMessage: %s\nSite: %s\nPHP version: %s\nWC Version: %s\nWordPress Version: %s\nPlugin Name: %s\nPlugin Version: %s",
-			date( 'Y-m-d H:i:s' ),
-			$_POST['email'],
-			$_POST['message'],
-			get_option( 'siteurl' ),
-			phpversion(),
-			Constants::get_constant( 'WC_VERSION' ),
-			get_bloginfo( 'version' ),
-			$plugin['Name'],
-			$plugin['Version']
-		);
+            // Send message
+            $result = wp_mail(
+                self::SUPPORT_EMAIL,
+                'Site support: ' . get_option( 'siteurl' ),
+                $message,
+                array(
+                    'Reply-To: ' . $email,
+                    'Content-Type: text/plain; charset=UTF-8'
+                ),
+                array( $zipFile )
+            );
 
-		// Send message
-		$result = wp_mail(
-			self::SUPPORT_EMAIL,
-			'Site support: ' . get_option( 'siteurl' ),
-			$message,
-			array(
-				'Reply-To: ' . $_POST['email'],
-				'Content-Type: text/plain; charset=UTF-8'
-			),
-			array( $zipFile )
-		);
+            // Remove temporary files
+            @unlink( $jsonSettings );
+            @unlink( $zipFile );
+            @unlink( $jsonReport );
 
-		// Remove temporary files
-		@unlink( $jsonSettings );
-		@unlink( $zipFile );
-		@unlink( $jsonReport );
+            if ( ! $result ) {
+                throw new \Exception( __( 'Unable to send mail message.', 'swedbank-pay-woocommerce-checkout' ) );
+            }
+        } catch ( \Exception $exception ) {
+            wp_redirect( add_query_arg( array( 'error' => $exception->getMessage() ), $redirect ) );
+            return;
+        }
 
-		if ( ! $result ) {
-			$_SESSION['form_errors'] = array();
-			$_SESSION['form_errors'][] = __( 'Unable to send mail message.', 'swedbank-pay-woocommerce-checkout' );
-		} else {
-			$_SESSION['form_notices'] = array();
-			$_SESSION['form_notices'][] = __( 'Your message has been sent.', 'swedbank-pay-woocommerce-checkout' );
-		}
-
-		wp_redirect( $_POST['_wp_http_referer'] );
+        wp_redirect(
+            add_query_arg(
+                array( 'message' => __( 'Your message has been sent.', 'swedbank-pay-woocommerce-checkout' ) ),
+                $redirect
+            )
+        );
 	}
 
 	/**
