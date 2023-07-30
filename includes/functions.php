@@ -8,6 +8,7 @@ use Automattic\WooCommerce\Utilities\OrderUtil;
  * @see https://woocommerce.com/document/high-performance-order-storage/
  * @see https://github.com/woocommerce/woocommerce/wiki/High-Performance-Order-Storage-Upgrade-Recipe-Book
  * @return bool
+ * @SuppressWarnings(PHPMD.StaticAccess)
  */
 function swedbank_pay_is_hpos_enabled() {
 	if ( ! class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' ) ) {

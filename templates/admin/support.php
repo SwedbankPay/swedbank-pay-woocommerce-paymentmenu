@@ -9,7 +9,7 @@ defined( 'ABSPATH' ) || exit;
 global $wp_http_referer;
 ?>
 
-<?php if ( $error ): ?>
+<?php if ( $error ) : ?>
 	<div class="error">
 		<p>
 			<?php echo esc_html( $error ); ?>
@@ -17,11 +17,11 @@ global $wp_http_referer;
 	</div>
 <?php endif; ?>
 
-<?php if ( $message ): ?>
+<?php if ( $message ) : ?>
 	<div class="updated">
-        <p>
-            <?php echo esc_html( $message ); ?>
-        </p>
+		<p>
+			<?php echo esc_html( $message ); ?>
+		</p>
 	</div>
 <?php endif; ?>
 

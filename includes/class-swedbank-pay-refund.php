@@ -23,6 +23,7 @@ defined( 'ABSPATH' ) || exit;
  * @SuppressWarnings(PHPMD.CamelCasePropertyName)
  * @SuppressWarnings(PHPMD.CamelCaseVariableName)
  * @SuppressWarnings(PHPMD.MissingImport)
+ * @SuppressWarnings(PHPMD.StaticAccess)
  */
 class Swedbank_Pay_Refund {
 	public function __construct() {
@@ -46,7 +47,7 @@ class Swedbank_Pay_Refund {
 			return;
 		}
 
-		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS ) ) {
+		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 			return;
 		}
 
@@ -99,6 +100,9 @@ class Swedbank_Pay_Refund {
 	 * @throws \SwedbankPay\Core\Exception
 	 * @throws \Exception
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+	 * @SuppressWarnings(PHPMD.NPathComplexity)
+	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
 	 */
 	public static function refund( $gateway, $order, $amount, $reason ) {
 		$args = get_transient( 'sb_refund_parameters_' . $order->get_id() );
@@ -106,8 +110,8 @@ class Swedbank_Pay_Refund {
 			$args = array();
 		}
 
-		$lines = isset( $args['line_items'] ) ? $args['line_items'] : [];
-		$items = [];
+		$lines = isset( $args['line_items'] ) ? $args['line_items'] : array();
+		$items = array();
 
 		// Get order lines
 		if ( 0 === count( $lines ) ) {
@@ -117,35 +121,35 @@ class Swedbank_Pay_Refund {
 					case 'line_item':
 						/** @var WC_Order_Item_Product $item */
 						// Use subtotal to get amount without discounts
-						$lines[$item_id] = array(
-							'qty' => $item->get_quantity(),
+						$lines[ $item_id ] = array(
+							'qty'          => $item->get_quantity(),
 							'refund_total' => $item->get_subtotal(),
-							'refund_tax' => array(
-								$item->get_subtotal_tax()
-							)
+							'refund_tax'   => array(
+								$item->get_subtotal_tax(),
+							),
 						);
 
 						break;
 					case 'fee':
 					case 'shipping':
 						/** @var WC_Order_Item_Fee|WC_Order_Item_Shipping $item */
-						$lines[$item_id] = array(
-							'qty' => $item->get_quantity(),
+						$lines[ $item_id ] = array(
+							'qty'          => $item->get_quantity(),
 							'refund_total' => $item->get_total(),
-							'refund_tax' => array(
-								$item->get_total_tax()
-							)
+							'refund_tax'   => array(
+								$item->get_total_tax(),
+							),
 						);
 
 						break;
 					case 'coupon':
 						/** @var WC_Order_Item_Coupon $item */
-						$lines[$item_id] = array(
-							'qty' => $item->get_quantity(),
+						$lines[ $item_id ] = array(
+							'qty'          => $item->get_quantity(),
 							'refund_total' => -1 * $item->get_discount(),
-							'refund_tax' => array(
-								-1 * $item->get_discount_tax()
-							)
+							'refund_tax'   => array(
+								-1 * $item->get_discount_tax(),
+							),
 						);
 
 						break;
@@ -198,10 +202,10 @@ class Swedbank_Pay_Refund {
 			$order_item = array(
 				OrderItemInterface::FIELD_NAME        => $product_name,
 				OrderItemInterface::FIELD_DESCRIPTION => $product_name,
-				OrderItemInterface::FIELD_UNITPRICE   => (int)bcmul(100, $unit_price),
-				OrderItemInterface::FIELD_VAT_PERCENT => (int)bcmul(100, $tax_percent),
-				OrderItemInterface::FIELD_AMOUNT      => (int)bcmul(100, $refund_amount),
-				OrderItemInterface::FIELD_VAT_AMOUNT  => (int)bcmul(100, $refund_tax),
+				OrderItemInterface::FIELD_UNITPRICE   => (int) bcmul( 100, $unit_price ),
+				OrderItemInterface::FIELD_VAT_PERCENT => (int) bcmul( 100, $tax_percent ),
+				OrderItemInterface::FIELD_AMOUNT      => (int) bcmul( 100, $refund_amount ),
+				OrderItemInterface::FIELD_VAT_AMOUNT  => (int) bcmul( 100, $refund_tax ),
 				OrderItemInterface::FIELD_QTY         => $qty,
 				OrderItemInterface::FIELD_QTY_UNIT    => 'pcs',
 			);
@@ -210,7 +214,7 @@ class Swedbank_Pay_Refund {
 				case 'line_item':
 					/** @var WC_Order_Item_Product $item */
 
-					$image = null;
+					$image         = null;
 					$product_class = 'ProductGroup1';
 
 					/**
@@ -254,24 +258,24 @@ class Swedbank_Pay_Refund {
 					}
 
 					if ( null === parse_url( $image, PHP_URL_SCHEME ) &&
-						 mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
+						mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
 					) {
 						$image = wp_guess_url() . $image;
 					}
 
 					// The field Reference must match the regular expression '[\\w-]*'
-					$order_item[OrderItemInterface::FIELD_REFERENCE] = $reference;
-					$order_item[OrderItemInterface::FIELD_TYPE] = OrderItemInterface::TYPE_PRODUCT;
-					$order_item[OrderItemInterface::FIELD_CLASS] = $product_class;
-					$order_item[OrderItemInterface::FIELD_ITEM_URL] = $product->get_permalink();
-					$order_item[OrderItemInterface::FIELD_IMAGE_URL] = $image;
+					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = $reference;
+					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_PRODUCT;
+					$order_item[ OrderItemInterface::FIELD_CLASS ]     = $product_class;
+					$order_item[ OrderItemInterface::FIELD_ITEM_URL ]  = $product->get_permalink();
+					$order_item[ OrderItemInterface::FIELD_IMAGE_URL ] = $image;
 
 					break;
 				case 'shipping':
 					/** @var WC_Order_Item_Shipping $item */
-					$order_item[OrderItemInterface::FIELD_REFERENCE] = 'shipping';
-					$order_item[OrderItemInterface::FIELD_TYPE] = OrderItemInterface::TYPE_SHIPPING;
-					$order_item[OrderItemInterface::FIELD_CLASS] = apply_filters(
+					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = 'shipping';
+					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_SHIPPING;
+					$order_item[ OrderItemInterface::FIELD_CLASS ]     = apply_filters(
 						'swedbank_pay_product_class_shipping',
 						'ProductGroup1',
 						$order
@@ -280,9 +284,9 @@ class Swedbank_Pay_Refund {
 					break;
 				case 'fee':
 					/** @var WC_Order_Item_Fee $item */
-					$order_item[OrderItemInterface::FIELD_REFERENCE] = 'fee';
-					$order_item[OrderItemInterface::FIELD_TYPE] = OrderItemInterface::TYPE_OTHER;
-					$order_item[OrderItemInterface::FIELD_CLASS] = apply_filters(
+					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = 'fee';
+					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_OTHER;
+					$order_item[ OrderItemInterface::FIELD_CLASS ]     = apply_filters(
 						'swedbank_pay_product_class_fee',
 						'ProductGroup1',
 						$order
@@ -291,9 +295,9 @@ class Swedbank_Pay_Refund {
 					break;
 				case 'coupon':
 					/** @var WC_Order_Item_Coupon $item */
-					$order_item[OrderItemInterface::FIELD_REFERENCE] = 'coupon';
-					$order_item[OrderItemInterface::FIELD_TYPE] = OrderItemInterface::TYPE_OTHER;
-					$order_item[OrderItemInterface::FIELD_CLASS] = apply_filters(
+					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = 'coupon';
+					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_OTHER;
+					$order_item[ OrderItemInterface::FIELD_CLASS ]     = apply_filters(
 						'swedbank_pay_product_class_coupon',
 						'ProductGroup1',
 						$order
@@ -302,9 +306,9 @@ class Swedbank_Pay_Refund {
 					break;
 				default:
 					/** @var WC_Order_Item $item */
-					$order_item[OrderItemInterface::FIELD_REFERENCE] = 'other';
-					$order_item[OrderItemInterface::FIELD_TYPE] = OrderItemInterface::TYPE_OTHER;
-					$order_item[OrderItemInterface::FIELD_CLASS] = apply_filters(
+					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = 'other';
+					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_OTHER;
+					$order_item[ OrderItemInterface::FIELD_CLASS ]     = apply_filters(
 						'swedbank_pay_product_class_other',
 						'ProductGroup1',
 						$order
@@ -325,10 +329,10 @@ class Swedbank_Pay_Refund {
 
 		$order->add_order_note(
 			sprintf(
-				__(
-					'Refund process has been executed from order admin. Transaction ID: %s. State: %s. Reason: %s',
-					'swedbank-pay-woocommerce-checkout'
-				),
+			/* translators: 1: transaction 2: state 3: reason */                __(
+					'Refund process has been executed from order admin. Transaction ID: %1$s. State: %2$s. Reason: %3$s', //phpcs:ignore
+					'swedbank-pay-woocommerce-checkout' //phpcs:ignore
+				), //phpcs:ignore
 				$transaction_id,
 				$result['reversal']['transaction']['state'],
 				$reason

@@ -14,6 +14,8 @@ use SwedbankPay\Core\OrderItemInterface;
  * @SuppressWarnings(PHPMD.CamelCasePropertyName)
  * @SuppressWarnings(PHPMD.CamelCaseVariableName)
  * @SuppressWarnings(PHPMD.MissingImport)
+ * @SuppressWarnings(PHPMD.StaticAccess)
+ * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
  */
 class Swedbank_Pay_Instant_Capture {
 	/** Payment IDs */
@@ -24,10 +26,10 @@ class Swedbank_Pay_Instant_Capture {
 	/**
 	 * CAPTURE Type options
 	 */
-	const CAPTURE_VIRTUAL = 'online_virtual';
-	const CAPTURE_PHYSICAL = 'physical';
+	const CAPTURE_VIRTUAL   = 'online_virtual';
+	const CAPTURE_PHYSICAL  = 'physical';
 	const CAPTURE_RECURRING = 'recurring';
-	const CAPTURE_FEE = 'fee';
+	const CAPTURE_FEE       = 'fee';
 
 	/**
 	 * @var \Swedbank_Pay_Payment_Gateway_Checkout
@@ -49,7 +51,7 @@ class Swedbank_Pay_Instant_Capture {
 	 * @throws \SwedbankPay\Core\Exception
 	 */
 	public function maybe_capture_instantly( $order_id ) {
-		$order = wc_get_order( $order_id );
+		$order          = wc_get_order( $order_id );
 		$payment_method = $order->get_payment_method();
 		if ( ! in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 			return;
@@ -67,18 +69,18 @@ class Swedbank_Pay_Instant_Capture {
 		$this->gateway->core->saveTransactions( $order->get_id(), $transactions );
 
 		// Check if have captured transactions
-		$hasCaptured = false;
+		$has_captured = false;
 		foreach ( $transactions as $transaction ) {
 			if ( \SwedbankPay\Core\Api\TransactionInterface::TYPE_CAPTURE === $transaction->getType() &&
-				 $transaction->isCompleted()
+				$transaction->isCompleted()
 			) {
-				$hasCaptured = true;
+				$has_captured = true;
 				break;
 			}
 		}
 
 		// Capture if possible
-		if ( ! $hasCaptured ) {
+		if ( ! $has_captured ) {
 			try {
 				$this->instant_capture( $order );
 			} catch ( \Exception $e ) {
@@ -96,17 +98,18 @@ class Swedbank_Pay_Instant_Capture {
 	 * @param \WC_Order $order
 	 *
 	 * @throws \Exception
+	 * @SuppressWarnings(PHPMD.ElseExpression)
 	 */
 	private function instant_capture( $order ) {
 		remove_action(
 			'woocommerce_order_status_changed',
-            'SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Admin::order_status_changed_transaction',
+			'SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Admin::order_status_changed_transaction',
 			0,
 			3
 		);
 
 		$items = $this->get_instant_capture_items( $order );
-		$this->gateway->adapter->log( LogLevel::INFO, __METHOD__, [ $items ] );
+		$this->gateway->adapter->log( LogLevel::INFO, __METHOD__, array( $items ) );
 		if ( count( $items ) > 0 ) {
 			try {
 				if ( 'payex_checkout' === $order->get_payment_method() ) {
@@ -153,6 +156,10 @@ class Swedbank_Pay_Instant_Capture {
 	 *
 	 * @param \WC_Order $order
 	 * @return array
+	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+	 * @SuppressWarnings(PHPMD.NPathComplexity)
+	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+	 * @SuppressWarnings(PHPMD.ElseExpression)
 	 */
 	private function get_instant_capture_items( $order ) {
 		if ( ! is_array( $this->gateway->instant_capture ) || count( $this->gateway->instant_capture ) === 0 ) {
@@ -177,8 +184,8 @@ class Swedbank_Pay_Instant_Capture {
 				$image = wc_placeholder_img_src( 'full' );
 			}
 
-			if (null === parse_url( $image, PHP_URL_SCHEME ) &&
-				mb_substr( $image, 0, mb_strlen(WP_CONTENT_URL), 'UTF-8' ) === WP_CONTENT_URL
+			if ( null === parse_url( $image, PHP_URL_SCHEME ) &&
+				mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
 			) {
 				$image = wp_guess_url() . $image;
 			}
@@ -204,15 +211,13 @@ class Swedbank_Pay_Instant_Capture {
 
 			$product_name = trim( $order_item->get_name() );
 
-			if ( in_array(self::CAPTURE_PHYSICAL, $this->gateway->instant_capture, true ) &&
-				 ( ! self::wcs_is_subscription_product( $product ) &&
-				   $product->needs_shipping() &&
-				   ! $product->is_downloadable() )
+			if ( in_array( self::CAPTURE_PHYSICAL, $this->gateway->instant_capture, true ) &&
+				 ( ! self::wcs_is_subscription_product( $product ) && $product->needs_shipping() && ! $product->is_downloadable() ) //phpcs:ignore
 			) {
 				$items[] = array(
 					// The field Reference must match the regular expression '[\\w-]*'
 					OrderItemInterface::FIELD_REFERENCE   => $product_reference,
-					OrderItemInterface::FIELD_NAME        => !empty($product_name) ? $product_name : '-',
+					OrderItemInterface::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
 					OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_PRODUCT,
 					OrderItemInterface::FIELD_CLASS       => $product_class,
 					OrderItemInterface::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
@@ -227,14 +232,13 @@ class Swedbank_Pay_Instant_Capture {
 				);
 
 				continue;
-			} elseif ( in_array(self::CAPTURE_VIRTUAL, $this->gateway->instant_capture, true ) &&
-					   ( ! self::wcs_is_subscription_product( $product ) &&
-						 ( $product->is_virtual() || $product->is_downloadable() ) )
+			} elseif ( in_array( self::CAPTURE_VIRTUAL, $this->gateway->instant_capture, true ) &&
+					   ( ! self::wcs_is_subscription_product( $product ) && ( $product->is_virtual() || $product->is_downloadable() ) ) //phpcs:ignore
 			) {
 				$items[] = array(
 					// The field Reference must match the regular expression '[\\w-]*'
 					OrderItemInterface::FIELD_REFERENCE   => $product_reference,
-					OrderItemInterface::FIELD_NAME        => !empty($product_name) ? $product_name : '-',
+					OrderItemInterface::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
 					OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_PRODUCT,
 					OrderItemInterface::FIELD_CLASS       => $product_class,
 					OrderItemInterface::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
@@ -250,12 +254,12 @@ class Swedbank_Pay_Instant_Capture {
 
 				continue;
 			} elseif ( in_array( self::CAPTURE_RECURRING, $this->gateway->instant_capture, true ) &&
-					   self::wcs_is_subscription_product( $product )
+					   self::wcs_is_subscription_product( $product ) //phpcs:ignore
 			) {
 				$items[] = array(
 					// The field Reference must match the regular expression '[\\w-]*'
 					OrderItemInterface::FIELD_REFERENCE   => $product_reference,
-					OrderItemInterface::FIELD_NAME        => !empty($product_name) ? $product_name : '-',
+					OrderItemInterface::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
 					OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_PRODUCT,
 					OrderItemInterface::FIELD_CLASS       => $product_class,
 					OrderItemInterface::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
@@ -274,17 +278,17 @@ class Swedbank_Pay_Instant_Capture {
 		}
 
 		// Add Shipping Total
-		if ( in_array(self::CAPTURE_PHYSICAL, $this->gateway->instant_capture ) ) {
+		if ( in_array( self::CAPTURE_PHYSICAL, $this->gateway->instant_capture, true ) ) {
 			if ( (float) $order->get_shipping_total() > 0 ) {
 				$shipping          = (float) $order->get_shipping_total();
 				$tax               = (float) $order->get_shipping_tax();
 				$shipping_with_tax = $shipping + $tax;
-				$tax_percent       = ($tax > 0) ? round(100 / ($shipping / $tax)) : 0;
+				$tax_percent       = ( $tax > 0 ) ? round( 100 / ( $shipping / $tax ) ) : 0;
 				$shipping_method   = trim( $order->get_shipping_method() );
 
 				$items[] = array(
 					OrderItemInterface::FIELD_REFERENCE   => 'shipping',
-					OrderItemInterface::FIELD_NAME        => !empty($shipping_method) ? $shipping_method : __(
+					OrderItemInterface::FIELD_NAME        => ! empty( $shipping_method ) ? $shipping_method : __(
 						'Shipping',
 						'woocommerce'
 					),
@@ -301,13 +305,13 @@ class Swedbank_Pay_Instant_Capture {
 		}
 
 		// Add fees
-		if ( in_array(self::CAPTURE_FEE, $this->gateway->instant_capture ) ) {
+		if ( in_array( self::CAPTURE_FEE, $this->gateway->instant_capture, true ) ) {
 			foreach ( $order->get_fees() as $order_fee ) {
 				/** @var \WC_Order_Item_Fee $order_fee */
 				$fee          = (float) $order_fee->get_total();
 				$tax          = (float) $order_fee->get_total_tax();
 				$fee_with_tax = $fee + $tax;
-				$tax_percent  = ($tax > 0) ? round(100 / ($fee / $tax)) : 0;
+				$tax_percent  = ( $tax > 0 ) ? round( 100 / ( $fee / $tax ) ) : 0;
 
 				$items[] = array(
 					OrderItemInterface::FIELD_REFERENCE   => 'fee',
@@ -333,15 +337,15 @@ class Swedbank_Pay_Instant_Capture {
 
 			$items[] = array(
 				OrderItemInterface::FIELD_REFERENCE   => 'discount',
-				OrderItemInterface::FIELD_NAME        => __('Discount', 'swedbank-pay-woocommerce-payments'),
+				OrderItemInterface::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-checkout' ),
 				OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_DISCOUNT,
 				OrderItemInterface::FIELD_CLASS       => 'ProductGroup1',
 				OrderItemInterface::FIELD_QTY         => 1,
 				OrderItemInterface::FIELD_QTY_UNIT    => 'pcs',
-				OrderItemInterface::FIELD_UNITPRICE   => round(-100 * $discount_with_tax),
-				OrderItemInterface::FIELD_VAT_PERCENT => round(100 * $tax_percent),
-				OrderItemInterface::FIELD_AMOUNT      => round(-100 * $discount_with_tax),
-				OrderItemInterface::FIELD_VAT_AMOUNT  => round(-100 * $tax),
+				OrderItemInterface::FIELD_UNITPRICE   => round( -100 * $discount_with_tax ),
+				OrderItemInterface::FIELD_VAT_PERCENT => round( 100 * $tax_percent ),
+				OrderItemInterface::FIELD_AMOUNT      => round( -100 * $discount_with_tax ),
+				OrderItemInterface::FIELD_VAT_AMOUNT  => round( -100 * $tax ),
 			);
 		}
 
@@ -358,7 +362,7 @@ class Swedbank_Pay_Instant_Capture {
 	 */
 	private static function wcs_is_subscription_product( $product ) {
 		return class_exists( '\\WC_Subscriptions_Product', false ) &&
-			   \WC_Subscriptions_Product::is_subscription( $product );
+			   \WC_Subscriptions_Product::is_subscription( $product ); //phpcs:ignore
 	}
 }
 

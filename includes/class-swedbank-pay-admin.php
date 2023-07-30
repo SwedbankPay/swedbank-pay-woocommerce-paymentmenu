@@ -15,6 +15,7 @@ use SwedbankPay\Core\Log\LogLevel;
  * @SuppressWarnings(PHPMD.CamelCasePropertyName)
  * @SuppressWarnings(PHPMD.CamelCaseVariableName)
  * @SuppressWarnings(PHPMD.MissingImport)
+ * @SuppressWarnings(PHPMD.StaticAccess)
  */
 class Swedbank_Pay_Admin {
 	/**
@@ -128,10 +129,10 @@ class Swedbank_Pay_Admin {
 		wc_get_template(
 			'admin/payment-actions.php',
 			array(
-				'gateway'    => $gateway,
-				'order'      => $order,
-				'order_id'   => $order->get_id(),
-				'info'       => $result,
+				'gateway'  => $gateway,
+				'order'    => $order,
+				'order_id' => $order->get_id(),
+				'info'     => $result,
 			),
 			'',
 			dirname( __FILE__ ) . '/../templates/'
@@ -202,6 +203,8 @@ class Swedbank_Pay_Admin {
 
 	/**
 	 * Action for Capture
+	 * @SuppressWarnings(PHPMD.Superglobals)
+	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_capture() {
 		if ( ! wp_verify_nonce( $_REQUEST['nonce'], 'swedbank_pay' ) ) {
@@ -231,6 +234,8 @@ class Swedbank_Pay_Admin {
 
 	/**
 	 * Action for Cancel
+	 * @SuppressWarnings(PHPMD.Superglobals)
+	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_cancel() {
 		if ( ! wp_verify_nonce( $_REQUEST['nonce'], 'swedbank_pay' ) ) {
@@ -260,6 +265,8 @@ class Swedbank_Pay_Admin {
 
 	/**
 	 * Action for Full Refund
+	 * @SuppressWarnings(PHPMD.Superglobals)
+	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_refund() {
 		if ( ! wp_verify_nonce( $_REQUEST['nonce'], 'swedbank_pay' ) ) {
@@ -282,7 +289,7 @@ class Swedbank_Pay_Admin {
 					'amount'         => $order->get_total(),
 					'reason'         => __( 'Full refund.', 'swedbank-pay-woocommerce-checkout' ),
 					'order_id'       => $order_id,
-					'refund_payment' => true
+					'refund_payment' => true,
 				)
 			);
 
@@ -314,6 +321,14 @@ class Swedbank_Pay_Admin {
 		return $gateways[ $order->get_payment_method() ];
 	}
 
+	/**
+	 * @param $order_id
+	 * @param $old_status
+	 * @param $new_status
+	 *
+	 * @return void
+	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 */
 	public static function order_status_changed_transaction( $order_id, $old_status, $new_status ) {
 		$order = wc_get_order( $order_id );
 		if ( in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
@@ -328,19 +343,25 @@ class Swedbank_Pay_Admin {
 						$gateway->core->log( LogLevel::INFO, 'Try to capture...' );
 
 						$gateway->capture_payment( $order );
-						$order->add_order_note( __('Payment has been captured.') );
+						$order->add_order_note(
+							__( 'Payment has been captured.', 'swedbank-pay-woocommerce-checkout' )
+						);
 						break;
 					case 'cancelled':
 						$gateway->core->log( LogLevel::INFO, 'Try to cancel...' );
 
 						$gateway->cancel_payment( $order );
-						$order->add_order_note( __('Payment has been cancelled.') );
+						$order->add_order_note(
+							__( 'Payment has been cancelled.', 'swedbank-pay-woocommerce-checkout' )
+						);
 						break;
 					case 'refunded':
 						$gateway->core->log( LogLevel::INFO, 'Try to refund...' );
 
 						$gateway->process_refund( $order_id );
-						$order->add_order_note( __('Payment has been refunded.') );
+						$order->add_order_note(
+							__( 'Payment has been refunded.', 'swedbank-pay-woocommerce-checkout' )
+						);
 						break;
 				}
 			} catch ( \Exception $exception ) {

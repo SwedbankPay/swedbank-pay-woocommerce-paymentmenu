@@ -18,6 +18,7 @@ if ( ! class_exists( 'WC_Background_Process', false ) ) {
  * @SuppressWarnings(PHPMD.CamelCasePropertyName)
  * @SuppressWarnings(PHPMD.CamelCaseVariableName)
  * @SuppressWarnings(PHPMD.MissingImport)
+ * @SuppressWarnings(PHPMD.StaticAccess)
  */
 class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 	/**
@@ -102,7 +103,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			}
 
 			// Check the payment method ID
-			if ( ! in_array( $task[0]['payment_method_id'], Swedbank_Pay_Plugin::PAYMENT_METHODS ) ) {
+			if ( ! in_array( $task[0]['payment_method_id'], Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) { //phpcs:ignore
 				// Try with another queue processor
 				continue;
 			}
@@ -112,9 +113,9 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			$batch->data = $task;
 
 			// Create Sorting Flow by Transaction Number
-			$webhook = json_decode( $task[0]['webhook_data'], true );
+			$webhook             = json_decode( $task[0]['webhook_data'], true );
 			$sorting_flow[ $id ] = $webhook['transaction']['number'];
-			$results[ $id ] = $batch;
+			$results[ $id ]      = $batch;
 		}
 
 		// Sorting
@@ -123,7 +124,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 
 		$batch = array_shift( $results ); // Get first result
 		if ( ! $batch ) {
-			$batch = new \stdClass();
+			$batch       = new \stdClass();
 			$batch->key  = null;
 			$batch->data = array();
 		}
@@ -146,6 +147,8 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 	 * @param mixed $item Queue item to iterate over.
 	 *
 	 * @return mixed
+	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+	 * @SuppressWarnings(PHPMD.NPathComplexity)
 	 */
 	protected function task( $item ) {
 		$this->log( sprintf( 'Start task: %s', var_export( $item, true ) ) );
@@ -192,13 +195,12 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			}
 
 			$transactions = (array) $order->get_meta( '_swedbank_pay_transactions' );
-			if ( in_array( $transaction_id, $transactions) ) {
+			if ( in_array( $transaction_id, $transactions ) ) { //phpcs:ignore
 				$this->log( sprintf( 'Transaction #%s was processed before.', $transaction_id ) );
 
 				// Remove from queue
 				return false;
 			}
-
 		} catch ( \Exception $e ) {
 			$this->log( sprintf( '[ERROR]: Validation error: %s', $e->getMessage() ) );
 

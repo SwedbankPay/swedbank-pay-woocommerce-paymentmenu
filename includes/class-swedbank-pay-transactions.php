@@ -14,6 +14,7 @@ use Exception;
  * @SuppressWarnings(PHPMD.CamelCasePropertyName)
  * @SuppressWarnings(PHPMD.CamelCaseVariableName)
  * @SuppressWarnings(PHPMD.MissingImport)
+ * @SuppressWarnings(PHPMD.StaticAccess)
  */
 class Swedbank_Pay_Transactions {
 	/**
@@ -210,6 +211,7 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 	 * @param bool $single
 	 *
 	 * @return array|null|object
+	 * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
 	 */
 	public function get_by( $field, $value, $single = true ) {
 		global $wpdb;
@@ -233,6 +235,8 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 	 * @param array $conditionals
 	 *
 	 * @return array|null|object
+	 * @SuppressWarnings(PHPMD.ExitExpression)
+	 * @SuppressWarnings(PHPMD.ElseExpression)
 	 */
 	public function select( array $conditionals ) {
 		global $wpdb;
@@ -266,13 +270,14 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 	 * @param $data
 	 *
 	 * @return array
+	 * @SuppressWarnings(PHPMD.UnusedLocalVariable)
 	 */
 	public function prepare( $data ) {
 		$data['transaction_data'] = json_encode( $data, true );
 
 		// Verify data
 		foreach ( $data as $key => $value ) {
-			if ( ! in_array( $key, self::$allowed_fields ) ) {
+			if ( ! in_array( $key, self::$allowed_fields, true ) ) {
 				unset( $data[ $key ] );
 			}
 		}
@@ -291,7 +296,7 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 	 * @throws Exception
 	 */
 	public function import( $data, $order_id ) {
-		$id               = $data['id'];
+		$entry_id         = $data['id'];
 		$data             = $this->prepare( $data );
 		$data['order_id'] = $order_id;
 
@@ -304,7 +309,7 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 			return (int) $saved['transaction_id'];
 		}
 
-		$saved = $this->get_by( 'id', $id );
+		$saved = $this->get_by( 'id', $entry_id );
 		if ( ! $saved ) {
 			$data['created'] = gmdate( 'Y-m-d H:i:s' );
 			$data['updated'] = gmdate( 'Y-m-d H:i:s' );
@@ -312,7 +317,7 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 			$row_id = $this->add( $data );
 			if ( is_wp_error( $row_id ) ) {
 				/** @var WP_Error $row_id */
-				throw new Exception( $row_id->get_error_message( ) );
+				throw new Exception( $row_id->get_error_message() );
 			}
 
 			return $row_id;

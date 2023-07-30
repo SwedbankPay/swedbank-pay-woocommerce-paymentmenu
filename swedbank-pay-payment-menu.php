@@ -18,7 +18,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
-include_once( dirname( __FILE__ ) . '/includes/class-wc-swedbank-plugin.php' );
+include_once( dirname( __FILE__ ) . '/includes/class-swedbank-pay-plugin.php' );
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -27,6 +27,7 @@ include_once( dirname( __FILE__ ) . '/includes/class-wc-swedbank-plugin.php' );
  * @SuppressWarnings(PHPMD.CamelCasePropertyName)
  * @SuppressWarnings(PHPMD.CamelCaseVariableName)
  * @SuppressWarnings(PHPMD.MissingImport)
+ * @SuppressWarnings(PHPMD.StaticAccess)
  */
 class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	const TEXT_DOMAIN = 'swedbank-pay-woocommerce-checkout';
@@ -50,15 +51,18 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		// Actions
 		add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
 		add_action( 'woocommerce_loaded', array( $this, 'woocommerce_loaded' ), 30 );
-		add_action( 'before_woocommerce_init', function() {
-			if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
-				\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
-					'custom_order_tables',
-					__FILE__,
-					true
-				);
+		add_action(
+			'before_woocommerce_init',
+			function() {
+				if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
+					\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
+						'custom_order_tables',
+						__FILE__,
+						true
+					);
+				}
 			}
-		} );
+		);
 	}
 
 	/**
@@ -79,12 +83,11 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @return void
 	 */
 	public function woocommerce_loaded() {
-		include_once( dirname( __FILE__ ) . '/includes/class-wc-gateway-swedbank-pay-checkout.php' );
+		include_once( dirname( __FILE__ ) . '/includes/class-swedbank-pay-payment-gateway-checkout.php' );
 
 		// Register Gateway
-		Swedbank_Pay_Payment_Menu::register_gateway('Swedbank_Pay_Payment_Gateway_Checkout');
+		Swedbank_Pay_Payment_Menu::register_gateway( Swedbank_Pay_Payment_Gateway_Checkout::class );
 	}
-
 }
 
 new Swedbank_Pay_Payment_Menu();

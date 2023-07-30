@@ -15,6 +15,9 @@ use Exception;
  * @SuppressWarnings(PHPMD.CamelCasePropertyName)
  * @SuppressWarnings(PHPMD.CamelCaseVariableName)
  * @SuppressWarnings(PHPMD.MissingImport)
+ * @SuppressWarnings(PHPMD.StaticAccess)
+ * @SuppressWarnings(PHPMD.TooManyPublicMethods)
+ * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
  */
 class Swedbank_Pay_Plugin {
 
@@ -23,10 +26,10 @@ class Swedbank_Pay_Plugin {
 		'payex_checkout',
 	);
 
-	const PLUGIN_NAME = 'Swedbank Pay Payment Menu';
-	const SUPPORT_EMAIL = 'support.ecom@payex.com';
-	const DB_VERSION = '1.0.0';
-	const DB_VERSION_SLUG = 'swedbank_pay_menu_version';
+	const PLUGIN_NAME             = 'Swedbank Pay Payment Menu';
+	const SUPPORT_EMAIL           = 'support.ecom@payex.com';
+	const DB_VERSION              = '1.0.0';
+	const DB_VERSION_SLUG         = 'swedbank_pay_menu_version';
 	const ADMIN_SUPPORT_PAGE_SLUG = 'swedbank-pay-menu-support';
 	const ADMIN_UPGRADE_PAGE_SLUG = 'swedbank-pay-menu-upgrade';
 
@@ -51,7 +54,7 @@ class Swedbank_Pay_Plugin {
 
 		// Actions
 		add_filter(
-			'plugin_action_links_' . constant(__NAMESPACE__ . '\PLUGIN_PATH'),
+			'plugin_action_links_' . constant( __NAMESPACE__ . '\PLUGIN_PATH' ),
 			__CLASS__ . '::plugin_action_links'
 		);
 		add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
@@ -76,6 +79,10 @@ class Swedbank_Pay_Plugin {
 		add_action( 'admin_post_' . self::ADMIN_SUPPORT_PAGE_SLUG, __CLASS__ . '::support_submit' );
 	}
 
+	/**
+	 * @return void
+	 * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+	 */
 	public function includes() {
 		$vendors_dir = dirname( __FILE__ ) . '/../vendor';
 
@@ -84,7 +91,7 @@ class Swedbank_Pay_Plugin {
 		$plugins = get_plugins();
 		foreach ( $plugins as $file => $plugin ) {
 			if ( strpos( $file, 'swedbank-pay-woocommerce-checkout.php' ) !== false ) {
-				if ( file_exists( dirname( $file ) . '/vendor/autoload.php') ) {
+				if ( file_exists( dirname( $file ) . '/vendor/autoload.php' ) ) {
 					$vendors_dir = dirname( $file ) . '/vendor';
 					break;
 				}
@@ -95,17 +102,17 @@ class Swedbank_Pay_Plugin {
 			// Prevent conflicts of the composer
 			$content = file_get_contents( $vendors_dir . '/composer/autoload_real.php' );
 			$matches = array();
-			preg_match('/class\s+(\w+)(.*)?/', $content, $matches, PREG_OFFSET_CAPTURE, 0);
+			preg_match( '/class\s+(\w+)(.*)?/', $content, $matches, PREG_OFFSET_CAPTURE, 0 );
 			if ( ! isset( $matches[1] ) || ! class_exists( $matches[1][0], false ) ) {
 				require_once $vendors_dir . '/autoload.php';
 			}
 		}
 
 		require_once( dirname( __FILE__ ) . '/functions.php' );
-		require_once(dirname(__FILE__) . '/class-swedbank-pay-transactions.php');
-		require_once(dirname(__FILE__) . '/class-swedbank-pay-instant-capture.php');
-		require_once(dirname(__FILE__) . '/class-swedbank-pay-admin.php');
-		require_once(dirname(__FILE__) . '/class-swedbank-pay-refund.php');
+		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-transactions.php' );
+		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-instant-capture.php' );
+		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-admin.php' );
+		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-refund.php' );
 	}
 
 	/**
@@ -154,7 +161,7 @@ class Swedbank_Pay_Plugin {
 	 * WooCommerce Init
 	 */
 	public function woocommerce_init() {
-		include_once(dirname(__FILE__) . '/class-swedbank-pay-background-queue.php');
+		include_once( dirname( __FILE__ ) . '/class-swedbank-pay-background-queue.php' );
 		self::$background_process = new Swedbank_Pay_Background_Queue();
 	}
 
@@ -208,6 +215,8 @@ class Swedbank_Pay_Plugin {
 	 * @param WC_Order $order
 	 *
 	 * @return string
+	 * @SuppressWarnings(PHPMD.UnusedLocalVariable)
+	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
 	 */
 	public static function payment_description( $description, $order ) {
 		return $description;
@@ -220,16 +229,18 @@ class Swedbank_Pay_Plugin {
 	 * @param WC_Order $order
 	 *
 	 * @return string
+	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+	 * @SuppressWarnings(PHPMD.NPathComplexity)
 	 */
 	public static function billing_phone( $billing_phone, $order ) {
 		$billing_country = $order->get_billing_country();
-		$billing_phone = preg_replace( '/[^0-9\+]/', '', $billing_phone );
+		$billing_phone   = preg_replace( '/[^0-9\+]/', '', $billing_phone );
 
-		if ( ! preg_match('/^((00|\+)([1-9][1-9])|0([1-9]))(\d*)/', $billing_phone, $matches) ) {
+		if ( ! preg_match( '/^((00|\+)([1-9][1-9])|0([1-9]))(\d*)/', $billing_phone, $matches ) ) {
 			return null;
 		}
 
-		switch ($billing_country) {
+		switch ( $billing_country ) {
 			case 'SE':
 				$country_code = '46';
 				break;
@@ -243,11 +254,11 @@ class Swedbank_Pay_Plugin {
 				return '+' . ltrim( $billing_phone, '+' );
 		}
 
-		if ( isset( $matches[3] ) && isset( $matches[5]) ) { // country code present
+		if ( isset( $matches[3] ) && isset( $matches[5] ) ) { // country code present
 			$billing_phone = $matches[3] . $matches[5];
 		}
 
-		if ( isset( $matches[4]) && isset( $matches[5]) ) { // no country code present. removing leading 0
+		if ( isset( $matches[4] ) && isset( $matches[5] ) ) { // no country code present. removing leading 0
 			$billing_phone = $country_code . $matches[4] . $matches[5];
 		}
 
@@ -274,7 +285,7 @@ class Swedbank_Pay_Plugin {
 		add_action( 'admin_notices', __CLASS__ . '::check_dependencies' );
 
 		if ( version_compare( get_option( self::DB_VERSION_SLUG, self::DB_VERSION ), self::DB_VERSION, '<' ) &&
-			 current_user_can( 'manage_woocommerce' )
+			 current_user_can( 'manage_woocommerce' ) //phpcs:ignore
 		) {
 			add_action( 'admin_notices', __CLASS__ . '::upgrade_notice' );
 		}
@@ -314,6 +325,7 @@ class Swedbank_Pay_Plugin {
 
 	/**
 	 * Support Page
+	 * @SuppressWarnings(PHPMD.Superglobals)
 	 */
 	public static function support_page() {
 		wc_get_template(
@@ -321,8 +333,8 @@ class Swedbank_Pay_Plugin {
 			array(
 				'form_url' => admin_url( 'admin-post.php' ),
 				'action'   => self::ADMIN_SUPPORT_PAGE_SLUG,
-                'error'    => isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['error'] ) ) : null, // WPCS: input var ok, CSRF ok.
-                'message'  => isset( $_GET['message'] ) ? sanitize_text_field( wp_unslash( $_GET['message'] ) ) : null, // WPCS: input var ok, CSRF ok.
+				'error'    => isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['error'] ) ) : null, // WPCS: input var ok, CSRF ok.
+				'message'  => isset( $_GET['message'] ) ? sanitize_text_field( wp_unslash( $_GET['message'] ) ) : null, // WPCS: input var ok, CSRF ok.
 			),
 			'',
 			dirname( __FILE__ ) . '/../templates/'
@@ -338,7 +350,7 @@ class Swedbank_Pay_Plugin {
 		}
 
 		// Run Database Update
-		include_once(dirname(__FILE__) . '/class-swedbank-pay-update.php');
+		include_once( dirname( __FILE__ ) . '/class-swedbank-pay-update.php' );
 		Swedbank_Pay_Update::update();
 
 		echo esc_html__( 'Upgrade finished.', 'swedbank-pay-woocommerce-checkout' );
@@ -352,22 +364,26 @@ class Swedbank_Pay_Plugin {
 		<div id="message" class="error">
 			<p>
 				<?php
-				echo esc_html( sprintf(
+				echo esc_html(
+					sprintf(
 					/* translators: 1: plugin name */                        esc_html__(
-						'Warning! %1$s requires to update the database structure.',
-						'swedbank-pay-woocommerce-checkout'
-					),
-					self::PLUGIN_NAME
-				) );
+						'Warning! %1$s requires to update the database structure.', //phpcs:ignore
+						'swedbank-pay-woocommerce-checkout' //phpcs:ignore
+						), //phpcs:ignore
+						self::PLUGIN_NAME
+					)
+				);
 
-				echo esc_html( ' ' . sprintf(
+				echo esc_html(
+					' ' . sprintf(
 					/* translators: 1: start tag 2: end tag */                        esc_html__(
-						'Please click %1$s here %2$s to start upgrade.',
-						'swedbank-pay-woocommerce-checkout'
-					),
+						'Please click %1$s here %2$s to start upgrade.', //phpcs:ignore
+						'swedbank-pay-woocommerce-checkout' //phpcs:ignore
+						), //phpcs:ignore
 						'<a href="' . esc_url( admin_url( 'admin.php?page=' . self::ADMIN_UPGRADE_PAGE_SLUG ) ) . '">',
 						'</a>'
-					) );
+					)
+				);
 				?>
 			</p>
 		</div>
@@ -388,7 +404,7 @@ class Swedbank_Pay_Plugin {
 				echo esc_html__( 'WooCommerce plugin is inactive or missing. Please install and active it.', 'swedbank-pay-woocommerce-checkout' );
 				echo '<br />';
 				echo sprintf(
-					/* translators: 1: plugin name */                        esc_html__(
+					/* translators: 1: plugin name */                        esc_html__(  //phpcs:ignore
 						'%1$s will be deactivated.',
 						'swedbank-pay-woocommerce-checkout'
 					),
@@ -401,7 +417,7 @@ class Swedbank_Pay_Plugin {
 		<?php
 
 		// Deactivate the plugin
-		deactivate_plugins( constant(__NAMESPACE__ . '\PLUGIN_PATH'), true );
+		deactivate_plugins( constant( __NAMESPACE__ . '\PLUGIN_PATH' ), true );
 	}
 
 
@@ -412,13 +428,13 @@ class Swedbank_Pay_Plugin {
 		$dependencies = array( 'curl', 'bcmath', 'json' );
 
 		$errors = array();
-		foreach ($dependencies as $dependency) {
+		foreach ( $dependencies as $dependency ) {
 			if ( ! extension_loaded( $dependency ) ) {
-				$errors[] = sprintf( esc_html__( 'Extension %s is missing.', 'swedbank-pay-woocommerce-checkout' ), $dependency );
+				/* translators: 1: plugin name */                        $errors[] = sprintf( esc_html__( 'Extension %s is missing.', 'swedbank-pay-woocommerce-checkout' ), $dependency );
 			}
 		}
 
-		if ( count( $errors ) > 0 ):
+		if ( count( $errors ) > 0 ) :
 			?>
 			<div id="message" class="error">
 				<p class="main">
@@ -430,18 +446,20 @@ class Swedbank_Pay_Plugin {
 						echo esc_html( $error );
 					}
 					echo '<br />';
-					echo esc_html( sprintf(
-					/* translators: 1: plugin name */                        esc_html__(
-                        '%1$s requires that. Please configure PHP or contact the server administrator.',
-                        'swedbank-pay-woocommerce-checkout'
-                    ),
-                        self::PLUGIN_NAME
-					) );
+					echo esc_html(
+						sprintf(
+						/* translators: 1: plugin name */                        esc_html__( //phpcs:ignore
+							'%1$s requires that. Please configure PHP or contact the server administrator.',
+							'swedbank-pay-woocommerce-checkout'
+							), //phpcs:ignore
+							self::PLUGIN_NAME
+						)
+					);
 
 					?>
 				</p>
 			</div>
-		<?php
+			<?php
 		endif;
 	}
 
@@ -456,14 +474,16 @@ class Swedbank_Pay_Plugin {
 			</p>
 			<p>
 				<?php
-				echo esc_html( sprintf(
+				echo esc_html(
+					sprintf(
 					/* translators: 1: start tag 2: end tag */                        esc_html__(
 						'"Number of decimals" is configured with zero value. It creates problems with rounding and checkout. Please change it to "2" on %1$sSettings page%2$s.',
 						'swedbank-pay-woocommerce-checkout'
-					),
+						), //phpcs:ignore
 						'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=general' ) ) . '">',
 						'</a>'
-					) );
+					)
+				);
 				?>
 			</p>
 		</div>
@@ -475,8 +495,7 @@ class Swedbank_Pay_Plugin {
 	 *
 	 * @return void
 	 */
-	public static function check_backward_compatibility()
-	{
+	public static function check_backward_compatibility() {
 		?>
 		<div id="message" class="updated woocommerce-message">
 			<p class="main">
@@ -495,121 +514,128 @@ class Swedbank_Pay_Plugin {
 
 	/**
 	 * Send support message
+	 * @SuppressWarnings(PHPMD.Superglobals)
+	 * @SuppressWarnings(PHPMD.ErrorControlOperator)
+	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
+	 * @SuppressWarnings(PHPMD.NPathComplexity)
+	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
+	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public static function support_submit() {
 		if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'support_submit' ) ) {
 			exit( 'No naughty business' );
 		}
 
-        $redirect = wc_clean( $_POST['_wp_http_referer'] );
+		$redirect = wc_clean( $_POST['_wp_http_referer'] );
 
-        try {
-            if ( ! extension_loaded( 'zip' ) ) {
-                throw new \Exception(
-                    __( 'zip extension is required to perform this operation.', 'swedbank-pay-woocommerce-checkout' )
-                );
-            }
+		try {
+			if ( ! extension_loaded( 'zip' ) ) {
+				throw new \Exception(
+					__( 'zip extension is required to perform this operation.', 'swedbank-pay-woocommerce-checkout' )
+				);
+			}
 
-            // Validate the fields
-            if ( empty( $_POST['email'] ) || empty( $_POST['message'] ) ) {
-                throw new \Exception(
-                    __( 'Invalid form data', 'swedbank-pay-woocommerce-checkout' )
-                );
-            }
+			// Validate the fields
+			if ( empty( $_POST['email'] ) || empty( $_POST['message'] ) ) {
+				throw new \Exception(
+					__( 'Invalid form data', 'swedbank-pay-woocommerce-checkout' )
+				);
+			}
 
-            $email = sanitize_email( wc_clean( $_POST['email'] ) );
+			$email = sanitize_email( wc_clean( $_POST['email'] ) );
 
-            // Validate email
-            if ( ! is_email( $email ) ) {
-                throw new \Exception( __( 'Invalid email', 'swedbank-pay-woocommerce-checkout' ) );
-            }
+			// Validate email
+			if ( ! is_email( $email ) ) {
+				throw new \Exception( __( 'Invalid email', 'swedbank-pay-woocommerce-checkout' ) );
+			}
 
-            $message = wp_kses_post( sanitize_text_field( $_POST['message'] ) );
+			$message = wp_kses_post( sanitize_text_field( $_POST['message'] ) );
 
-            // Export settings
-            $settings = array();
-            foreach ( self::PAYMENT_METHODS as $payment_method ) {
-                $conf = get_option( 'woocommerce_' . $payment_method . '_settings' );
-                if ( ! is_array( $conf ) ) {
-                    $conf = array();
-                }
+			// Export settings
+			$settings = array();
+			foreach ( self::PAYMENT_METHODS as $payment_method ) {
+				$conf = get_option( 'woocommerce_' . $payment_method . '_settings' );
+				if ( ! is_array( $conf ) ) {
+					$conf = array();
+				}
 
-                $settings[ $payment_method ] = $conf;
-            }
+				$settings[ $payment_method ] = $conf;
+			}
 
-            $jsonSettings = get_temp_dir() . '/settings.json';
-            file_put_contents( $jsonSettings, json_encode( $settings, JSON_PRETTY_PRINT ) );
+			$json_settings = get_temp_dir() . '/settings.json';
+			file_put_contents( $json_settings, json_encode( $settings, JSON_PRETTY_PRINT ) );
 
-            // Export system information
-            $jsonReport = get_temp_dir() . '/wc-report.json';
-            $report = wc()->api->get_endpoint_data( '/wc/v3/system_status' );
-            file_put_contents( $jsonReport, json_encode( $report, JSON_PRETTY_PRINT ) );
+			// Export system information
+			$json_report = get_temp_dir() . '/wc-report.json';
+			$report      = wc()->api->get_endpoint_data( '/wc/v3/system_status' );
+			file_put_contents( $json_report, json_encode( $report, JSON_PRETTY_PRINT ) );
 
-            // Make zip
-            $zipFile = WC_LOG_DIR . uniqid( 'swedbank' ) . '.zip';
-            $zipArchive = new \ZipArchive();
-            $zipArchive->open( $zipFile,  \ZipArchive::CREATE );
+			// Make zip
+			$zip_file = WC_LOG_DIR . uniqid( 'swedbank_pay' ) . '.zip';
 
-            // Add files
-            $zipArchive->addFile( $jsonSettings, basename( $jsonSettings ) );
-            $zipArchive->addFile( $jsonReport, basename( $jsonReport ) );
+			$zip_archive = new \ZipArchive();
+			$zip_archive->open( $zip_file, \ZipArchive::CREATE );
 
-            // Add logs
-            $files = self::get_log_files();
-            foreach ($files as $file) {
-                $zipArchive->addFile( WC_LOG_DIR . $file, basename( $file ) );
-            }
+			// Add files
+			$zip_archive->addFile( $json_settings, basename( $json_settings ) );
+			$zip_archive->addFile( $json_report, basename( $json_report ) );
 
-            $zipArchive->close();
+			// Add logs
+			$files = self::get_log_files();
+			foreach ( $files as $file ) {
+				$zip_archive->addFile( WC_LOG_DIR . $file, basename( $file ) );
+			}
 
-            // Get the plugin information
-            $plugin = get_plugin_data( WP_PLUGIN_DIR . '/' . constant(__NAMESPACE__ . '\PLUGIN_PATH')  );
+			$zip_archive->close();
 
-            // Make message
-            $message = sprintf(
-                "Date: %s\nFrom: %s\nMessage: %s\nSite: %s\nPHP version: %s\nWC Version: %s\nWordPress Version: %s\nPlugin Name: %s\nPlugin Version: %s",
-                date( 'Y-m-d H:i:s' ),
-                $email,
-                $message,
-                get_option( 'siteurl' ),
-                phpversion(),
-                Constants::get_constant( 'WC_VERSION' ),
-                get_bloginfo( 'version' ),
-                $plugin['Name'],
-                $plugin['Version']
-            );
+			// Get the plugin information
+			$plugin = get_plugin_data( WP_PLUGIN_DIR . '/' . constant( __NAMESPACE__ . '\PLUGIN_PATH' ) );
 
-            // Send message
-            $result = wp_mail(
-                self::SUPPORT_EMAIL,
-                'Site support: ' . get_option( 'siteurl' ),
-                $message,
-                array(
-                    'Reply-To: ' . $email,
-                    'Content-Type: text/plain; charset=UTF-8'
-                ),
-                array( $zipFile )
-            );
+			// Make message
+			$message = sprintf(
+				"Date: %s\nFrom: %s\nMessage: %s\nSite: %s\nPHP version: %s\nWC Version: %s\nWordPress Version: %s\nPlugin Name: %s\nPlugin Version: %s",
+				gmdate( 'Y-m-d H:i:s' ),
+				$email,
+				$message,
+				get_option( 'siteurl' ),
+				phpversion(),
+				Constants::get_constant( 'WC_VERSION' ),
+				get_bloginfo( 'version' ),
+				$plugin['Name'],
+				$plugin['Version']
+			);
 
-            // Remove temporary files
-            @unlink( $jsonSettings );
-            @unlink( $zipFile );
-            @unlink( $jsonReport );
+			// Send message
+			$result = wp_mail(
+				self::SUPPORT_EMAIL,
+				'Site support: ' . get_option( 'siteurl' ),
+				$message,
+				array(
+					'Reply-To: ' . $email,
+					'Content-Type: text/plain; charset=UTF-8',
+				),
+				array( $zip_file )
+			);
 
-            if ( ! $result ) {
-                throw new \Exception( __( 'Unable to send mail message.', 'swedbank-pay-woocommerce-checkout' ) );
-            }
-        } catch ( \Exception $exception ) {
-            wp_redirect( add_query_arg( array( 'error' => $exception->getMessage() ), $redirect ) );
-            return;
-        }
+			// Remove temporary files
+			@unlink( $json_settings );
+			@unlink( $zip_file );
+			@unlink( $json_report );
 
-        wp_redirect(
-            add_query_arg(
-                array( 'message' => __( 'Your message has been sent.', 'swedbank-pay-woocommerce-checkout' ) ),
-                $redirect
-            )
-        );
+			if ( ! $result ) {
+				throw new \Exception( __( 'Unable to send mail message.', 'swedbank-pay-woocommerce-checkout' ) );
+			}
+		} catch ( \Exception $exception ) {
+			wp_redirect( add_query_arg( array( 'error' => $exception->getMessage() ), $redirect ) );
+			return;
+		}
+
+		wp_redirect(
+			add_query_arg(
+				array( 'message' => __( 'Your message has been sent.', 'swedbank-pay-woocommerce-checkout' ) ),
+				$redirect
+			)
+		);
 	}
 
 	/**
@@ -619,12 +645,12 @@ class Swedbank_Pay_Plugin {
 	 */
 	private static function get_log_files() {
 		$result = array();
-		$files = \WC_Log_Handler_File::get_log_files();
+		$files  = \WC_Log_Handler_File::get_log_files();
 		foreach ( $files as $file ) {
 			foreach ( self::PAYMENT_METHODS as $payment_method ) {
 				if ( strpos( $file, $payment_method ) !== false ||
-					 strpos( $file, 'wc_swedbank' ) !== false ||
-					 strpos( $file, 'fatal-errors' ) !== false
+					 strpos( $file, 'swedbank' ) !== false ||  //phpcs:ignore
+					 strpos( $file, 'fatal-errors' ) !== false  //phpcs:ignore
 				) {
 					$result[] = $file;
 				}
