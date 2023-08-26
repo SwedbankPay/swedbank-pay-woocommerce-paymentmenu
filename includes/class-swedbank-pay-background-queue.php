@@ -172,20 +172,20 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 				);
 			}
 
-			if ( ! isset( $data['payment'] ) || ! isset( $data['payment']['id'] ) ) {
-				throw new \Exception( 'Error: Invalid payment value' );
+			if ( ! isset( $data['paymentOrder'] ) || ! isset( $data['paymentOrder']['id'] ) ) {
+				throw new \Exception( 'Error: Invalid paymentOrder value' );
 			}
 
 			if ( ! isset( $data['transaction'] ) || ! isset( $data['transaction']['number'] ) ) {
 				throw new \Exception( 'Error: Invalid transaction number' );
 			}
 
-			// Get Order by Payment Id
-			$transaction_id = $data['transaction']['number'];
-			$payment_id     = $data['payment']['id'];
-			$order_id       = swedbank_pay_get_post_id_by_meta( '_payex_payment_id', $payment_id );
+			// Get Order by Payment Order Id
+			$transaction_number = $data['transaction']['number'];
+			$payment_order_id   = $data['paymentOrder']['id'];
+			$order_id           = swedbank_pay_get_post_id_by_meta( '_payex_paymentorder_id', $payment_order_id );
 			if ( ! $order_id ) {
-				throw new \Exception( sprintf( 'Error: Failed to get order Id by Payment Id %s', $payment_id ) );
+				throw new \Exception( sprintf( 'Error: Failed to get order Id by Payment Order Id %s', $order_id ) );
 			}
 
 			// Get Order
@@ -195,8 +195,8 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			}
 
 			$transactions = (array) $order->get_meta( '_swedbank_pay_transactions' );
-			if ( in_array( $transaction_id, $transactions ) ) { //phpcs:ignore
-				$this->log( sprintf( 'Transaction #%s was processed before.', $transaction_id ) );
+			if ( in_array( $transaction_number, $transactions ) ) { //phpcs:ignore
+				$this->log( sprintf( 'Transaction #%s was processed before.', $transaction_number ) );
 
 				// Remove from queue
 				return false;
@@ -208,8 +208,18 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			return false;
 		}
 
+		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
+
 		try {
-			$gateway->core->fetchTransactionsAndUpdateOrder( $order_id, $data['transaction']['number'] );
+			// Finalize payment
+			$transactions = $gateway->core->fetchFinancialTransactionsList( $payment_order_id );
+			if ( count( $transactions ) > 0 ) {
+				foreach ( $transactions as $transaction ) {
+					if ( $transaction->getNumber() == $transaction_number ) {
+						$gateway->core->processFinancialTransaction( $order_id, $transaction );
+					}
+				}
+			}
 		} catch ( \Exception $e ) {
 			$this->log( sprintf( '[ERROR]: %s', $e->getMessage() ) );
 
@@ -217,7 +227,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			return false;
 		}
 
-		$this->log( sprintf( 'Transaction #%s has been processed.', $transaction_id ) );
+		$this->log( sprintf( 'Transaction #%s has been processed.', $transaction_number ) );
 
 		// Remove from queue
 		return false;

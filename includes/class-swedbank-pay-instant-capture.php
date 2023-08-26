@@ -66,14 +66,12 @@ class Swedbank_Pay_Instant_Capture {
 
 		// Fetch transactions list
 		$transactions = $this->gateway->core->fetchFinancialTransactionsList( $payment_order_id );
-		$this->gateway->core->saveTransactions( $order->get_id(), $transactions );
+		$this->gateway->core->saveFinancialTransactions( $order->get_id(), $transactions );
 
 		// Check if have captured transactions
 		$has_captured = false;
 		foreach ( $transactions as $transaction ) {
-			if ( \SwedbankPay\Core\Api\TransactionInterface::TYPE_CAPTURE === $transaction->getType() &&
-				$transaction->isCompleted()
-			) {
+			if ( $transaction->isCapture() ) {
 				$has_captured = true;
 				break;
 			}
@@ -112,18 +110,7 @@ class Swedbank_Pay_Instant_Capture {
 		$this->gateway->adapter->log( LogLevel::INFO, __METHOD__, array( $items ) );
 		if ( count( $items ) > 0 ) {
 			try {
-				if ( 'payex_checkout' === $order->get_payment_method() ) {
-					// Capture Checkout
-					$this->gateway->core->captureCheckout( $order->get_id(), $items );
-				} elseif ( 'payex_psp_invoice' === $order->get_payment_method() ) {
-					// Capture Invoice
-					$this->gateway->core->captureInvoice( $order->get_id(), $items );
-				} else {
-					// Capture Payments
-					$amount     = array_sum( array_column( $items, OrderItemInterface::FIELD_AMOUNT ) ) / 100;
-					$vat_amount = array_sum( array_column( $items, OrderItemInterface::FIELD_VAT_AMOUNT ) ) / 100;
-					$this->gateway->core->capture( $order->get_id(), $amount, $vat_amount );
-				}
+				$this->gateway->core->captureCheckout( $order->get_id(), $items );
 			} catch ( \SwedbankPay\Core\Exception $e ) {
 				throw new \Exception( $e->getMessage() );
 			}

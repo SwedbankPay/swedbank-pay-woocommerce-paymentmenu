@@ -25,9 +25,6 @@ use SwedbankPay\Core\Log\LogLevel;
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
-	const METHOD_REDIRECT = 'redirect';
-	const METHOD_SEAMLESS = 'seamless';
-
 	/**
 	 * @var Adapter
 	 */
@@ -86,13 +83,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public $culture = 'en-US';
 
 	/**
-	 * Auto Capture
-	 * @deprecated
-	 * @var string
-	 */
-	public $auto_capture = 'no';
-
-	/**
 	 * Url of Merchant Logo.
 	 *
 	 * @var string
@@ -106,13 +96,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public $instant_capture = array();
 
 	/**
-	 * Checkout method
-	 * @deprecated
-	 * @var string
-	 */
-	public $method = self::METHOD_REDIRECT;
-
-	/**
 	 * @var string
 	 */
 	public $terms_url = '';
@@ -124,56 +107,10 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public $backend_api_endpoint = 'https://api.payex.com';
 
 	/**
-	 * Reject Credit Cards
-	 * @deprecated
-	 * @var string
-	 */
-	public $reject_credit_cards = 'no';
-
-	/**
-	 * Reject Debit Cards
-	 * @deprecated
-	 * @var string
-	 */
-	public $reject_debit_cards = 'no';
-
-	/**
-	 * Reject Consumer Cards
-	 * @deprecated
-	 * @var string
-	 */
-	public $reject_consumer_cards = 'no';
-
-	/**
-	 * Reject Corporate Cards
-	 * @deprecated
-	 * @var string
-	 */
-	public $reject_corporate_cards = 'no';
-
-	/**
 	 * Send billing/delivery addresses of payer to Swedbank Pay
 	 * @var string
 	 */
 	public $use_payer_info = 'yes';
-
-	/**
-	 * @deprecated
-	 * @var bool
-	 */
-	public $is_new_credit_card = false;
-
-	/**
-	 * @deprecated
-	 * @var bool
-	 */
-	public $is_change_credit_card = false;
-
-	/**
-	 * Payment Token Class
-	 * @var string
-	 */
-	public $payment_token_class;
 
 	/**
 	 * Swedbank Pay ip addresses
@@ -474,12 +411,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		$this->core->log( LogLevel::INFO, __METHOD__ );
-
-		WC()->session->__unset( 'swedbank_paymentorder_id' );
-
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( $payment_order_id ) {
-			$this->core->fetchTransactionsAndUpdateOrder( $order_id );
+			$this->core->finalizePaymentOrder( $payment_order_id );
 		}
 	}
 
@@ -523,11 +457,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		// Initiate Payment Order
-		$result = $this->core->initiatePaymentOrderPurchase( $order_id, null, false );
-
-		$js_url       = $result->getOperationByRel( 'view-paymentorder' );
+		$result = $this->core->initiatePaymentOrderPurchase( $order_id, null );
 		$redirect_url = $result->getOperationByRel( 'redirect-paymentorder' );
-
 		if ( empty( $redirect_url ) ) {
 			// Checkout v3
 			$redirect_url = $result->getOperationByRel( 'redirect-checkout' );
@@ -535,16 +466,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		// Save payment ID
 		$order->update_meta_data( '_payex_paymentorder_id', $result['payment_order']['id'] );
-		$order->update_meta_data( '_swedbank_pay_view_paymentorder', $js_url );
-		$order->update_meta_data( '_swedbank_pay_redirect_paymentorder', $redirect_url );
 		$order->save_meta_data();
-
-		WC()->session->set( 'sb_payment_url', $js_url );
 
 		return array(
 			'result'   => 'success',
-			'redirect' => $redirect_url,
-			'js_url'   => $js_url,
+			'redirect' => $redirect_url
 		);
 	}
 
@@ -558,14 +484,14 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @SuppressWarnings(PHPMD.Superglobals)
 	 */
 	public function return_handler() {
-		$raw_body = file_get_contents( 'php://input' );
+		$raw_body = wp_kses_post( sanitize_text_field( file_get_contents( 'php://input' ) ) );  // WPCS: input var ok, CSRF ok.
 
 		$this->core->log(
 			LogLevel::INFO,
 			sprintf(
 				'Incoming Callback: Initialized %s from %s',
-				$_SERVER['REQUEST_URI'],
-				$_SERVER['REMOTE_ADDR']
+				wp_kses_post( sanitize_text_field( $_SERVER['REQUEST_URI'] ) ), // WPCS: input var ok, CSRF ok.
+				wp_kses_post( sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) ) // WPCS: input var ok, CSRF ok.
 			)
 		);
 		$this->core->log(
@@ -609,48 +535,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				throw new Exception( 'A provided order key has been invalid.' );
 			}
 
+			// Validate fields
 			if ( ! isset( $data['paymentOrder'] ) || ! isset( $data['paymentOrder']['id'] ) ) {
 				throw new \Exception( 'Error: Invalid paymentOrder value' );
 			}
 
-			if ( ! isset( $data['payment'] ) || ! isset( $data['payment']['id'] ) ) {
-				throw new \Exception( 'Error: Invalid payment value' );
-			}
-
 			if ( ! isset( $data['transaction'] ) || ! isset( $data['transaction']['number'] ) ) {
 				throw new \Exception( 'Error: Invalid transaction number' );
-			}
-
-			$paymentorder_id = $data['paymentOrder']['id'];
-
-			// Get Order by Order Payment Id
-			$order_id = swedbank_pay_get_post_id_by_meta( '_payex_paymentorder_id', $paymentorder_id );
-
-			// Get Order ID from payeeInfo if is not exist
-			if ( empty( $order_id ) ) {
-				$result   = $this->core->fetchPaymentInfo( $paymentorder_id, 'payeeInfo' );
-				$order_id = $result['paymentOrder']['payeeInfo']['orderReference'];
-
-				if ( empty( $order_id ) ) {
-					throw new \Exception(
-						sprintf(
-							'Error: Failed to get order Id by Payment Order Id %s',
-							$paymentorder_id
-						)
-					);
-				}
-
-				// Save Order Payment Id
-				$order->update_meta_data( '_payex_paymentorder_id', $paymentorder_id );
-				$order->save();
-			}
-
-			// Save Payment ID
-			if ( isset( $data['payment'] ) ) {
-				$payment_id = $data['payment']['id'];
-
-				$order->update_meta_data( '_payex_payment_id', $payment_id );
-				$order->save();
 			}
 
 			// Create Background Process Task
@@ -796,15 +687,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		return sprintf( '%s (%s)', $value, $instrument );
-	}
-
-	/**
-	 * Returns the product name.
-	 *
-	 * @return string
-	 */
-	public function get_product_name() {
-		return 'Checkout3';
 	}
 
 	/**

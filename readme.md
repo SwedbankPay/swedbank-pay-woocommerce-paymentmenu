@@ -9,7 +9,7 @@ This plugin provides the Swedbank Pay Payment Menu for WooCommerce.
 * Contributors: swedbankpay
 * Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank, payex, payment gateway, woocommerce
 * Requires at least: 5.3
-* Tested up to: 6.1.1
+* Tested up to: 6.3
 * Requires PHP: 7.0
 * Stable tag: 7.1.2
 * [License: Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)

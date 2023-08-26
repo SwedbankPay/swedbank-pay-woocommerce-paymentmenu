@@ -66,7 +66,7 @@ class Swedbank_Pay_Transactions {
 
 		// phpcs:disable
 		$result = $wpdb->query( "
-CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
+CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` (
   `transaction_id` int(11) NOT NULL AUTO_INCREMENT,
   `transaction_data` text,
   `order_id` int(11) DEFAULT NULL,
@@ -84,8 +84,7 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
   UNIQUE KEY `number` (`number`),
   KEY `id` (`id`),
   KEY `order_id` (`order_id`)
-) ENGINE=INNODB DEFAULT CHARSET={$wpdb->charset};
-		" );
+) ENGINE=INNODB DEFAULT CHARSET=" . esc_sql( $wpdb->charset ) . ";" );
 		// phpcs:enable
 
 		if ( false === $result ) {
@@ -194,7 +193,7 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 	public function get( $transaction_id ) {
 		global $wpdb;
 		$query = $wpdb->prepare(
-			"SELECT * FROM {$wpdb->prefix}payex_transactions WHERE transaction_id = %d;",
+			"SELECT * FROM " . esc_sql( $wpdb->prefix ) . "payex_transactions WHERE transaction_id = %d;",
 			$transaction_id
 		);
 
@@ -221,7 +220,7 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 
 		// phpcs:disable
 		$query = $wpdb->prepare(
-			"SELECT * FROM {$wpdb->prefix}payex_transactions WHERE {$field} = %s;",
+			"SELECT * FROM " . esc_sql( $wpdb->prefix ) . "payex_transactions WHERE " . esc_sql( $field ) . " = %s;",
 			$value
 		);
 
@@ -248,17 +247,18 @@ CREATE TABLE IF NOT EXISTS `{$wpdb->prefix}payex_transactions` (
 				die();
 			}
 
+			$key = esc_sql( $key );
 			if ( ! is_numeric( $value ) ) {
 				$value   = esc_sql( $value );
 				$lines[] = "{$key} = '{$value}'";
 			} else {
-				$lines[] = "{$key} = {$value}";
+				$lines[] = "{$key} = " . floatval( $value );
 			}
 		}
 
 		$lines = join( ' AND ', $lines );
 		// phpcs:disable
-		$query = "SELECT * FROM {$wpdb->prefix}payex_transactions WHERE {$lines};";
+		$query = "SELECT * FROM " . esc_sql( $wpdb->prefix ) . "payex_transactions WHERE {$lines};";
 
 		return $wpdb->get_results( $query, ARRAY_A );
 		// phpcs:enable

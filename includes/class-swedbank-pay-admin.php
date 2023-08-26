@@ -82,8 +82,8 @@ class Swedbank_Pay_Admin {
 			$order          = wc_get_order( $order );
 			$payment_method = $order->get_payment_method();
 			if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
-				$payment_id = $order->get_meta( '_payex_payment_id' );
-				if ( ! empty( $payment_id ) ) {
+				$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
+				if ( ! empty( $payment_order_id ) ) {
 					$screen = swedbank_pay_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'shop_order';
 
 					add_meta_box(
@@ -207,7 +207,8 @@ class Swedbank_Pay_Admin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_capture() {
-		if ( ! wp_verify_nonce( $_REQUEST['nonce'], 'swedbank_pay' ) ) {
+		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
+		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
 			exit( 'No naughty business' );
 		}
 
@@ -217,7 +218,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = (int) $_REQUEST['order_id'];
+		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
@@ -238,7 +239,8 @@ class Swedbank_Pay_Admin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_cancel() {
-		if ( ! wp_verify_nonce( $_REQUEST['nonce'], 'swedbank_pay' ) ) {
+		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
+		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
 			exit( 'No naughty business' );
 		}
 
@@ -248,7 +250,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = (int) $_REQUEST['order_id'];
+		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
@@ -269,7 +271,8 @@ class Swedbank_Pay_Admin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_refund() {
-		if ( ! wp_verify_nonce( $_REQUEST['nonce'], 'swedbank_pay' ) ) {
+		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
+		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
 			exit( 'No naughty business' );
 		}
 
@@ -279,7 +282,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = (int) $_REQUEST['order_id'];
+		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
 		$order    = wc_get_order( $order_id );
 
 		try {

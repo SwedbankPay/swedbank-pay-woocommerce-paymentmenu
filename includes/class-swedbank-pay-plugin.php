@@ -62,7 +62,6 @@ class Swedbank_Pay_Plugin {
 
 		// Filters
 		add_filter( 'swedbank_pay_generate_uuid', array( $this, 'generate_uuid' ), 10, 1 );
-		add_filter( 'swedbank_pay_payment_description', __CLASS__ . '::payment_description', 10, 2 );
 		add_filter( 'swedbank_pay_order_billing_phone', __CLASS__ . '::billing_phone', 10, 2 );
 
 		// Process swedbank queue
@@ -206,20 +205,6 @@ class Swedbank_Pay_Plugin {
 	 */
 	public function generate_uuid( $node ) {
 		return \Ramsey\Uuid\Uuid::uuid5( \Ramsey\Uuid\Uuid::NAMESPACE_OID, $node )->toString();
-	}
-
-	/**
-	 * Payment Description.
-	 *
-	 * @param string $description
-	 * @param WC_Order $order
-	 *
-	 * @return string
-	 * @SuppressWarnings(PHPMD.UnusedLocalVariable)
-	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	 */
-	public static function payment_description( $description, $order ) {
-		return $description;
 	}
 
 	/**
@@ -420,7 +405,6 @@ class Swedbank_Pay_Plugin {
 		deactivate_plugins( constant( __NAMESPACE__ . '\PLUGIN_PATH' ), true );
 	}
 
-
 	/**
 	 * Check dependencies
 	 */
@@ -522,11 +506,12 @@ class Swedbank_Pay_Plugin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public static function support_submit() {
-		if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'support_submit' ) ) {
+		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
+		if ( ! wp_verify_nonce( $nonce, 'support_submit' ) ) {
 			exit( 'No naughty business' );
 		}
 
-		$redirect = wc_clean( $_POST['_wp_http_referer'] );
+		$redirect = wc_clean( wp_unslash( $_POST['_wp_http_referer'] ) );
 
 		try {
 			if ( ! extension_loaded( 'zip' ) ) {
@@ -542,14 +527,14 @@ class Swedbank_Pay_Plugin {
 				);
 			}
 
-			$email = sanitize_email( wc_clean( $_POST['email'] ) );
+			$email = sanitize_email( wc_clean( $_POST['email'] ) ); // WPCS: input var ok, CSRF ok.
 
 			// Validate email
 			if ( ! is_email( $email ) ) {
 				throw new \Exception( __( 'Invalid email', 'swedbank-pay-woocommerce-checkout' ) );
 			}
 
-			$message = wp_kses_post( sanitize_text_field( $_POST['message'] ) );
+			$message = wp_kses_post( sanitize_text_field( $_POST['message'] ) ); // WPCS: input var ok, CSRF ok.
 
 			// Export settings
 			$settings = array();
