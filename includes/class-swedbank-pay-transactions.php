@@ -247,20 +247,20 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 				die();
 			}
 
-			$key = esc_sql( $key );
+			$key = esc_sql( sanitize_text_field( $key ) );
 			if ( ! is_numeric( $value ) ) {
-				$value   = esc_sql( $value );
+				$value   = esc_sql( sanitize_text_field( $value ) );
 				$lines[] = "{$key} = '{$value}'";
 			} else {
-				$lines[] = "{$key} = " . floatval( $value );
+				$lines[] = "{$key} = " . floatval( sanitize_text_field( $value ) );
 			}
 		}
 
-		$lines = join( ' AND ', $lines );
-		// phpcs:disable
-		$query = "SELECT * FROM " . esc_sql( $wpdb->prefix ) . "payex_transactions WHERE {$lines};";
-
-		return $wpdb->get_results( $query, ARRAY_A );
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
+		return $wpdb->get_results(
+			$wpdb->prepare( 'SELECT * FROM ' . esc_sql( $wpdb->prefix ) . 'payex_transactions WHERE ' . join( ' AND ', $lines ) . ';' ),
+			ARRAY_A
+		);
 		// phpcs:enable
 	}
 
