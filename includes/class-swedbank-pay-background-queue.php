@@ -82,8 +82,10 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 		// phpcs:disable
 		$data = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM {$table} WHERE {$column} LIKE %s ORDER BY {$key_column} ASC",
-			$key ) ); // @codingStandardsIgnoreLine.
+				'SELECT * FROM ' . esc_sql( $table ) . ' WHERE ' . esc_sql( $column ) . ' LIKE %s ORDER BY ' . esc_sql( $key_column ) . ' ASC',
+				$key
+			)
+		); // @codingStandardsIgnoreLine.
 		// phpcs:enable
 
 		// Check the records
@@ -96,7 +98,12 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			) {
 				// Remove invalid record from the database
 				// phpcs:disable
-				$wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE {$key_column} = %s", $data[$key_column] ) ); // @codingStandardsIgnoreLine.
+				$query = $wpdb->prepare(
+					'DELETE FROM ' . esc_sql( $table ) . ' WHERE ' . esc_sql( $key_column ) . ' = %s',
+					$data[$key_column]
+				);
+
+				$wpdb->query( $query );
 				// phpcs:enable
 
 				continue;
