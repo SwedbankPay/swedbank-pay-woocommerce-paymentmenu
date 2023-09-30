@@ -8,11 +8,11 @@
     "require": {
         "php": ">=7.0",
         "ramsey/uuid": "^3.7",
-        "swedbank-pay/swedbank-pay-woocommerce-core": "~8.0.0",
-        "squizlabs/php_codesniffer": "^3.7",
-        "wp-coding-standards/wpcs": "^2.3"
+        "swedbank-pay/swedbank-pay-woocommerce-core": "~8.0.0"
     },
     "require-dev": {
-        "yoast/phpunit-polyfills": "^1.0.2"
+        "yoast/phpunit-polyfills": "^1.0.2",
+        "squizlabs/php_codesniffer": "^3.7",
+        "wp-coding-standards/wpcs": "^3.0"
     }
 }
