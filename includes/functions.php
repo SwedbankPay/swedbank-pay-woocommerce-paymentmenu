@@ -25,6 +25,7 @@ function swedbank_pay_is_hpos_enabled() {
 /**
  * Get Post Id by Meta
  *
+ * @deprecated Use `swedbank_pay_get_order` instead of
  * @param $key
  * @param $value
  *
@@ -67,4 +68,43 @@ function swedbank_pay_get_post_id_by_meta( $key, $value ) {
 	}
 
 	return null;
+}
+
+/**
+ * Get Order by Payment Order ID.
+ * @uses woocommerce_order_data_store_cpt_get_orders_query hook
+ * @param string $paymentOrderId
+ *
+ * @return WC_Order|null
+ */
+function swedbank_pay_get_order( $paymentOrderId ) {
+	$orders = wc_get_orders(
+		array(
+			'_payex_paymentorder_id' => $paymentOrderId
+		)
+	);
+
+	foreach ($orders as $order) {
+		return $order;
+	}
+
+	return null;
+}
+
+/**
+ * Get Payment Method.
+ *
+ * @param WC_Order $order
+ *
+ * @return null|\WC_Payment_Gateway
+ */
+function swedbank_pay_get_payment_method( WC_Order $order ) {
+	// Get Payment Gateway
+	$gateways = WC()->payment_gateways()->payment_gateways();
+	if ( ! isset( $gateways[ $order->get_payment_method() ] ) ) {
+		return null;
+	}
+
+	/** @var \WC_Payment_Gateway $gateway */
+	return $gateways[ $order->get_payment_method() ];
 }

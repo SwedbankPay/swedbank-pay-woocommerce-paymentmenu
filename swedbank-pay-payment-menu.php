@@ -11,7 +11,7 @@
  * Text Domain: swedbank-pay-woocommerce-checkout
  * Domain Path: /languages
  * WC requires at least: 5.5.1
- * WC tested up to: 7.6.1
+ * WC tested up to: 8.1.1
  */
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;

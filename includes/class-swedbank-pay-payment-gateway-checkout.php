@@ -411,9 +411,14 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		$this->core->log( LogLevel::INFO, __METHOD__ );
+		$is_finalized     = $order->get_meta( '_payex_finalized' );
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		if ( $payment_order_id ) {
+		if ( empty( $is_finalized ) && $payment_order_id ) {
 			$this->core->finalizePaymentOrder( $payment_order_id );
+
+			$order = wc_get_order( $order_id ); // reload order
+			$order->update_meta_data( '_payex_finalized', 1 );
+			$order->save_meta_data();
 		}
 	}
 

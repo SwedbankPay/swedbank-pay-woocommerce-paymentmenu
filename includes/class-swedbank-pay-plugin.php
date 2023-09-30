@@ -76,6 +76,13 @@ class Swedbank_Pay_Plugin {
 		add_action( 'init', __CLASS__ . '::may_add_notice' );
 
 		add_action( 'admin_post_' . self::ADMIN_SUPPORT_PAGE_SLUG, __CLASS__ . '::support_submit' );
+
+		add_filter(
+			'woocommerce_order_data_store_cpt_get_orders_query',
+			array( $this, 'handle_custom_query_var' ),
+			10,
+			2
+		);
 	}
 
 	/**
@@ -621,6 +628,24 @@ class Swedbank_Pay_Plugin {
 				$redirect
 			)
 		);
+	}
+
+	/**
+	 * Handle a custom '_payex_paymentorder_id' query var to get orders with the '_payex_paymentorder_id' meta.
+	 * @see https://github.com/woocommerce/woocommerce/wiki/wc_get_orders-and-WC_Order_Query
+	 * @param array $query - Args for WP_Query.
+	 * @param array $query_vars - Query vars from WC_Order_Query.
+	 * @return array modified $query
+	 */
+	public function handle_custom_query_var( $query, $query_vars ) {
+		if ( ! empty( $query_vars['_payex_paymentorder_id'] ) ) {
+			$query['meta_query'][] = [
+				'key' => '_payex_paymentorder_id',
+				'value' => esc_attr( $query_vars['_payex_paymentorder_id'] ),
+			];
+		}
+
+		return $query;
 	}
 
 	/**

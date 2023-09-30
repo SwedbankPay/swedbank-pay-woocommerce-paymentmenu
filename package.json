@@ -19,9 +19,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-checkout"
+    "url": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-paymentmenu"
   },
   "author": "Swedbank Pay",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-checkout"
+  "homepage": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-paymentmenu"
 }

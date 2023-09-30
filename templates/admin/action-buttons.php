@@ -1,5 +1,5 @@
 <?php
-/** @var WC_Gateway_Swedbank_Pay_Cc $gateway */
+/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
 /** @var WC_Order $order */
 
 if ( ! defined( 'ABSPATH' ) ) {

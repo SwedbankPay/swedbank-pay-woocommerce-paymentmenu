@@ -62,7 +62,10 @@ class Swedbank_Pay_Instant_Capture {
 			return;
 		}
 
-		$this->gateway = $this->get_payment_method( $order );
+		$this->gateway = swedbank_pay_get_payment_method( $order );
+		if ( ! $this->gateway ) {
+			return new \WP_Error( 'not_found', 'Payment method is not found.' );
+		}
 
 		// Fetch transactions list
 		$transactions = $this->gateway->core->fetchFinancialTransactionsList( $payment_order_id );
@@ -115,27 +118,6 @@ class Swedbank_Pay_Instant_Capture {
 				throw new \Exception( $e->getMessage() );
 			}
 		}
-	}
-
-	/**
-	 * Get Payment Method Instance.
-	 *
-	 * @param \WC_Order $order
-	 *
-	 * @return \Swedbank_Pay_Payment_Gateway_Checkout|\WP_Error
-	 */
-	private function get_payment_method( $order ) {
-		$payment_method = $order->get_payment_method();
-
-		// Get Payment Gateway
-		$gateways = WC()->payment_gateways()->payment_gateways();
-
-		/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
-		if ( isset( $gateways[ $payment_method ] ) ) {
-			return $gateways[ $payment_method ];
-		}
-
-		return new \WP_Error( 'not_found', 'Payment method is not found.' );
 	}
 
 	/**
