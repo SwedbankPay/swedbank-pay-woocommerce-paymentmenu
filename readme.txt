@@ -2,7 +2,7 @@
 Contributors: swedbankpay
 Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
-Tested up to: 6.3
+Tested up to: 6.3.1
 Stable tag: 1.0.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
@@ -22,7 +22,7 @@ Swedbank Pay Payments Gateway for WooCommerce. Payment gateway allows to accept 
 
 == Changelog ==
 
-[See changelog for all versions](https://raw.githubusercontent.com/SwedbankPay/swedbank-pay-woocommerce-checkout/master/changelog.txt).
+[See changelog for all versions](https://raw.githubusercontent.com/SwedbankPay/swedbank-pay-woocommerce-paymentmenu/main/changelog.txt).
 
 = Screenshots =
 
