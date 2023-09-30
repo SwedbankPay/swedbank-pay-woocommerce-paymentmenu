@@ -44,6 +44,8 @@ class Swedbank_Pay_Admin {
 		add_action( 'wp_ajax_swedbank_pay_cancel', array( $this, 'ajax_swedbank_pay_cancel' ) );
 		add_action( 'wp_ajax_swedbank_pay_refund', array( $this, 'ajax_swedbank_pay_refund' ) );
 
+		// Remove "Order fully refunded" hook. See wc_order_fully_refunded()
+		remove_action( 'woocommerce_order_status_refunded', 'wc_order_fully_refunded' );
 		add_action( 'woocommerce_order_status_changed', __CLASS__ . '::order_status_changed_transaction', 0, 3 );
 	}
 
@@ -112,7 +114,7 @@ class Swedbank_Pay_Admin {
 		}
 
 		// Get Payment Gateway
-		$gateway = self::get_payment_method( $order );
+		$gateway = swedbank_pay_get_payment_method( $order );
 		if ( ! $gateway ) {
 			return;
 		}
@@ -131,7 +133,6 @@ class Swedbank_Pay_Admin {
 			array(
 				'gateway'  => $gateway,
 				'order'    => $order,
-				'order_id' => $order->get_id(),
 				'info'     => $result,
 			),
 			'',
@@ -154,7 +155,7 @@ class Swedbank_Pay_Admin {
 		$payment_method = $order->get_payment_method();
 		if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 			// Get Payment Gateway
-			$gateway = self::get_payment_method( $order );
+			$gateway = swedbank_pay_get_payment_method( $order );
 			if ( ! $gateway ) {
 				return;
 			}
@@ -222,7 +223,7 @@ class Swedbank_Pay_Admin {
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
-		$gateway = self::get_payment_method( $order );
+		$gateway = swedbank_pay_get_payment_method( $order );
 		if ( $gateway ) {
 			try {
 				$gateway->capture_payment( $order_id );
@@ -254,7 +255,7 @@ class Swedbank_Pay_Admin {
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
-		$gateway = self::get_payment_method( $order );
+		$gateway = swedbank_pay_get_payment_method( $order );
 		if ( $gateway ) {
 			try {
 				$gateway->cancel_payment( $order_id );
@@ -307,24 +308,6 @@ class Swedbank_Pay_Admin {
 	}
 
 	/**
-	 * Get Payment Method.
-	 *
-	 * @param WC_Order $order
-	 *
-	 * @return false|\WC_Payment_Gateway
-	 */
-	private static function get_payment_method( WC_Order $order ) {
-		// Get Payment Gateway
-		$gateways = WC()->payment_gateways()->payment_gateways();
-		if ( ! isset( $gateways[ $order->get_payment_method() ] ) ) {
-			return false;
-		}
-
-		/** @var \WC_Payment_Gateway $gateway */
-		return $gateways[ $order->get_payment_method() ];
-	}
-
-	/**
 	 * @param $order_id
 	 * @param $old_status
 	 * @param $new_status
@@ -335,9 +318,12 @@ class Swedbank_Pay_Admin {
 	public static function order_status_changed_transaction( $order_id, $old_status, $new_status ) {
 		$order = wc_get_order( $order_id );
 		if ( in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
-			$gateway = self::get_payment_method( $order );
+			$gateway = swedbank_pay_get_payment_method( $order );
 
-			$gateway->core->log( LogLevel::INFO, 'Order status change trigger: ' . $new_status );
+			$gateway->core->log(
+				LogLevel::INFO,
+				'Order status change trigger: ' . $new_status . ' OrderID: ' . $order_id
+			);
 
 			try {
 				switch ( $new_status ) {
@@ -347,7 +333,7 @@ class Swedbank_Pay_Admin {
 
 						$gateway->capture_payment( $order );
 						$order->add_order_note(
-							__( 'Payment has been captured.', 'swedbank-pay-woocommerce-checkout' )
+							__( 'Payment has been captured by order status change.', 'swedbank-pay-woocommerce-checkout' )
 						);
 						break;
 					case 'cancelled':
@@ -355,21 +341,31 @@ class Swedbank_Pay_Admin {
 
 						$gateway->cancel_payment( $order );
 						$order->add_order_note(
-							__( 'Payment has been cancelled.', 'swedbank-pay-woocommerce-checkout' )
+							__( 'Payment has been cancelled by order status change.', 'swedbank-pay-woocommerce-checkout' )
 						);
 						break;
 					case 'refunded':
 						$gateway->core->log( LogLevel::INFO, 'Try to refund...' );
 
-						$gateway->process_refund( $order_id );
+						$gateway->core->refundCheckout( $order->get_id() );
 						$order->add_order_note(
-							__( 'Payment has been refunded.', 'swedbank-pay-woocommerce-checkout' )
+							__( 'Payment has been refunded by order status change.', 'swedbank-pay-woocommerce-checkout' )
 						);
 						break;
 				}
 			} catch ( \Exception $exception ) {
-				$order->add_order_note( 'Error: ' . $exception->getMessage() );
 				\WC_Admin_Meta_Boxes::add_error( $exception->getMessage() );
+
+				// Rollback status
+				remove_action(
+					'woocommerce_order_status_changed',
+					__CLASS__ . '::order_status_changed_transaction',
+					0
+				);
+				$order->update_status(
+					$old_status,
+					sprintf( 'Rollback status. Error: %s', $exception->getMessage() )
+				);
 			}
 		}
 	}

@@ -1,7 +1,6 @@
 <?php
 /** @var Swedbank_Pay_Payment_Gateway_Checkout $gateway */
 /** @var WC_Order $order */
-/** @var int $order_id */
 /** @var array $info */
 
 if ( ! defined( 'ABSPATH' ) ) {

@@ -2,6 +2,7 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
+use SwedbankPay\Core\Api\FinancialTransaction;
 use WC_Background_Process;
 use WC_Logger;
 
@@ -161,22 +162,10 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 		$this->log( sprintf( 'Start task: %s', var_export( $item, true ) ) );
 
 		try {
-			$data = json_decode( $item['webhook_data'], true );
+			$payload = $item['webhook_data'];
+			$data = json_decode( $payload, true );
 			if ( JSON_ERROR_NONE !== json_last_error() ) {
 				throw new \Exception( 'Invalid webhook data' );
-			}
-
-			$gateways = WC()->payment_gateways()->payment_gateways();
-
-			/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
-			$gateway = isset( $gateways[ $item['payment_method_id'] ] ) ? $gateways[ $item['payment_method_id'] ] : false;
-			if ( ! $gateway ) {
-				throw new \Exception(
-					sprintf(
-						'Can\'t retrieve payment gateway instance: %s',
-						$item['payment_method_id']
-					)
-				);
 			}
 
 			if ( ! isset( $data['paymentOrder'] ) || ! isset( $data['paymentOrder']['id'] ) ) {
@@ -190,15 +179,19 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			// Get Order by Payment Order Id
 			$transaction_number = $data['transaction']['number'];
 			$payment_order_id   = $data['paymentOrder']['id'];
-			$order_id           = swedbank_pay_get_post_id_by_meta( '_payex_paymentorder_id', $payment_order_id );
-			if ( ! $order_id ) {
-				throw new \Exception( sprintf( 'Error: Failed to get order Id by Payment Order Id %s', $order_id ) );
+			$order              = swedbank_pay_get_order( $payment_order_id );
+			if ( ! $order ) {
+				throw new \Exception( sprintf( 'Error: Failed to get Order by Payment Order Id %s', $payment_order_id ) );
 			}
 
-			// Get Order
-			$order = wc_get_order( $order_id );
-			if ( ! $order ) {
-				throw new \Exception( sprintf( 'Error: Failed to get order by Id %s', $order_id ) );
+			$gateway = swedbank_pay_get_payment_method( $order );
+			if ( ! $gateway ) {
+				throw new \Exception(
+					sprintf(
+						'Can\'t retrieve payment gateway instance: %s',
+						$item['payment_method_id']
+					)
+				);
 			}
 
 			$transactions = (array) $order->get_meta( '_swedbank_pay_transactions' );
@@ -223,9 +216,21 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			if ( count( $transactions ) > 0 ) {
 				foreach ( $transactions as $transaction ) {
 					if ( $transaction->getNumber() == $transaction_number ) {
-						$gateway->core->processFinancialTransaction( $order_id, $transaction );
+						$this->log(
+							sprintf(
+								'Handle Transaction #%s for Order #%s.',
+								$transaction_number,
+								$order->get_id()
+							)
+						);
+						$gateway->core->processFinancialTransaction( $order->get_id(), $transaction );
 					}
 				}
+			} else {
+				// Some Authorize, Sale transaction are not in the list
+				$message = 'Transaction callback problem: /financialtransactions is not available for transaction processing.';
+				//$order->add_order_note( $message );
+				throw new \Exception( $message );
 			}
 		} catch ( \Exception $e ) {
 			$this->log( sprintf( '[ERROR]: %s', $e->getMessage() ) );
