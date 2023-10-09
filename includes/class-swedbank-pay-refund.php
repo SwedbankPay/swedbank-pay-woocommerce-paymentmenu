@@ -494,11 +494,13 @@ class Swedbank_Pay_Refund {
 			}
 
 			$order->update_meta_data( '_payex_refunded_items', $current_items );
+			$order->save_meta_data();
 
 			return;
 		}
 
 		$order->update_meta_data( '_payex_refunded_items', $order_lines );
+		$order->save_meta_data();
 	}
 }
 
