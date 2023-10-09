@@ -3,22 +3,24 @@ Contributors: swedbankpay
 Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
 Tested up to: 6.3.1
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
-This plugin provides the Swedbank Pay Checkout for WooCommerce.
+This plugin provides the Swedbank Pay Payment Menu for WooCommerce.
 
 == Description ==
 
 Swedbank Pay Payments Gateway for WooCommerce. Payment gateway allows to accept payments through:
-* Credit and debit cards (Visa, Mastercard, Visa Electron, Maestro etc).
+* Credit and Debit cards (Visa, Mastercard, Visa Electron, Maestro etc).
 * Bank Debit
 * Invoice
 * Swish
 * Vipps
 * MobilePay
 * Trustly
+* Apple Pay
+* Click to Pay
 
 == Changelog ==
 

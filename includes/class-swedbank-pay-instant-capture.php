@@ -117,6 +117,18 @@ class Swedbank_Pay_Instant_Capture {
 			} catch ( \SwedbankPay\Core\Exception $e ) {
 				throw new \Exception( $e->getMessage() );
 			}
+
+			// Save captured order lines
+			$captured = array();
+			foreach ($items as $item) {
+				$captured[] = array(
+					OrderItemInterface::FIELD_REFERENCE => $item[OrderItemInterface::FIELD_REFERENCE],
+					OrderItemInterface::FIELD_QTY => $item[OrderItemInterface::FIELD_QTY]
+				);
+			}
+
+			$order->update_meta_data('_payex_captured_items', $captured);
+			$order->save_meta_data();
 		}
 	}
 

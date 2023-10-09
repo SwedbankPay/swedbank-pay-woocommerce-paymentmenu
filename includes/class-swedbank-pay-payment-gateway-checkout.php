@@ -9,6 +9,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Instant_Capture;
 use SwedbankPay\Core\Adapter\WC_Adapter;
 use SwedbankPay\Core\Core;
 use SwedbankPay\Core\Log\LogLevel;
+use SwedbankPay\Core\OrderItemInterface;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -211,6 +212,15 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'label'   => __( 'Enable Swedbank Pay Test Mode', 'swedbank-pay-woocommerce-checkout' ),
 				'default' => $this->testmode,
 			),
+			'title'            => array(
+				'title'       => __( 'Title', 'swedbank-pay-woocommerce-payments' ),
+				'type'        => 'text',
+				'description' => __(
+					'This controls the title which the user sees during checkout.',
+					'swedbank-pay-woocommerce-payments'
+				),
+				'default'     => __( 'Swedbank Pay', 'swedbank-pay-woocommerce-payments' ),
+			),
 			'description'     => array(
 				'title'       => __( 'Description', 'swedbank-pay-woocommerce-checkout' ),
 				'type'        => 'text',
@@ -218,7 +228,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					'Describe the methods available in your Checkout through Swedbank Pay. Example, “We accept transactions made with Cards (VISA, MasterCard) and Swish”.',
 					'swedbank-pay-woocommerce-checkout'
 				),
-				'default'     => __( 'Swedbank Pay Payment Menu', 'swedbank-pay-woocommerce-checkout' ),
+				'default'     => __( 'Swedbank Pay', 'swedbank-pay-woocommerce-checkout' ),
 			),
 			'payee_id'        => array(
 				'title'             => __( 'Payee Id', 'swedbank-pay-woocommerce-checkout' ),
@@ -624,8 +634,37 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$order = wc_get_order( $order );
 		}
 
+		$order_items = array();
+		$captured    = (array) $order->get_meta( '_payex_captured_items' );
+		if ( count( $captured ) > 0 ) {
+			$order_items = swedbank_pay_get_order_lines( $order );
+			foreach ( $order_items as $key => &$order_item ) {
+				foreach ( $captured as &$captured_item ) {
+					if ( $order_item[OrderItemInterface::FIELD_REFERENCE] ===
+						 $captured_item[OrderItemInterface::FIELD_REFERENCE]
+					) {
+						$unit_vat = $order_item[OrderItemInterface::FIELD_VAT_AMOUNT] / $order_item[OrderItemInterface::FIELD_QTY]; //phpcs:ignore
+						$order_item[OrderItemInterface::FIELD_QTY] -= $captured_item[OrderItemInterface::FIELD_QTY];
+						$order_item[OrderItemInterface::FIELD_AMOUNT] = $order_item[OrderItemInterface::FIELD_QTY] * $order_item[OrderItemInterface::FIELD_UNITPRICE]; //phpcs:ignore
+						$order_item[OrderItemInterface::FIELD_VAT_AMOUNT] = $order_item[OrderItemInterface::FIELD_QTY] * $unit_vat; //phpcs:ignore
+
+						$captured_item[OrderItemInterface::FIELD_QTY] += $order_item[OrderItemInterface::FIELD_QTY];
+
+						if ( 0 === $order_item[OrderItemInterface::FIELD_QTY] ) {
+							unset($order_items[$key]);
+						}
+					}
+				}
+			}
+		}
+
 		try {
-			$this->core->captureCheckout( $order->get_id() );
+			$this->core->captureCheckout( $order->get_id(), $order_items );
+
+			if ( count( $captured ) > 0 ) {
+				$order->update_meta_data( '_payex_captured_items', $captured );
+				$order->save_meta_data();
+			}
 		} catch ( \SwedbankPay\Core\Exception $e ) {
 			throw new Exception( $e->getMessage() );
 		}

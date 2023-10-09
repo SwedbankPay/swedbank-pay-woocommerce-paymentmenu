@@ -4,6 +4,7 @@ namespace SwedbankPay\Checkout\WooCommerce;
 
 use Exception;
 use WC_Product;
+use WC_Order;
 use WC_Order_Refund;
 use WC_Order_Item;
 use WC_Order_Item_Product;
@@ -156,6 +157,9 @@ class Swedbank_Pay_Refund {
 				}
 			}
 		}
+
+		// Verify the captured
+		self::validate_items( $order, $lines );
 
 		// Refund with specific items
 		// Build order items list
@@ -349,6 +353,152 @@ class Swedbank_Pay_Refund {
 				$refund->save();
 			}
 		}
+
+		self::save_refunded_items( $order, $lines );
+	}
+
+	/**
+	 * Validate order lines.
+	 *
+	 * @param WC_Order $order
+	 * @param array $lines
+	 *
+	 * @return void
+	 * @throws Exception
+	 */
+	private static function validate_items( WC_Order $order, array $lines ) {
+		// @todo Add `_payex_refunded_items` validation
+		$captured = (array) $order->get_meta( '_payex_captured_items' );
+		if ( count( $captured ) > 0 ) {
+			foreach ( $lines as $item_id => $line ) {
+				/** @var WC_Order_Item $item */
+				$item = $order->get_item( $item_id );
+				if ( ! $item ) {
+					throw new \Exception( 'Unable to retrieve order item: ' . $item_id );
+				}
+
+				$qty = (int) $line['qty'];
+				if ( $qty < 1 ) {
+					continue;
+				}
+
+				switch ( $item->get_type() ) {
+					case 'line_item':
+						/** @var WC_Order_Item_Product $item */
+						foreach ( $captured as $order_item ) {
+							$sku = $item->get_product()->get_sku();
+							if ($order_item[OrderItemInterface::FIELD_REFERENCE] === $sku &&
+								$qty > $order_item[OrderItemInterface::FIELD_QTY]
+							) {
+								throw new \Exception(
+									sprintf(
+										'Product "%s" with quantity "%s" is not able to be captured.',
+										$sku,
+										$qty
+									)
+								);
+							}
+						}
+
+						break;
+					case 'shipping':
+						/** @var WC_Order_Item_Shipping $item */
+						$isCaptured = false;
+						foreach ( $captured as $order_item ) {
+							if ($order_item[OrderItemInterface::FIELD_REFERENCE] === 'shipping') {
+								$isCaptured = true;
+								break;
+							}
+						}
+
+						if (!$isCaptured) {
+							throw new \Exception(
+								sprintf(
+									'Order item "%s" with quantity "%s" is not able to be captured.',
+									$item->get_name(),
+									$qty
+								)
+							);
+						}
+
+						break;
+					case 'fee':
+						/** @var WC_Order_Item_Fee $item */
+						$isCaptured = false;
+						foreach ( $captured as $order_item ) {
+							if ($order_item[OrderItemInterface::FIELD_REFERENCE] === 'fee') {
+								$isCaptured = true;
+								break;
+							}
+						}
+
+						if (!$isCaptured) {
+							throw new \Exception(
+								sprintf(
+									'Order item "%s" with quantity "%s" is not able to be captured.',
+									$item->get_name(),
+									$qty
+								)
+							);
+						}
+
+						break;
+				}
+			}
+		}
+	}
+
+	private static function save_refunded_items( WC_Order $order, array $lines ) {
+		$order_lines = [];
+		foreach ( $lines as $item_id => $line ) {
+			$qty = (int) $line['qty'];
+			if ( $qty < 1 ) {
+				$qty = 1;
+			}
+
+			/** @var WC_Order_Item $item */
+			$item = $order->get_item( $item_id );
+
+			switch ( $item->get_type() ) {
+				case 'line_item':
+					$reference = $item->get_product()->get_sku();
+					break;
+				case 'shipping':
+				case 'fee':
+				case 'coupon':
+					$reference = $item->get_type();
+					break;
+				default:
+					$reference = 'other';
+					break;
+			}
+
+			$order_lines[] = array(
+				OrderItemInterface::FIELD_REFERENCE => $reference,
+				OrderItemInterface::FIELD_QTY => $qty
+			);
+		}
+
+		// Append to exists list if applicable
+		$current_items = (array) $order->get_meta( '_payex_refunded_items' );
+		if ( count( $current_items ) > 0 ) {
+			foreach ( $current_items as &$current_item ) {
+				foreach ( $order_lines as $order_line ) {
+					if ($order_line[OrderItemInterface::FIELD_REFERENCE] === $current_item[OrderItemInterface::FIELD_REFERENCE]) {
+						$current_item[OrderItemInterface::FIELD_QTY] += $order_line[OrderItemInterface::FIELD_QTY];
+						break;
+					} else {
+						$current_items[] = $order_line;
+					}
+				}
+			}
+
+			$order->update_meta_data( '_payex_refunded_items', $current_items );
+
+			return;
+		}
+
+		$order->update_meta_data( '_payex_refunded_items', $order_lines );
 	}
 }
 
