@@ -13,7 +13,6 @@ This plugin provides the Swedbank Pay Payment Menu for WooCommerce.
 
 Swedbank Pay Payments Gateway for WooCommerce. Payment gateway allows to accept payments through:
 * Credit and Debit cards (Visa, Mastercard, Visa Electron, Maestro etc).
-* Bank Debit
 * Invoice
 * Swish
 * Vipps
