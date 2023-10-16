@@ -57,7 +57,7 @@ Description - Use this field to describe what methods are available to your cust
 
 Language - Decide which language you would like to be the default. We currently support Swedish, Norweigan, Danish, Finnish and English. We always offer every payer the option of choosing any of the other supported languages during the payment process so your default will not hinder them from finalizing their transaction.
 
-Instant Capture - Be aware that Captures on orders are only allowed to be made if, you as the Merchant have fulfilled your end of the transaction. For physical products, that means when the order is shipped out to the customer. For digital products or services, you are allowed to use this feature but the responsibility to follow the laws and regulations presented by local and global authorities.
+Instant Capture - Be aware that Captures on orders are only allowed to be made if you, as the Merchant, have fulfilled your end of the transaction. For physical products, this means when the order is shipped out to the customer. For instant deliveries, for example digital products or services, you are allowed to use this feature with the responsibility to follow any applicable laws or regulations presented by local or global authorities.
 
 Terms of Service - Provide us with an URL that contains a PDF or similar resource containing your conditions.
 
