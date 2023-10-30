@@ -3,7 +3,7 @@ Contributors: swedbankpay
 Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
 Tested up to: 6.3.1
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -48,7 +48,7 @@ We have local representation in all Scandinavian countries to ensure local exper
 * WooCommerce 5 or greater is recommended
 
 == Installation ==
-After you have completed the installation of our plugin, it is now time to start configuring and connecting the plugin towards our services. 
+After you have completed the installation of our plugin, it is now time to start configuring and connecting the plugin towards our services.
 
 If you have an active agreement with us already, you can then use the hyperlinks underneath the fields "Payee ID" and "Access Token" to retrieve and generate these values. Payee ID is used to designate and identify the account that the plugin should report the transaction to and the access token will validate that you have the authority to make transactions for that account. You are only required to do this once during the setup.
 

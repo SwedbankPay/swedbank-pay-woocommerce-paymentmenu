@@ -209,6 +209,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 		}
 
 		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
+		// @todo Save order lines for capture / refund
 
 		try {
 			// Finalize payment
@@ -228,9 +229,8 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 				}
 			} else {
 				// Some Authorize, Sale transaction are not in the list
-				$message = 'Transaction callback problem: /financialtransactions is not available for transaction processing.';
-				//$order->add_order_note( $message );
-				throw new \Exception( $message );
+				$this->log( sprintf( 'Transaction List is empty. Run failback for Transaction #%s', $transaction_number ) );
+				$gateway->core->finalizePaymentOrder( $payment_order_id );
 			}
 		} catch ( \Exception $e ) {
 			$this->log( sprintf( '[ERROR]: %s', $e->getMessage() ) );
