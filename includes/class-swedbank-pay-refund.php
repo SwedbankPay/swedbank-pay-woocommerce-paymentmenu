@@ -114,8 +114,67 @@ class Swedbank_Pay_Refund {
 		$lines = isset( $args['line_items'] ) ? $args['line_items'] : array();
 		$items = array();
 
+		// Get captured items if applicable
+		if ( 0 === count( $lines ) ) {
+			$captured = $order->get_meta( '_payex_captured_items' );
+			$captured = empty( $captured ) ? array() : (array) $captured;
+
+			foreach ( $captured as $captured_item ) {
+				$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee', 'coupon' ) );
+				foreach ( $line_items as $item_id => $item ) {
+					// Get reference
+					switch ( $item->get_type() ) {
+						case 'line_item':
+							$reference = trim(
+								str_replace(
+									array( ' ', '.', ',' ),
+									'-',
+									$item->get_product()->get_sku()
+								)
+							);
+
+							break;
+						case 'fee':
+							$reference = 'fee';
+							break;
+						case 'shipping':
+							$reference = 'shipping';
+							break;
+						case 'coupon':
+							$reference = 'discount';
+							break;
+						default:
+							$reference = null;
+							break;
+					}
+
+					if ( ! $reference ) {
+						continue;
+					}
+
+					if ( $reference === $captured_item[OrderItemInterface::FIELD_REFERENCE] ) {
+						$qty                 = $captured_item[OrderItemInterface::FIELD_QTY];
+						$unit_price          = $order->get_line_subtotal( $item, false, false );
+						$unit_price_with_tax = $order->get_line_subtotal( $item, true, false );
+						$tax                 = $unit_price_with_tax - $unit_price;
+
+						$lines[ $item_id ] = array(
+							'qty'          => $qty,
+							'refund_total' => $unit_price_with_tax * $qty,
+							'refund_tax'   => array(
+								$tax,
+							),
+						);
+
+						break;
+					}
+				}
+			}
+		}
+
 		// Get order lines
 		if ( 0 === count( $lines ) ) {
+			// @todo Use swedbank_pay_get_order_lines()
 			$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee', 'coupon' ) );
 			foreach ( $line_items as $item_id => $item ) {
 				switch ( $item->get_type() ) {
@@ -368,7 +427,9 @@ class Swedbank_Pay_Refund {
 	 */
 	private static function validate_items( WC_Order $order, array $lines ) {
 		// @todo Add `_payex_refunded_items` validation
-		$captured = (array) $order->get_meta( '_payex_captured_items' );
+		$captured = $order->get_meta( '_payex_captured_items' );
+		$captured = empty( $captured ) ? array() : (array) $captured;
+
 		if ( count( $captured ) > 0 ) {
 			foreach ( $lines as $item_id => $line ) {
 				/** @var WC_Order_Item $item */
@@ -379,6 +440,12 @@ class Swedbank_Pay_Refund {
 
 				$qty = (int) $line['qty'];
 				if ( $qty < 1 ) {
+					continue;
+				}
+
+				// Skip zero products
+				$price_with_tax = (float) $order->get_line_subtotal( $item, true, false );
+				if ( $price_with_tax >= 0 && $price_with_tax <= 0.01 ) {
 					continue;
 				}
 
@@ -405,13 +472,13 @@ class Swedbank_Pay_Refund {
 						/** @var WC_Order_Item_Shipping $item */
 						$isCaptured = false;
 						foreach ( $captured as $order_item ) {
-							if ($order_item[OrderItemInterface::FIELD_REFERENCE] === 'shipping') {
+							if ( $order_item[OrderItemInterface::FIELD_REFERENCE] === 'shipping' ) {
 								$isCaptured = true;
 								break;
 							}
 						}
 
-						if (!$isCaptured) {
+						if ( ! $isCaptured ) {
 							throw new \Exception(
 								sprintf(
 									'Order item "%s" with quantity "%s" is not able to be captured.',
@@ -426,13 +493,13 @@ class Swedbank_Pay_Refund {
 						/** @var WC_Order_Item_Fee $item */
 						$isCaptured = false;
 						foreach ( $captured as $order_item ) {
-							if ($order_item[OrderItemInterface::FIELD_REFERENCE] === 'fee') {
+							if ( $order_item[OrderItemInterface::FIELD_REFERENCE] === 'fee' ) {
 								$isCaptured = true;
 								break;
 							}
 						}
 
-						if (!$isCaptured) {
+						if ( ! $isCaptured ) {
 							throw new \Exception(
 								sprintf(
 									'Order item "%s" with quantity "%s" is not able to be captured.',
@@ -480,7 +547,8 @@ class Swedbank_Pay_Refund {
 		}
 
 		// Append to exists list if applicable
-		$current_items = (array) $order->get_meta( '_payex_refunded_items' );
+		$current_items = $order->get_meta( '_payex_refunded_items' );
+		$current_items = empty( $current_items ) ? array() : (array) $current_items;
 		if ( count( $current_items ) > 0 ) {
 			foreach ( $current_items as &$current_item ) {
 				foreach ( $order_lines as $order_line ) {

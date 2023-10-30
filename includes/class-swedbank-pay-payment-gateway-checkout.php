@@ -635,7 +635,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		$order_items = array();
-		$captured    = (array) $order->get_meta( '_payex_captured_items' );
+		$captured = $order->get_meta( '_payex_captured_items' );
+		$captured = empty( $captured ) ? array() : (array) $captured;
 		if ( count( $captured ) > 0 ) {
 			$order_items = swedbank_pay_get_order_lines( $order );
 			foreach ( $order_items as $key => &$order_item ) {

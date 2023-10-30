@@ -209,6 +209,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 		}
 
 		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
+		// @todo Save order lines for capture / refund
 
 		try {
 			// Finalize payment

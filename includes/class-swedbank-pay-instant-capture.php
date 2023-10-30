@@ -120,7 +120,7 @@ class Swedbank_Pay_Instant_Capture {
 
 			// Save captured order lines
 			$captured = array();
-			foreach ($items as $item) {
+			foreach ( $items as $item ) {
 				$captured[] = array(
 					OrderItemInterface::FIELD_REFERENCE => $item[OrderItemInterface::FIELD_REFERENCE],
 					OrderItemInterface::FIELD_QTY => $item[OrderItemInterface::FIELD_QTY]
