@@ -3,7 +3,8 @@ Contributors: swedbankpay
 Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
 Tested up to: 6.3.1
-Stable tag: 1.0.2
+Requires PHP: 7.0
+Stable tag: 1.1.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -40,7 +41,7 @@ We have local representation in all Scandinavian countries to ensure local exper
 
 [See changelog for all versions](https://raw.githubusercontent.com/SwedbankPay/swedbank-pay-woocommerce-paymentmenu/main/changelog.txt).
 
-= Screenshots =
+== Screenshots ==
 
 = Minimum Requirements =
 
@@ -79,3 +80,7 @@ Terms of Service - Provide us with an URL that contains a PDF or similar resourc
 LogoUrl - Provide us with an URL that contains a .PNG or .JPG with your logotype.
 
 You are now done with configuring our plugin.
+
+== Upgrade Notice ==
+= 1.1.0 =
+Please update to version 1.1.0.
