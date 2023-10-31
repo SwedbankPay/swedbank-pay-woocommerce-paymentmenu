@@ -43,10 +43,9 @@ We have local representation in all Scandinavian countries to ensure local exper
 
 == Screenshots ==
 
-= Minimum Requirements =
-
-* PHP 7.0 or greater is recommended
-* WooCommerce 5 or greater is recommended
+- Configuration
+- Checkout
+- Payment page
 
 == Installation ==
 After you have completed the installation of our plugin, it is now time to start configuring and connecting the plugin towards our services.
@@ -80,6 +79,10 @@ Terms of Service - Provide us with an URL that contains a PDF or similar resourc
 LogoUrl - Provide us with an URL that contains a .PNG or .JPG with your logotype.
 
 You are now done with configuring our plugin.
+
+= Minimum Requirements =
+* PHP 7.0 or greater is recommended
+* WooCommerce 5 or greater is recommended
 
 == Upgrade Notice ==
 = 1.2.0 =
