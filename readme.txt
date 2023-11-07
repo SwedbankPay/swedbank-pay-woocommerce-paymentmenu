@@ -28,13 +28,13 @@ Swedbank Pay Payments Gateway for WooCommerce. We support the following methods 
 ** Google Pay, American Express and Dancard requires a separate agreement with us.
 
 
-Who are we?
+**Who are we?**
 Swedbank Pay is one of Europe’s largest payment service providers handling 3,5    billion transactions every year with world class availability due to state of the art technology. With Swedbank Pay Payment Menu you will get access to a wide range of payment methods, both global ones as well as the Scandinavian – All in one single agreement from one single provider.
 
-Broad & Scalable offering!
+**Broad & Scalable offering!**
 Swedbank Pay Payment Menu offers a sleek payment window covering any payment method you may need to address the Scandinavian market. If you expand your business to other countries or other environments such as in-store or in-app we have the solutions for you.
 
-Local knowledge!
+**Local knowledge!**
 We have local representation in all Scandinavian countries to ensure local expertise. If you need any help our competent merchant support will assist you.
 
 == Changelog ==
@@ -54,10 +54,10 @@ If you have an active agreement with us already, you can then use the hyperlinks
 
 If you are in the process of becoming a customer or simply curious about how our services work, feel free to use the generic details below so that you can generate our selection and make transactions.
 
-PayeeId:
+**PayeeId:**
 6bbb4542-f42d-49b6-a481-2af773d42719
 
-Access token:
+**Access token:**
 711d04061a42ed2b83d978c0a2215e5f6499040698576dc61b18d0551199116d
 
 You can find information about our cards and other methods here,
@@ -68,15 +68,15 @@ https://developer.swedbankpay.com/resources/test-data
 
 After performing the tasks above, it is now time to finalize the configuration.
 
-Description - Use this field to describe what methods are available to your customer through our services.
+**Description** - Use this field to describe what methods are available to your customer through our services.
 
-Language - Decide which language you would like to be the default. Currently there is support Swedish, Norweigan, Danish, Finnish and English. We always offer every payer the option of choosing any of the other supported languages during the payment process so your default will not hinder them from finalizing their transaction.
+**Language** - Decide which language you would like to be the default. Currently there is support Swedish, Norweigan, Danish, Finnish and English. We always offer every payer the option of choosing any of the other supported languages during the payment process so your default will not hinder them from finalizing their transaction.
 
-Instant Capture - Be aware that Captures on orders are only allowed to be made if, you as the Merchant have fulfilled your end of the transaction. For physical products, that means when the order is shipped out to the customer. For digital products or services, you are allowed to use this feature but the responsibility to follow the laws and regulations presented by local and global authorities.
+**Instant Capture** - Be aware that Captures on orders are only allowed to be made if, you as the Merchant have fulfilled your end of the transaction. For physical products, that means when the order is shipped out to the customer. For digital products or services, you are allowed to use this feature but the responsibility to follow the laws and regulations presented by local and global authorities.
 
-Terms of Service - Provide us with an URL that contains a PDF or similar resource containing your conditions.
+**Terms of Service** - Provide us with an URL that contains a PDF or similar resource containing your conditions.
 
-LogoUrl - Provide us with an URL that contains a .PNG or .JPG with your logotype.
+**LogoUrl** - Provide us with an URL that contains a .PNG or .JPG with your logotype.
 
 You are now done with configuring our plugin.
 
