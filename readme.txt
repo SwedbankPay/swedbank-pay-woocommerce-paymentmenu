@@ -4,7 +4,7 @@ Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank,
 Requires at least: 5.3
 Tested up to: 6.3.1
 Requires PHP: 7.0
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -25,7 +25,7 @@ Swedbank Pay Payments Gateway for WooCommerce. We support the following methods 
 * Click to Pay
 * Google Pay
 
-** Google Pay, American Express and Dancard requires separate agreement with each issuer. Please contact us for more information. 
+** Google Pay, American Express and Dancard requires separate agreement with each issuer. Please contact us for more information.
 
 You can contact us through here, https://www.swedbankpay.com/woocommerce.
 
@@ -69,7 +69,7 @@ https://developer.swedbankpay.com/resources/test-data
 
 
 
-                                                                                                                                                                                                                                                           
+
 *After performing the tasks above, it is now time to finalize the configuration.*
 
 **Description** - Use this field to describe what methods are available to your customer through our services.

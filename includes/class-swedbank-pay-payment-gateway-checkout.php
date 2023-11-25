@@ -130,6 +130,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->id           = 'payex_checkout';
 		$this->has_fields   = true;
 		$this->method_title = __( 'Swedbank Pay Payment Menu', 'swedbank-pay-woocommerce-checkout' );
+		$this->method_description = __( 'Provides the Swedbank Pay Payment Menu for WooCommerce', 'swedbank-pay-woocommerce-checkout' );
+
 		$this->supports     = array(
 			'products',
 			'refunds',
@@ -148,7 +150,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		// Define user set variables
-		$this->enabled         = isset( $this->settings['enabled'] ) ? $this->settings['enabled'] : 'no';
+		$this->enabled         = isset( $this->settings['enabled'] ) ? $this->settings['enabled'] : 'yes';
 		$this->title           = isset( $this->settings['title'] ) ? $this->settings['title'] : '';
 		$this->description     = isset( $this->settings['description'] ) ? $this->settings['description'] : '';
 		$this->access_token    = isset( $this->settings['access_token'] ) ? $this->settings['access_token'] : $this->access_token;
@@ -204,7 +206,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'title'   => __( 'Enable/Disable', 'swedbank-pay-woocommerce-checkout' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Enable plugin', 'swedbank-pay-woocommerce-checkout' ),
-				'default' => 'no',
+				'default' => 'yes',
 			),
 			'testmode'        => array(
 				'title'   => __( 'Test Mode', 'swedbank-pay-woocommerce-checkout' ),
@@ -331,6 +333,15 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	}
 
 	/**
+	 * Check if the gateway is available for use.
+	 *
+	 * @return bool
+	 */
+	public function is_available() {
+		return true;
+	}
+
+	/**
 	 * @param $key
 	 * @param $value
 	 *
@@ -338,6 +349,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
 	 */
 	public function generate_advanced_html( $key, $value ) {
+		//$debug = WC()->payment_gateways()->get_available_payment_gateways();
+		//var_dump($debug);
+		//woocommerce_checkout_payment();
 		ob_start();
 		?>
 		<tr valign="top" class="">

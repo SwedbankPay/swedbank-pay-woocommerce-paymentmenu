@@ -285,26 +285,27 @@ class Swedbank_Pay_Admin {
 
 		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
 		$order    = wc_get_order( $order_id );
+		$gateway  = swedbank_pay_get_payment_method( $order );
+		if ( ! $gateway ) {
+			throw new Exception( 'Payment gateway is not available');
+		}
 
+		// Do refund
 		try {
-			// Create the refund object.
-			$refund = wc_create_refund(
-				array(
-					'amount'         => $order->get_total(),
-					'reason'         => __( 'Full refund.', 'swedbank-pay-woocommerce-checkout' ),
-					'order_id'       => $order_id,
-					'refund_payment' => true,
-				)
+			Swedbank_Pay_Refund::refund(
+				$gateway,
+				$order,
+				0,
+				__( 'Full refund.', 'swedbank-pay-woocommerce-checkout' )
 			);
 
-			if ( is_wp_error( $refund ) ) {
-				throw new Exception( $refund->get_error_message() );
-			}
-
-			wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-woocommerce-checkout' ) );
-		} catch ( Exception $e ) {
-			wp_send_json_error( $e->getMessage() );
+			// Refund will be created on transaction processing
+		} catch ( \Exception $exception ) {
+			wp_send_json_error( $exception->getMessage() );
+			return;
 		}
+
+		wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-woocommerce-checkout' ) );
 	}
 
 	/**

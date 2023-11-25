@@ -97,7 +97,7 @@ class Swedbank_Pay_Refund {
 	 * @param $amount
 	 * @param $reason
 	 *
-	 * @return void
+	 * @return array
 	 * @throws \SwedbankPay\Core\Exception
 	 * @throws \Exception
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
@@ -242,8 +242,14 @@ class Swedbank_Pay_Refund {
 			$refund_total  = (float) $line['refund_total'];
 			$refund_tax    = (float) array_shift( $line['refund_tax'] );
 			$tax_percent   = ( $refund_tax > 0 ) ? round( 100 / ( $refund_total / $refund_tax ) ) : 0;
-			$unit_price    = $qty > 0 ? ( ( $refund_total + $refund_tax ) / $qty ) : 0;
-			$refund_amount = $refund_total + $refund_tax;
+			if ( 'excl' === get_option( 'woocommerce_tax_display_shop' ) ) {
+				$unit_price    = $qty > 0 ? ( ( $refund_total + $refund_tax ) / $qty ) : 0;
+				$refund_amount = $refund_total + $refund_tax;
+			} else {
+				$unit_price    = $qty > 0 ? ( $refund_total / $qty ) : 0;
+				$refund_amount = $refund_total;
+			}
+
 
 			if ( empty( $refund_total ) ) {
 				// Skip zero items
@@ -383,9 +389,17 @@ class Swedbank_Pay_Refund {
 			$items[] = $order_item;
 		}
 
-		$result = $gateway->core->refundCheckout( $order->get_id(), $items );
-		if ( ! isset( $result['reversal'] ) ) {
-			throw new Exception( 'Refund has been failed.' );
+		try {
+			$result = $gateway->core->refundCheckout( $order->get_id(), $items );
+			if ( ! isset( $result['reversal'] ) ) {
+				throw new Exception( 'Refund has been failed.' );
+			}
+		} catch ( \Exception $exception ) {
+			$order->add_order_note(
+				'Refund has been failed. Error: ' . $exception->getMessage()
+			);
+
+			throw $exception;
 		}
 
 		$transaction_id = $result['reversal']['transaction']['number'];
@@ -414,6 +428,8 @@ class Swedbank_Pay_Refund {
 		}
 
 		self::save_refunded_items( $order, $lines );
+
+		return $lines;
 	}
 
 	/**
