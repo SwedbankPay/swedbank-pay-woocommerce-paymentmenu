@@ -91,34 +91,14 @@ class Swedbank_Pay_Plugin {
 	 */
 	public function includes() {
 		$vendors_dir = dirname( __FILE__ ) . '/../vendor';
-
-		// Check if the payments plugin was installed
-		include_once ABSPATH . '/wp-admin/includes/plugin.php';
-		$plugins = get_plugins();
-		foreach ( $plugins as $file => $plugin ) {
-			if ( strpos( $file, 'swedbank-pay-woocommerce-checkout.php' ) !== false ) {
-				if ( file_exists( dirname( $file ) . '/vendor/autoload.php' ) ) {
-					$vendors_dir = dirname( $file ) . '/vendor';
-					break;
-				}
-			}
-		}
-
-		if ( file_exists( $vendors_dir . '/autoload.php' ) ) {
-			// Prevent conflicts of the composer
-			$content = file_get_contents( $vendors_dir . '/composer/autoload_real.php' );
-			$matches = array();
-			preg_match( '/class\s+(\w+)(.*)?/', $content, $matches, PREG_OFFSET_CAPTURE, 0 );
-			if ( ! isset( $matches[1] ) || ! class_exists( $matches[1][0], false ) ) {
-				require_once $vendors_dir . '/autoload.php';
-			}
-		}
-
+		require_once $vendors_dir . '/autoload.php';
 		require_once( dirname( __FILE__ ) . '/functions.php' );
+		require_once( dirname( __FILE__ ) . '/interface-swedbank-pay-order-item.php' );
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-transactions.php' );
+		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-api.php' );
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-instant-capture.php' );
+		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-payment-actions.php' );
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-admin.php' );
-		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-refund.php' );
 	}
 
 	/**
@@ -268,10 +248,6 @@ class Swedbank_Pay_Plugin {
 	 * Add Upgrade notice
 	 */
 	public static function may_add_notice() {
-		// Check if WooCommerce is missing
-		if ( ! class_exists( 'WooCommerce', false ) || ! defined( 'WC_ABSPATH' ) ) {
-			add_action( 'admin_notices', __CLASS__ . '::missing_woocommerce_notice' );
-		}
 
 		// Check dependencies
 		add_action( 'admin_notices', __CLASS__ . '::check_dependencies' );
@@ -380,36 +356,6 @@ class Swedbank_Pay_Plugin {
 			</p>
 		</div>
 		<?php
-	}
-
-	/**
-	 * Check if WooCommerce is missing, and deactivate the plugin if needs
-	 */
-	public static function missing_woocommerce_notice() {
-		?>
-		<div id="message" class="error">
-			<p class="main">
-				<strong><?php echo esc_html__( 'WooCommerce is inactive or missing.', 'swedbank-pay-woocommerce-checkout' ); ?></strong>
-			</p>
-			<p>
-				<?php
-				echo esc_html__( 'WooCommerce plugin is inactive or missing. Please install and active it.', 'swedbank-pay-woocommerce-checkout' );
-				echo '<br />';
-				echo sprintf(
-					/* translators: 1: plugin name */                        esc_html__(  //phpcs:ignore
-						'%1$s will be deactivated.',
-						'swedbank-pay-woocommerce-checkout'
-					),
-					self::PLUGIN_NAME
-				);
-
-				?>
-			</p>
-		</div>
-		<?php
-
-		// Deactivate the plugin
-		deactivate_plugins( constant( __NAMESPACE__ . '\PLUGIN_PATH' ), true );
 	}
 
 	/**

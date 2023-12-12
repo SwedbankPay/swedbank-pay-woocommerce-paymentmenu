@@ -4,8 +4,7 @@ namespace SwedbankPay\Checkout\WooCommerce;
 
 defined( 'ABSPATH' ) || exit;
 
-use SwedbankPay\Core\Log\LogLevel;
-use SwedbankPay\Core\OrderItemInterface;
+use WC_Log_Levels;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -18,11 +17,6 @@ use SwedbankPay\Core\OrderItemInterface;
  * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
  */
 class Swedbank_Pay_Instant_Capture {
-	/** Payment IDs */
-	const PAYMENT_METHODS = array(
-		'payex_checkout',
-	);
-
 	/**
 	 * CAPTURE Type options
 	 */
@@ -48,7 +42,7 @@ class Swedbank_Pay_Instant_Capture {
 	 *
 	 * @param $order_id
 	 *
-	 * @throws \SwedbankPay\Core\Exception
+	 * @throws \Exception
 	 */
 	public function maybe_capture_instantly( $order_id ) {
 		$order          = wc_get_order( $order_id );
@@ -64,29 +58,16 @@ class Swedbank_Pay_Instant_Capture {
 
 		$this->gateway = swedbank_pay_get_payment_method( $order );
 		if ( ! $this->gateway ) {
-			return new \WP_Error( 'not_found', 'Payment method is not found.' );
-		}
-
-		// Fetch transactions list
-		$transactions = $this->gateway->core->fetchFinancialTransactionsList( $payment_order_id );
-		$this->gateway->core->saveFinancialTransactions( $order->get_id(), $transactions );
-
-		// Check if have captured transactions
-		$has_captured = false;
-		foreach ( $transactions as $transaction ) {
-			if ( $transaction->isCapture() ) {
-				$has_captured = true;
-				break;
-			}
+			return;
 		}
 
 		// Capture if possible
-		if ( ! $has_captured ) {
+		if ( ! $this->gateway->api->is_captured( $payment_order_id ) ) {
 			try {
 				$this->instant_capture( $order );
 			} catch ( \Exception $e ) {
-				$this->gateway->adapter->log(
-					LogLevel::INFO,
+				$this->gateway->api->log(
+					WC_Log_Levels::INFO,
 					sprintf( '%s: Warning: %s', __METHOD__, $e->getMessage() )
 				);
 			}
@@ -104,30 +85,29 @@ class Swedbank_Pay_Instant_Capture {
 	private function instant_capture( $order ) {
 		remove_action(
 			'woocommerce_order_status_changed',
-			'SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Admin::order_status_changed_transaction',
-			0,
-			3
+			Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
+			0
 		);
 
 		$items = $this->get_instant_capture_items( $order );
-		$this->gateway->adapter->log( LogLevel::INFO, __METHOD__, array( $items ) );
+		$this->gateway->api->log( WC_Log_Levels::INFO, __METHOD__, array( $items ) );
 		if ( count( $items ) > 0 ) {
-			try {
-				$this->gateway->core->captureCheckout( $order->get_id(), $items );
-			} catch ( \SwedbankPay\Core\Exception $e ) {
-				throw new \Exception( $e->getMessage() );
+			$result = $this->gateway->api->capture_checkout( $order, $items );
+			if ( is_wp_error( $result ) ) {
+				/** @var \WP_Error $result */
+				throw new \Exception( $result->get_error_message() );
 			}
 
 			// Save captured order lines
 			$captured = array();
 			foreach ( $items as $item ) {
 				$captured[] = array(
-					OrderItemInterface::FIELD_REFERENCE => $item[OrderItemInterface::FIELD_REFERENCE],
-					OrderItemInterface::FIELD_QTY => $item[OrderItemInterface::FIELD_QTY]
+					Swedbank_Pay_Order_Item::FIELD_REFERENCE => $item[Swedbank_Pay_Order_Item::FIELD_REFERENCE],
+					Swedbank_Pay_Order_Item::FIELD_QTY => $item[Swedbank_Pay_Order_Item::FIELD_QTY]
 				);
 			}
 
-			$order->update_meta_data('_payex_captured_items', $captured);
+			$order->update_meta_data( '_payex_captured_items', $captured );
 			$order->save_meta_data();
 		}
 	}
@@ -197,19 +177,19 @@ class Swedbank_Pay_Instant_Capture {
 			) {
 				$items[] = array(
 					// The field Reference must match the regular expression '[\\w-]*'
-					OrderItemInterface::FIELD_REFERENCE   => $product_reference,
-					OrderItemInterface::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
-					OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_PRODUCT,
-					OrderItemInterface::FIELD_CLASS       => $product_class,
-					OrderItemInterface::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
-					OrderItemInterface::FIELD_IMAGE_URL   => $image,
-					OrderItemInterface::FIELD_DESCRIPTION => $order_item->get_name(),
-					OrderItemInterface::FIELD_QTY         => $qty,
-					OrderItemInterface::FIELD_QTY_UNIT    => 'pcs',
-					OrderItemInterface::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
-					OrderItemInterface::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
-					OrderItemInterface::FIELD_AMOUNT      => round( $price_with_tax * 100 ),
-					OrderItemInterface::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_REFERENCE   => $product_reference,
+					Swedbank_Pay_Order_Item::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
+					Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_PRODUCT,
+					Swedbank_Pay_Order_Item::FIELD_CLASS       => $product_class,
+					Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
+					Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image,
+					Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $order_item->get_name(),
+					Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
+					Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+					Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $price_with_tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
 				);
 
 				continue;
@@ -218,19 +198,19 @@ class Swedbank_Pay_Instant_Capture {
 			) {
 				$items[] = array(
 					// The field Reference must match the regular expression '[\\w-]*'
-					OrderItemInterface::FIELD_REFERENCE   => $product_reference,
-					OrderItemInterface::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
-					OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_PRODUCT,
-					OrderItemInterface::FIELD_CLASS       => $product_class,
-					OrderItemInterface::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
-					OrderItemInterface::FIELD_IMAGE_URL   => $image,
-					OrderItemInterface::FIELD_DESCRIPTION => $order_item->get_name(),
-					OrderItemInterface::FIELD_QTY         => $qty,
-					OrderItemInterface::FIELD_QTY_UNIT    => 'pcs',
-					OrderItemInterface::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
-					OrderItemInterface::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
-					OrderItemInterface::FIELD_AMOUNT      => round( $price_with_tax * 100 ),
-					OrderItemInterface::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_REFERENCE   => $product_reference,
+					Swedbank_Pay_Order_Item::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
+					Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_PRODUCT,
+					Swedbank_Pay_Order_Item::FIELD_CLASS       => $product_class,
+					Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
+					Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image,
+					Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $order_item->get_name(),
+					Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
+					Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+					Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $price_with_tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
 				);
 
 				continue;
@@ -239,19 +219,19 @@ class Swedbank_Pay_Instant_Capture {
 			) {
 				$items[] = array(
 					// The field Reference must match the regular expression '[\\w-]*'
-					OrderItemInterface::FIELD_REFERENCE   => $product_reference,
-					OrderItemInterface::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
-					OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_PRODUCT,
-					OrderItemInterface::FIELD_CLASS       => $product_class,
-					OrderItemInterface::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
-					OrderItemInterface::FIELD_IMAGE_URL   => $image,
-					OrderItemInterface::FIELD_DESCRIPTION => $order_item->get_name(),
-					OrderItemInterface::FIELD_QTY         => $qty,
-					OrderItemInterface::FIELD_QTY_UNIT    => 'pcs',
-					OrderItemInterface::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
-					OrderItemInterface::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
-					OrderItemInterface::FIELD_AMOUNT      => round( $price_with_tax * 100 ),
-					OrderItemInterface::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_REFERENCE   => $product_reference,
+					Swedbank_Pay_Order_Item::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
+					Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_PRODUCT,
+					Swedbank_Pay_Order_Item::FIELD_CLASS       => $product_class,
+					Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
+					Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image,
+					Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $order_item->get_name(),
+					Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
+					Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+					Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $price_with_tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
 				);
 
 				continue;
@@ -268,19 +248,19 @@ class Swedbank_Pay_Instant_Capture {
 				$shipping_method   = trim( $order->get_shipping_method() );
 
 				$items[] = array(
-					OrderItemInterface::FIELD_REFERENCE   => 'shipping',
-					OrderItemInterface::FIELD_NAME        => ! empty( $shipping_method ) ? $shipping_method : __(
+					Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'shipping',
+					Swedbank_Pay_Order_Item::FIELD_NAME        => ! empty( $shipping_method ) ? $shipping_method : __(
 						'Shipping',
 						'woocommerce'
 					),
-					OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_SHIPPING,
-					OrderItemInterface::FIELD_CLASS       => 'ProductGroup1',
-					OrderItemInterface::FIELD_QTY         => 1,
-					OrderItemInterface::FIELD_QTY_UNIT    => 'pcs',
-					OrderItemInterface::FIELD_UNITPRICE   => round( $shipping_with_tax * 100 ),
-					OrderItemInterface::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
-					OrderItemInterface::FIELD_AMOUNT      => round( $shipping_with_tax * 100 ),
-					OrderItemInterface::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_SHIPPING,
+					Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
+					Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
+					Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+					Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $shipping_with_tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $shipping_with_tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
 				);
 			}
 		}
@@ -295,16 +275,16 @@ class Swedbank_Pay_Instant_Capture {
 				$tax_percent  = ( $tax > 0 ) ? round( 100 / ( $fee / $tax ) ) : 0;
 
 				$items[] = array(
-					OrderItemInterface::FIELD_REFERENCE   => 'fee',
-					OrderItemInterface::FIELD_NAME        => $order_fee->get_name(),
-					OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_OTHER,
-					OrderItemInterface::FIELD_CLASS       => 'ProductGroup1',
-					OrderItemInterface::FIELD_QTY         => 1,
-					OrderItemInterface::FIELD_QTY_UNIT    => 'pcs',
-					OrderItemInterface::FIELD_UNITPRICE   => round( $fee_with_tax * 100 ),
-					OrderItemInterface::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
-					OrderItemInterface::FIELD_AMOUNT      => round( $fee_with_tax * 100 ),
-					OrderItemInterface::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'fee',
+					Swedbank_Pay_Order_Item::FIELD_NAME        => $order_fee->get_name(),
+					Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_OTHER,
+					Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
+					Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
+					Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+					Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $fee_with_tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $fee_with_tax * 100 ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
 				);
 			}
 		}
@@ -317,16 +297,16 @@ class Swedbank_Pay_Instant_Capture {
 			$tax_percent       = ( $tax > 0 ) ? round( 100 / ( $discount / $tax ) ) : 0;
 
 			$items[] = array(
-				OrderItemInterface::FIELD_REFERENCE   => 'discount',
-				OrderItemInterface::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-checkout' ),
-				OrderItemInterface::FIELD_TYPE        => OrderItemInterface::TYPE_DISCOUNT,
-				OrderItemInterface::FIELD_CLASS       => 'ProductGroup1',
-				OrderItemInterface::FIELD_QTY         => 1,
-				OrderItemInterface::FIELD_QTY_UNIT    => 'pcs',
-				OrderItemInterface::FIELD_UNITPRICE   => round( -100 * $discount_with_tax ),
-				OrderItemInterface::FIELD_VAT_PERCENT => round( 100 * $tax_percent ),
-				OrderItemInterface::FIELD_AMOUNT      => round( -100 * $discount_with_tax ),
-				OrderItemInterface::FIELD_VAT_AMOUNT  => round( -100 * $tax ),
+				Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
+				Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-checkout' ),
+				Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
+				Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
+				Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
+				Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+				Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( -100 * $discount_with_tax ),
+				Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( 100 * $tax_percent ),
+				Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( -100 * $discount_with_tax ),
+				Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( -100 * $tax ),
 			);
 		}
 

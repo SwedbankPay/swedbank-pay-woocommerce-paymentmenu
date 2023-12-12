@@ -5,8 +5,8 @@ namespace SwedbankPay\Checkout\WooCommerce;
 defined( 'ABSPATH' ) || exit;
 
 use WC_Order;
+use WC_Log_Levels;
 use Exception;
-use SwedbankPay\Core\Log\LogLevel;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -47,7 +47,19 @@ class Swedbank_Pay_Admin {
 		// Remove "Order fully refunded" hook. See wc_order_fully_refunded()
 		remove_action( 'woocommerce_order_status_refunded', 'wc_order_fully_refunded' );
 		add_action( 'woocommerce_order_status_changed', __CLASS__ . '::order_status_changed_transaction', 0, 3 );
+
+		// Refund actions
+		add_action( 'woocommerce_create_refund', array( $this, 'save_refund_parameters' ), 10, 2 );
+		add_action( 'woocommerce_order_refunded', array( $this, 'remove_refund_parameters' ), 10, 2 );
+
+		add_filter(
+			'woocommerce_admin_order_should_render_refunds',
+			array( $this, 'order_should_render_refunds' ),
+			10,
+			3
+		);
 	}
+
 
 	/**
 	 * Allow processing/completed statuses for capture
@@ -114,17 +126,21 @@ class Swedbank_Pay_Admin {
 		}
 
 		// Get Payment Gateway
+		$payment_method = $order->get_payment_method();
+		if ( ! in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+			return;
+		}
+
+		// Get Payment Gateway
+		/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
 		$gateway = swedbank_pay_get_payment_method( $order );
 		if ( ! $gateway ) {
 			return;
 		}
 
 		// Fetch payment info
-		try {
-			/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
-			$result = $gateway->core->fetchPaymentInfo( $payment_order_id . '/paid' );
-		} catch ( \Exception $e ) {
-			// Request failed
+		$result = $gateway->api->request( 'GET', $payment_order_id . '/paid' );
+		if ( is_wp_error( $result ) ) {
 			return;
 		}
 
@@ -224,18 +240,18 @@ class Swedbank_Pay_Admin {
 
 		// Get Payment Gateway
 		$gateway = swedbank_pay_get_payment_method( $order );
-		if ( $gateway ) {
-			try {
-				$gateway->capture_payment( $order_id );
-				wp_send_json_success( __( 'Capture success.', 'swedbank-pay-woocommerce-checkout' ) );
-			} catch ( Exception $e ) {
-				wp_send_json_error( $e->getMessage() );
-			}
+		$result = $gateway->payment_actions_handler->capture_payment( $order );
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+			return;
 		}
+
+		wp_send_json_success( __( 'Capture success.', 'swedbank-pay-woocommerce-checkout' ) );
 	}
 
 	/**
-	 * Action for Cancel
+	 * Action for Cancel.
+	 *
 	 * @SuppressWarnings(PHPMD.Superglobals)
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
@@ -256,18 +272,18 @@ class Swedbank_Pay_Admin {
 
 		// Get Payment Gateway
 		$gateway = swedbank_pay_get_payment_method( $order );
-		if ( $gateway ) {
-			try {
-				$gateway->cancel_payment( $order_id );
-				wp_send_json_success( __( 'Cancel success.', 'swedbank-pay-woocommerce-checkout' ) );
-			} catch ( Exception $e ) {
-				wp_send_json_error( $e->getMessage() );
-			}
+		$result = $gateway->payment_actions_handler->cancel_payment( $order );
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( $result->get_error_message() );
+			return;
 		}
+
+		wp_send_json_success( __( 'Cancel success.', 'swedbank-pay-woocommerce-checkout' ) );
 	}
 
 	/**
-	 * Action for Full Refund
+	 * Action for Full Refund.
+	 *
 	 * @SuppressWarnings(PHPMD.Superglobals)
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
@@ -291,20 +307,18 @@ class Swedbank_Pay_Admin {
 		}
 
 		// Do refund
-		try {
-			Swedbank_Pay_Refund::refund(
-				$gateway,
-				$order,
-				0,
-				__( 'Full refund.', 'swedbank-pay-woocommerce-checkout' )
-			);
+		$result = $gateway->payment_actions_handler->refund_payment(
+			$order,
+			__( 'Full refund.', 'swedbank-pay-woocommerce-checkout' )
+		);
+		if ( is_wp_error( $result ) ) {
+			/** @var \WP_Error $result */
+			wp_send_json_error( $result->get_error_code(), $result->get_error_message() );
 
-			// Refund will be created on transaction processing
-		} catch ( \Exception $exception ) {
-			wp_send_json_error( $exception->getMessage() );
 			return;
 		}
 
+		// Refund will be created on transaction processing
 		wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-woocommerce-checkout' ) );
 	}
 
@@ -318,57 +332,157 @@ class Swedbank_Pay_Admin {
 	 */
 	public static function order_status_changed_transaction( $order_id, $old_status, $new_status ) {
 		$order = wc_get_order( $order_id );
-		if ( in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
-			$gateway = swedbank_pay_get_payment_method( $order );
-
-			$gateway->core->log(
-				LogLevel::INFO,
-				'Order status change trigger: ' . $new_status . ' OrderID: ' . $order_id
-			);
-
-			try {
-				switch ( $new_status ) {
-					case 'processing':
-					case 'completed':
-						$gateway->core->log( LogLevel::INFO, 'Try to capture...' );
-
-						$gateway->capture_payment( $order );
-						$order->add_order_note(
-							__( 'Payment has been captured by order status change.', 'swedbank-pay-woocommerce-checkout' )
-						);
-						break;
-					case 'cancelled':
-						$gateway->core->log( LogLevel::INFO, 'Try to cancel...' );
-
-						$gateway->cancel_payment( $order );
-						$order->add_order_note(
-							__( 'Payment has been cancelled by order status change.', 'swedbank-pay-woocommerce-checkout' )
-						);
-						break;
-					case 'refunded':
-						$gateway->core->log( LogLevel::INFO, 'Try to refund...' );
-
-						$gateway->core->refundCheckout( $order->get_id() );
-						$order->add_order_note(
-							__( 'Payment has been refunded by order status change.', 'swedbank-pay-woocommerce-checkout' )
-						);
-						break;
-				}
-			} catch ( \Exception $exception ) {
-				\WC_Admin_Meta_Boxes::add_error( $exception->getMessage() );
-
-				// Rollback status
-				remove_action(
-					'woocommerce_order_status_changed',
-					__CLASS__ . '::order_status_changed_transaction',
-					0
-				);
-				$order->update_status(
-					$old_status,
-					sprintf( 'Rollback status. Error: %s', $exception->getMessage() )
-				);
-			}
+		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+			return;
 		}
+
+		$gateway = swedbank_pay_get_payment_method( $order );
+
+		$gateway->api->log(
+			WC_Log_Levels::INFO,
+			'Order status change trigger: ' . $new_status . ' OrderID: ' . $order_id
+		);
+
+		try {
+			switch ( $new_status ) {
+				case 'processing':
+				case 'completed':
+					$gateway->api->log( WC_Log_Levels::INFO, 'Try to capture...' );
+					$result = $gateway->payment_actions_handler->capture_payment( $order );
+					if ( is_wp_error( $result ) ) {
+						/** @var \WP_Error $result */
+						throw new \Exception( $result->get_error_message() );
+					}
+
+					$order->add_order_note(
+						__( 'Payment has been captured by order status change.', 'swedbank-pay-woocommerce-checkout' )
+					);
+
+					break;
+				case 'cancelled':
+					$gateway->api->log( WC_Log_Levels::INFO, 'Try to cancel...' );
+					$result = $gateway->payment_actions_handler->cancel_payment( $order );
+					if ( is_wp_error( $result ) ) {
+						/** @var \WP_Error $result */
+						throw new \Exception( $result->get_error_message() );
+					}
+
+					$order->add_order_note(
+						__( 'Payment has been cancelled by order status change.', 'swedbank-pay-woocommerce-checkout' )
+					);
+
+					break;
+				case 'refunded':
+					$gateway->api->log( WC_Log_Levels::INFO, 'Try to refund...' );
+					$result = $gateway->payment_actions_handler->refund_payment(
+						$order,
+						__( 'Order status changed to refunded.', 'swedbank-pay-woocommerce-checkout' )
+					);
+					if ( is_wp_error( $result ) ) {
+						/** @var \WP_Error $result */
+						throw new \Exception( $result->get_error_message() );
+					}
+
+					$order->add_order_note(
+						__( 'Payment has been refunded by order status change.', 'swedbank-pay-woocommerce-checkout' )
+					);
+
+					break;
+			}
+		} catch ( \Exception $exception ) {
+			\WC_Admin_Meta_Boxes::add_error( 'Order status change error: ' . $exception->getMessage() );
+
+			// Rollback status
+			remove_action(
+				'woocommerce_order_status_changed',
+				__CLASS__ . '::order_status_changed_transaction',
+				0
+			);
+			$order->update_status(
+				$old_status,
+				sprintf( 'Rollback status. Error: %s', $exception->getMessage() )
+			);
+		}
+	}
+
+	/**
+	 * Save refund parameters to perform refund with specified products and amounts.
+	 *
+	 * @param \WC_Order_Refund $refund
+	 * @param $args
+	 */
+	public function save_refund_parameters( $refund, $args ) {
+		if ( ! isset( $args['order_id'] ) ) {
+			return;
+		}
+
+		$order = wc_get_order( $args['order_id'] );
+		if ( ! $order ) {
+			return;
+		}
+
+		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+			return;
+		}
+
+		// Prevent refund credit memo creation through Callback
+		set_transient(
+			'sb_refund_block_' . $args['order_id'],
+			$args['order_id'],
+			5 * MINUTE_IN_SECONDS
+		);
+
+		// Save order items of refund
+		set_transient(
+			'sb_refund_parameters_' . $args['order_id'],
+			$args,
+			5 * MINUTE_IN_SECONDS
+		);
+
+		// Preserve refund
+		$refund_id = $refund->save();
+		if ( $refund_id ) {
+			// Save refund ID to store transaction_id
+			set_transient(
+				'sb_current_refund_id_' . $args['order_id'],
+				$refund_id,
+				5 * MINUTE_IN_SECONDS
+			);
+		}
+	}
+
+	/**
+	 * Remove refund parameters.
+	 *
+	 * @param $order_id
+	 * @param $refund_id
+	 *
+	 * @return void
+	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 */
+	public function remove_refund_parameters( $order_id, $refund_id ) {
+		delete_transient( 'sb_refund_parameters_' . $order_id );
+		delete_transient( 'sb_current_refund_id_' . $order_id );
+		delete_transient( 'sb_refund_block_' . $order_id );
+	}
+
+	/**
+	 * Disable native Refund button if the order has `_payex_refunded_items` meta.
+	 *
+	 * @param bool $should_render
+	 * @param mixed $order_id
+	 * @param WC_Order $order
+	 *
+	 * @return bool
+	 */
+	public function order_should_render_refunds( $should_render, $order_id, $order ) {
+		$current_items = $order->get_meta( '_payex_refunded_items' );
+		$current_items = empty( $current_items ) ? array() : (array) $current_items;
+		if ( count( $current_items ) > 0 ) {
+			return false;
+		}
+
+		return $should_render;
 	}
 }
 

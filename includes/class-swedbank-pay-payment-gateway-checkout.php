@@ -2,14 +2,11 @@
 
 defined( 'ABSPATH' ) || exit;
 
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Refund;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Background_Queue;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Transactions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Instant_Capture;
-use SwedbankPay\Core\Adapter\WC_Adapter;
-use SwedbankPay\Core\Core;
-use SwedbankPay\Core\Log\LogLevel;
-use SwedbankPay\Core\OrderItemInterface;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Payment_Actions;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -26,16 +23,6 @@ use SwedbankPay\Core\OrderItemInterface;
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
-	/**
-	 * @var Adapter
-	 */
-	public $adapter;
-
-	/**
-	 * @var Core
-	 */
-	public $core;
-
 	/**
 	 * @var Swedbank_Pay_Transactions
 	 */
@@ -102,22 +89,20 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public $terms_url = '';
 
 	/**
-	 * Backend Api Endpoint
-	 * @var string
-	 */
-	public $backend_api_endpoint = 'https://api.payex.com';
-
-	/**
-	 * Send billing/delivery addresses of payer to Swedbank Pay
-	 * @var string
-	 */
-	public $use_payer_info = 'yes';
-
-	/**
 	 * Swedbank Pay ip addresses
 	 * @var array
 	 */
 	public $gateway_ip_addresses = array( '91.132.170.1' );
+
+	/**
+	 * @var Swedbank_Pay_Api
+	 */
+	public $api;
+
+	/**
+	 * @var Swedbank_Pay_Payment_Actions
+	 */
+	public $payment_actions_handler;
 
 	/**
 	 * Init
@@ -131,7 +116,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->has_fields   = true;
 		$this->method_title = __( 'Swedbank Pay Payment Menu', 'swedbank-pay-woocommerce-checkout' );
 		$this->method_description = __( 'Provides the Swedbank Pay Payment Menu for WooCommerce', 'swedbank-pay-woocommerce-checkout' );
-
+		$this->icon         = apply_filters( 'woocommerce_swedbank_pay_payments_icon', plugins_url( '/assets/images/checkout.svg', dirname( __FILE__ ) ) );
 		$this->supports     = array(
 			'products',
 			'refunds',
@@ -170,10 +155,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$this->terms_url = '';
 		}
 
-		if ( 'yes' === $this->testmode ) {
-			$this->backend_api_endpoint = 'https://api.externalintegration.payex.com';
-		}
-
 		// Actions
 		add_action(
 			'woocommerce_update_options_payment_gateways_' . $this->id,
@@ -188,8 +169,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		add_filter( 'woocommerce_endpoint_order-received_title', array( $this, 'update_order_received_title' ), 3, 10 );
 		add_filter( 'wc_order_is_editable', array( $this, 'is_editable' ), 2, 10 );
 
-		$this->adapter = new WC_Adapter( $this );
-		$this->core    = new Core( $this->adapter );
+		$this->api = new Swedbank_Pay_Api( $this );
+		$this->api->set_access_token( $this->access_token )
+			->set_payee_id( $this->payee_id )
+			->set_mode( $this->testmode == 'yes' ? Swedbank_Pay_Api::MODE_TEST : Swedbank_Pay_Api::MODE_LIVE );
+
+		$this->payment_actions_handler = new Swedbank_Pay_Payment_Actions( $this );
 	}
 
 	/**
@@ -215,13 +200,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'default' => $this->testmode,
 			),
 			'title'            => array(
-				'title'       => __( 'Title', 'swedbank-pay-woocommerce-payments' ),
+				'title'       => __( 'Title', 'swedbank-pay-woocommerce-checkout' ),
 				'type'        => 'text',
 				'description' => __(
 					'This controls the title which the user sees during checkout.',
-					'swedbank-pay-woocommerce-payments'
+					'swedbank-pay-woocommerce-checkout'
 				),
-				'default'     => __( 'Swedbank Pay', 'swedbank-pay-woocommerce-payments' ),
+				'default'     => __( 'Swedbank Pay', 'swedbank-pay-woocommerce-checkout' ),
 			),
 			'description'     => array(
 				'title'       => __( 'Description', 'swedbank-pay-woocommerce-checkout' ),
@@ -333,15 +318,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Check if the gateway is available for use.
-	 *
-	 * @return bool
-	 */
-	public function is_available() {
-		return true;
-	}
-
-	/**
 	 * @param $key
 	 * @param $value
 	 *
@@ -349,9 +325,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
 	 */
 	public function generate_advanced_html( $key, $value ) {
-		//$debug = WC()->payment_gateways()->get_available_payment_gateways();
-		//var_dump($debug);
-		//woocommerce_checkout_payment();
 		ob_start();
 		?>
 		<tr valign="top" class="">
@@ -434,11 +407,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return;
 		}
 
-		$this->core->log( LogLevel::INFO, __METHOD__ );
+		$this->api->log( WC_Log_Levels::INFO, __METHOD__ );
 		$is_finalized     = $order->get_meta( '_payex_finalized' );
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $is_finalized ) && $payment_order_id ) {
-			$this->core->finalizePaymentOrder( $payment_order_id );
+			$this->api->finalize_payment( $order, $payment_order_id );
 
 			$order = wc_get_order( $order_id ); // reload order
 			$order->update_meta_data( '_payex_finalized', 1 );
@@ -474,9 +447,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @param int $order_id
 	 *
 	 * @return array|false
-	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-	 * @SuppressWarnings(PHPMD.NPathComplexity)
-	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
 	 */
 	public function process_payment( $order_id ) {
 		$order = wc_get_order( $order_id );
@@ -486,15 +456,18 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		// Initiate Payment Order
-		$result = $this->core->initiatePaymentOrderPurchase( $order_id, null );
-		$redirect_url = $result->getOperationByRel( 'redirect-paymentorder' );
-		if ( empty( $redirect_url ) ) {
-			// Checkout v3
-			$redirect_url = $result->getOperationByRel( 'redirect-checkout' );
+		$result = $this->api->initiate_purchase( $order );
+		if ( is_wp_error( $result ) ) {
+			throw new \Exception(
+				$result->get_error_message(),
+				$result->get_error_code()
+			);
 		}
 
+		$redirect_url = $result->getOperationByRel( 'redirect-checkout', 'href' );
+
 		// Save payment ID
-		$order->update_meta_data( '_payex_paymentorder_id', $result['payment_order']['id'] );
+		$order->update_meta_data( '_payex_paymentorder_id', $result['response_resource']['payment_order']['id'] );
 		$order->save_meta_data();
 
 		return array(
@@ -515,16 +488,16 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public function return_handler() {
 		$raw_body = wp_kses_post( sanitize_text_field( file_get_contents( 'php://input' ) ) );  // WPCS: input var ok, CSRF ok.
 
-		$this->core->log(
-			LogLevel::INFO,
+		$this->api->log(
+			WC_Log_Levels::INFO,
 			sprintf(
 				'Incoming Callback: Initialized %s from %s',
 				wp_kses_post( sanitize_text_field( $_SERVER['REQUEST_URI'] ) ), // WPCS: input var ok, CSRF ok.
 				wp_kses_post( sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) ) // WPCS: input var ok, CSRF ok.
 			)
 		);
-		$this->core->log(
-			LogLevel::INFO,
+		$this->api->log(
+			WC_Log_Levels::INFO,
 			sprintf( 'Incoming Callback. Post data: %s', var_export( $raw_body, true ) )
 		);
 
@@ -535,8 +508,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				apply_filters( 'swedbank_pay_gateway_ip_addresses', $this->gateway_ip_addresses ),
 				true
 			) ) {
-				$this->core->log(
-					LogLevel::INFO,
+				$this->api->log(
+					WC_Log_Levels::INFO,
 					sprintf( 'Error: Incoming Callback has been rejected. %s', WC_Geolocation::get_ip_address() )
 				);
 
@@ -573,6 +546,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				throw new \Exception( 'Error: Invalid transaction number' );
 			}
 
+			sleep(20);
+
 			// Create Background Process Task
 			$background_process = new Swedbank_Pay_Background_Queue();
 			$background_process->push_to_queue(
@@ -583,12 +558,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			);
 			$background_process->save();
 
-			$this->core->log(
-				LogLevel::INFO,
+			$this->api->log(
+				WC_Log_Levels::INFO,
 				sprintf( 'Incoming Callback: Task enqueued. Transaction ID: %s', $data['transaction']['number'] )
 			);
 		} catch ( \Exception $e ) {
-			$this->core->log( LogLevel::INFO, sprintf( 'Incoming Callback: %s', $e->getMessage() ) );
+			$this->api->log( WC_Log_Levels::INFO, sprintf( 'Incoming Callback: %s', $e->getMessage() ) );
 
 			return;
 		}
@@ -622,87 +597,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return new WP_Error( 'refund', __( 'Amount must be positive.', 'swedbank-pay-woocommerce-checkout' ) );
 		}
 
-		try {
-			Swedbank_Pay_Refund::refund( $this, $order, $amount, $reason );
-
-			return true;
-		} catch ( \Exception $e ) {
-			return new WP_Error( 'refund', $e->getMessage() );
-		}
-	}
-
-	/**
-	 * Capture
-	 *
-	 * @param WC_Order|int $order
-	 * @param mixed $amount
-	 * @param mixed $vat_amount
-	 *
-	 * @return void
-	 * @throws \Exception
-	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-	 * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
-	 */
-	public function capture_payment( $order, $amount = false, $vat_amount = 0 ) {
-		if ( is_int( $order ) ) {
-			$order = wc_get_order( $order );
+		// It uses transient `sb_refund_parameters_` to get items
+		$result = $this->payment_actions_handler->refund_payment( $order, $reason );
+		if ( is_wp_error( $result ) ) {
+			return $result;
 		}
 
-		$order_items = array();
-		$captured = $order->get_meta( '_payex_captured_items' );
-		$captured = empty( $captured ) ? array() : (array) $captured;
-		if ( count( $captured ) > 0 ) {
-			$order_items = swedbank_pay_get_order_lines( $order );
-			foreach ( $order_items as $key => &$order_item ) {
-				foreach ( $captured as &$captured_item ) {
-					if ( $order_item[OrderItemInterface::FIELD_REFERENCE] ===
-						 $captured_item[OrderItemInterface::FIELD_REFERENCE]
-					) {
-						$unit_vat = $order_item[OrderItemInterface::FIELD_VAT_AMOUNT] / $order_item[OrderItemInterface::FIELD_QTY]; //phpcs:ignore
-						$order_item[OrderItemInterface::FIELD_QTY] -= $captured_item[OrderItemInterface::FIELD_QTY];
-						$order_item[OrderItemInterface::FIELD_AMOUNT] = $order_item[OrderItemInterface::FIELD_QTY] * $order_item[OrderItemInterface::FIELD_UNITPRICE]; //phpcs:ignore
-						$order_item[OrderItemInterface::FIELD_VAT_AMOUNT] = $order_item[OrderItemInterface::FIELD_QTY] * $unit_vat; //phpcs:ignore
-
-						$captured_item[OrderItemInterface::FIELD_QTY] += $order_item[OrderItemInterface::FIELD_QTY];
-
-						if ( 0 === $order_item[OrderItemInterface::FIELD_QTY] ) {
-							unset($order_items[$key]);
-						}
-					}
-				}
-			}
-		}
-
-		try {
-			$this->core->captureCheckout( $order->get_id(), $order_items );
-
-			if ( count( $captured ) > 0 ) {
-				$order->update_meta_data( '_payex_captured_items', $captured );
-				$order->save_meta_data();
-			}
-		} catch ( \SwedbankPay\Core\Exception $e ) {
-			throw new Exception( $e->getMessage() );
-		}
-	}
-
-	/**
-	 * Cancel
-	 *
-	 * @param WC_Order|int $order
-	 *
-	 * @return void
-	 * @throws \Exception
-	 */
-	public function cancel_payment( $order ) {
-		if ( is_int( $order ) ) {
-			$order = wc_get_order( $order );
-		}
-
-		try {
-			$this->core->cancelCheckout( $order->get_id() );
-		} catch ( \SwedbankPay\Core\Exception $e ) {
-			throw new Exception( $e->getMessage() );
-		}
+		return true;
 	}
 
 	/**
@@ -725,12 +626,10 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$instrument = $order->get_meta( '_swedbank_pay_payment_instrument' );
 		if ( empty( $instrument ) ) {
 			$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-
 			if ( ! empty( $payment_order_id ) ) {
 				// Fetch payment info
-				try {
-					$result = $this->core->fetchPaymentInfo( $payment_order_id . '/paid' );
-				} catch ( \Exception $e ) {
+				$result = $this->api->request( 'GET', $payment_order_id . '/paid' );
+				if ( is_wp_error( $result ) ) {
 					// Request failed
 					return $value;
 				}
@@ -746,15 +645,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		return sprintf( '%s (%s)', $value, $instrument );
-	}
-
-	/**
-	 * Returns the implementation.
-	 *
-	 * @return string
-	 */
-	public function get_implementation() {
-		return 'PaymentsOnly';
 	}
 
 	/**

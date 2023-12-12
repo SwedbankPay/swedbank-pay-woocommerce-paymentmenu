@@ -7,7 +7,7 @@
  * Author URI: https://profiles.wordpress.org/swedbankpay/
  * License: Apache License 2.0
  * License URI: http://www.apache.org/licenses/LICENSE-2.0
- * Version: 1.3.0
+ * Version: 2.0.0
  * Text Domain: swedbank-pay-woocommerce-checkout
  * Domain Path: /languages
  * WC requires at least: 5.5.1
@@ -83,10 +83,47 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @return void
 	 */
 	public function woocommerce_loaded() {
+		// Check if WooCommerce is missing
+		if ( ! class_exists( 'WooCommerce', false ) || ! defined( 'WC_ABSPATH' ) ) {
+			add_action( 'admin_notices', __CLASS__ . '::missing_woocommerce_notice' );
+
+			return;
+		}
+
 		include_once( dirname( __FILE__ ) . '/includes/class-swedbank-pay-payment-gateway-checkout.php' );
 
 		// Register Gateway
 		Swedbank_Pay_Payment_Menu::register_gateway( Swedbank_Pay_Payment_Gateway_Checkout::class );
+	}
+
+	/**
+	 * Check if WooCommerce is missing, and deactivate the plugin if needs
+	 */
+	public static function missing_woocommerce_notice() {
+		?>
+		<div id="message" class="error">
+			<p class="main">
+				<strong><?php echo esc_html__( 'WooCommerce is inactive or missing.', 'swedbank-pay-woocommerce-checkout' ); ?></strong>
+			</p>
+			<p>
+				<?php
+				echo esc_html__( 'WooCommerce plugin is inactive or missing. Please install and active it.', 'swedbank-pay-woocommerce-checkout' );
+				echo '<br />';
+				echo sprintf(
+				/* translators: 1: plugin name */                        esc_html__(  //phpcs:ignore
+					'%1$s will be deactivated.',
+					'swedbank-pay-woocommerce-checkout'
+				),
+					self::PLUGIN_NAME
+				);
+
+				?>
+			</p>
+		</div>
+		<?php
+
+		// Deactivate the plugin
+		deactivate_plugins( plugin_basename( __FILE__ ), true );
 	}
 }
 
