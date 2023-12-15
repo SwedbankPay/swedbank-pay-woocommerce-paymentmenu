@@ -171,7 +171,7 @@ class Swedbank_Pay_Payment_Actions {
 		$items = array();
 
 		// Order lines
-		$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee', 'coupon' ) );
+		$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee' ) );
 
 		// Captured items
 		$captured = $order->get_meta( '_payex_captured_items' );
@@ -185,7 +185,6 @@ class Swedbank_Pay_Payment_Actions {
 		if ( 0 === count( $lines ) ) {
 			foreach ( $captured as $captured_item ) {
 				foreach ( $line_items as $item_id => $item ) {
-
 					// Get reference
 					switch ( $item->get_type() ) {
 						case 'line_item':
@@ -216,8 +215,8 @@ class Swedbank_Pay_Payment_Actions {
 						continue;
 					}
 
-					$unit_price          = $order->get_line_subtotal( $item, false, false );
-					$unit_price_with_tax = $order->get_line_subtotal( $item, true, false );
+					$unit_price          = $order->get_line_total( $item, false, false );
+					$unit_price_with_tax = $order->get_line_total( $item, true, false );
 					$tax                 = $unit_price_with_tax - $unit_price;
 
 					if ( $reference === $captured_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
@@ -245,8 +244,6 @@ class Swedbank_Pay_Payment_Actions {
 				}
 			}
 		}
-
-		//var_dump($lines); exit();
 
 		// Get order lines
 		if ( 0 === count( $lines ) ) {
