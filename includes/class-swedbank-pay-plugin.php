@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
 use WC_Order;
 use Automattic\Jetpack\Constants;
 use Exception;
-
+use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
@@ -83,6 +83,8 @@ class Swedbank_Pay_Plugin {
 			10,
 			2
 		);
+
+		add_action( 'woocommerce_blocks_loaded', array( $this, 'woocommerce_blocks_support' ) );
 	}
 
 	/**
@@ -99,6 +101,10 @@ class Swedbank_Pay_Plugin {
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-instant-capture.php' );
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-payment-actions.php' );
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-admin.php' );
+
+		if ( class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
+			require_once( dirname( __FILE__ ) . '/class-swedbank-pay-blocks-support.php' );
+		}
 	}
 
 	/**
@@ -592,6 +598,24 @@ class Swedbank_Pay_Plugin {
 		}
 
 		return $query;
+	}
+
+	/**
+	 * Add WooCommerce Blocks support.
+	 *
+	 * @return void
+	 */
+	public function woocommerce_blocks_support() {
+		if ( class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
+			require_once( dirname( __FILE__ ) . '/class-swedbank-pay-blocks-support.php' );
+
+			add_action(
+				'woocommerce_blocks_payment_method_type_registration',
+				function( PaymentMethodRegistry $payment_method_registry ) {
+					$payment_method_registry->register( new Swedbank_Pay_Blocks_Support );
+				}
+			);
+		}
 	}
 
 	/**

@@ -231,13 +231,23 @@ class Swedbank_Pay_Payment_Actions {
 							}
 						}
 
-						$lines[ $item_id ] = array(
-							'qty'          => $qty,
-							'refund_total' => $unit_price_with_tax * $qty,
-							'refund_tax'   => array(
-								$tax,
-							),
-						);
+						if ( 'excl' === get_option( 'woocommerce_tax_display_shop' ) ) {
+							$lines[ $item_id ] = array(
+								'qty'          => $qty,
+								'refund_total' => $unit_price * $qty,
+								'refund_tax'   => array(
+									$tax,
+								),
+							);
+						} else {
+							$lines[ $item_id ] = array(
+								'qty'          => $qty,
+								'refund_total' => $unit_price_with_tax * $qty,
+								'refund_tax'   => array(
+									$tax,
+								),
+							);
+						}
 
 						break;
 					}
@@ -299,7 +309,7 @@ class Swedbank_Pay_Payment_Actions {
 			/** @var WC_Order_Item $item */
 			$item = $order->get_item( $item_id );
 			if ( ! $item ) {
-				return new \WP_Error( 0, 'Unable to retrieve order item: ' . $item_id );
+				return new \WP_Error( 'error', 'Unable to retrieve order item: ' . $item_id );
 			}
 
 			$product_name = trim( $item->get_name() );
@@ -322,7 +332,7 @@ class Swedbank_Pay_Payment_Actions {
 				$refund_amount = $refund_total + $refund_tax;
 			} else {
 				$unit_price    = $qty > 0 ? ( $refund_total / $qty ) : 0;
-				$refund_amount = $refund_total;
+				$refund_amount = $refund_total + $refund_tax;
 			}
 
 			if ( empty( $refund_total ) ) {

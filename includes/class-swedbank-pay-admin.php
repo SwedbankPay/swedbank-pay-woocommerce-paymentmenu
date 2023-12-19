@@ -242,7 +242,7 @@ class Swedbank_Pay_Admin {
 		$gateway = swedbank_pay_get_payment_method( $order );
 		$result = $gateway->payment_actions_handler->capture_payment( $order );
 		if ( is_wp_error( $result ) ) {
-			wp_send_json_error( $result->get_error_message() );
+			wp_send_json_error( join('; ', $result->get_error_messages() ) );
 			return;
 		}
 
@@ -274,7 +274,7 @@ class Swedbank_Pay_Admin {
 		$gateway = swedbank_pay_get_payment_method( $order );
 		$result = $gateway->payment_actions_handler->cancel_payment( $order );
 		if ( is_wp_error( $result ) ) {
-			wp_send_json_error( $result->get_error_message() );
+			wp_send_json_error( join('; ', $result->get_error_messages() ) );
 			return;
 		}
 
@@ -313,7 +313,7 @@ class Swedbank_Pay_Admin {
 		);
 		if ( is_wp_error( $result ) ) {
 			/** @var \WP_Error $result */
-			wp_send_json_error( $result->get_error_code(), $result->get_error_message() );
+			wp_send_json_error( join('; ', $result->get_error_messages() ) );
 
 			return;
 		}

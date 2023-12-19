@@ -433,9 +433,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		if ( 'yes' === $this->testmode ) {
-			$view_transaction_url = 'https://admin.externalintegration.payex.com/psp/beta/paymentorders;id=%s';
+			$view_transaction_url = 'https://merchantportal.externalintegration.swedbankpay.com/ecom/paymentorders;id=%s';
 		} else {
-			$view_transaction_url = ' https://admin.payex.com/psp/beta/paymentorders;id=%s';
+			$view_transaction_url = 'https://merchantportal.swedbankpay.com/ecom/payments/details;id=%s';
 		}
 
 		return sprintf( $view_transaction_url, urlencode( $payment_order_id ) );
@@ -458,7 +458,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		// Initiate Payment Order
 		$result = $this->api->initiate_purchase( $order );
 		if ( is_wp_error( $result ) ) {
-			throw new \Exception(
+			throw new Exception(
 				$result->get_error_message(),
 				$result->get_error_code()
 			);
@@ -600,7 +600,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		// It uses transient `sb_refund_parameters_` to get items
 		$result = $this->payment_actions_handler->refund_payment( $order, $reason );
 		if ( is_wp_error( $result ) ) {
-			return $result;
+			return new WP_Error( 'refund', $result->get_error_message() );
 		}
 
 		return true;

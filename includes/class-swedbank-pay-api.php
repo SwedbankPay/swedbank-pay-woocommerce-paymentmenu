@@ -275,7 +275,7 @@ class Swedbank_Pay_Api {
 		}
 
 		if ( empty( $url ) ) {
-			return new \WP_Error( 0, 'Invalid url' );
+			return new \WP_Error( 'validation', 'Invalid url' );
 		}
 
 		// Process params
@@ -350,7 +350,7 @@ class Swedbank_Pay_Api {
 				return new \WP_Error( $httpCode, $message );
 			}
 
-			return new \WP_Error( 0, 'API Exception. Please check logs' );
+			return new \WP_Error( 'api_generic', 'API Exception. Please check logs' );
 		}
 	}
 
@@ -497,7 +497,7 @@ class Swedbank_Pay_Api {
 		// Fetch payment info
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
-			return new \WP_Error( 0, 'Payment order ID is unknown.' );
+			return new \WP_Error( 'missing_payment_id', 'Payment order ID is unknown.' );
 		}
 
 		$payment_order = $this->request( 'GET', $payment_order_id );
@@ -855,12 +855,11 @@ class Swedbank_Pay_Api {
 	 * @SuppressWarnings(PHPMD.MissingImport)
 	 * @SuppressWarnings(PHPMD.ElseExpression)
 	 */
-	public function capture_checkout( WC_Order $order, array $items = array() )
-	{
+	public function capture_checkout( WC_Order $order, array $items = array() ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 
 		if ( empty( $payment_order_id ) ) {
-			return new \WP_Error( 0, 'Unable to get the payment order ID' );
+			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
 		}
 
 		if ( count( $items ) === 0 ) {
@@ -947,7 +946,7 @@ class Swedbank_Pay_Api {
 			);
 
 			return new \WP_Error(
-				0,
+				'capture',
 				$this->format_error_message( $requestService->getClient()->getResponseBody() )
 			);
 		}
@@ -956,7 +955,7 @@ class Swedbank_Pay_Api {
 	public function cancel_checkout( WC_Order $order ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
-			return new \WP_Error( 0, 'Unable to get the payment order ID' );
+			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
 		}
 
 		$transaction_data = new TransactionData();
@@ -1008,7 +1007,7 @@ class Swedbank_Pay_Api {
 			);
 
 			return new \WP_Error(
-				0,
+				'cancel',
 				$this->format_error_message( $requestService->getClient()->getResponseBody() )
 			);
 		}
@@ -1027,8 +1026,7 @@ class Swedbank_Pay_Api {
 	 * @SuppressWarnings(PHPMD.MissingImport)
 	 * @SuppressWarnings(PHPMD.ElseExpression)
 	 */
-	public function refund_checkout( WC_Order $order, array $items = array() )
-	{
+	public function refund_checkout( WC_Order $order, array $items = array() ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 0, 'Unable to get the payment order ID' );
@@ -1120,7 +1118,7 @@ class Swedbank_Pay_Api {
 			);
 
 			return new \WP_Error(
-				0,
+				'refund',
 				$this->format_error_message( $requestService->getClient()->getResponseBody() )
 			);
 		}
