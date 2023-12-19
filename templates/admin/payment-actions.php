@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			: </strong> <?php echo esc_html( $info['paid']['transactionType'] ); ?>
 		<br/>
 	<?php endif; ?>
-	<?php if ( $gateway->core->canCapture( $order->get_id() ) ) : ?>
+	<?php if ( $gateway->api->can_capture( $order ) ) : ?>
 		<button id="swedbank_pay_capture"
 				data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"
 				data-order-id="<?php echo esc_html( $order->get_id() ); ?>">
@@ -34,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</button>
 	<?php endif; ?>
 
-	<?php if ( $gateway->core->canCancel( $order->get_id() ) ) : ?>
+	<?php if ( $gateway->api->can_cancel( $order ) ) : ?>
 		<button id="swedbank_pay_cancel"
 				data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"
 				data-order-id="<?php echo esc_html( $order->get_id() ); ?>">
@@ -42,7 +42,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		</button>
 	<?php endif; ?>
 
-	<?php if ( $gateway->core->canRefund( $order->get_id() ) ) : ?>
+	<?php if ( $gateway->api->can_refund( $order ) ) : ?>
 		<button id="swedbank_pay_refund"
 				data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"
 				data-order-id="<?php echo esc_html( $order->get_id() ); ?>">

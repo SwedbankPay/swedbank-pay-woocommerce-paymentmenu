@@ -209,37 +209,14 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 		}
 
 		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
-		// @todo Save order lines for capture / refund
-
-		try {
-			// Finalize payment
-			$transactions = $gateway->core->fetchFinancialTransactionsList( $payment_order_id );
-			if ( count( $transactions ) > 0 ) {
-				foreach ( $transactions as $transaction ) {
-					if ( $transaction->getNumber() == $transaction_number ) {
-						$this->log(
-							sprintf(
-								'Handle Transaction #%s for Order #%s.',
-								$transaction_number,
-								$order->get_id()
-							)
-						);
-						$gateway->core->processFinancialTransaction( $order->get_id(), $transaction );
-					}
-				}
-			} else {
-				// Some Authorize, Sale transaction are not in the list
-				$this->log( sprintf( 'Transaction List is empty. Run failback for Transaction #%s', $transaction_number ) );
-				$gateway->core->finalizePaymentOrder( $payment_order_id );
-			}
-		} catch ( \Exception $e ) {
-			$this->log( sprintf( '[ERROR]: %s', $e->getMessage() ) );
+		$result = $gateway->api->finalize_payment( $order, $payment_order_id, $transaction_number );
+		if ( is_wp_error( $result ) ) {
+			/** @var \WP_Error $result */
+			$this->log( sprintf( '[ERROR]: %s', $result->get_error_message() ) );
 
 			// Remove from queue
 			return false;
 		}
-
-		$this->log( sprintf( 'Transaction #%s has been processed.', $transaction_number ) );
 
 		// Remove from queue
 		return false;

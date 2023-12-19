@@ -8,7 +8,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 ?>
 
-<?php if ( $gateway->core->canCapture( $order->get_id() ) ) : ?>
+<?php if ( $gateway->api->can_capture( $order ) ) : ?>
 	<button id="swedbank_pay_capture"
 			type="button" class="button button-primary"
 			data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</button>
 <?php endif; ?>
 
-<?php if ( $gateway->core->canCancel( $order->get_id() ) ) : ?>
+<?php if ( $gateway->api->can_cancel( $order ) ) : ?>
 	<button id="swedbank_pay_cancel"
 			type="button" class="button button-primary"
 			data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"
@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	</button>
 <?php endif; ?>
 
-<?php if ( $gateway->core->canRefund( $order->get_id() ) ) : ?>
+<?php if ( $gateway->api->can_refund( $order ) ) : ?>
 	<button id="swedbank_pay_refund"
 			type="button" class="button button-primary"
 			data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"

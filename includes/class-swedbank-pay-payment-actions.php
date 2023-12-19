@@ -2,20 +2,20 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
-use Exception;
-use WC_Product;
-use WC_Order;
-use WC_Order_Refund;
+defined( 'ABSPATH' ) || exit;
+
+
 use WC_Order_Item;
+use WC_Order_Item_Coupon;
 use WC_Order_Item_Product;
 use WC_Order_Item_Fee;
 use WC_Order_Item_Shipping;
-use WC_Order_Item_Coupon;
-use SwedbankPay\Core\Log\LogLevel;
-use SwedbankPay\Core\OrderInterface;
-use SwedbankPay\Core\OrderItemInterface;
-
-defined( 'ABSPATH' ) || exit;
+use WC_Order_Refund;
+use WC_Product;
+use WC_Payment_Gateway;
+use WC_Log_Levels;
+use WC_Order;
+use Swedbank_Pay_Payment_Gateway_Checkout;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -25,102 +25,165 @@ defined( 'ABSPATH' ) || exit;
  * @SuppressWarnings(PHPMD.CamelCaseVariableName)
  * @SuppressWarnings(PHPMD.MissingImport)
  * @SuppressWarnings(PHPMD.StaticAccess)
+ * @SuppressWarnings(PHPMD.ExcessiveClassComplexity)
  */
-class Swedbank_Pay_Refund {
-	public function __construct() {
-		add_action( 'woocommerce_create_refund', __CLASS__ . '::save_refund_parameters', 10, 2 );
-		add_action( 'woocommerce_order_refunded', __CLASS__ . '::remove_refund_parameters', 10, 2 );
+class Swedbank_Pay_Payment_Actions {
+	/**
+	 * @var Swedbank_Pay_Payment_Gateway_Checkout|WC_Payment_Gateway
+	 */
+	private $gateway;
+
+	/**
+	 * @param Swedbank_Pay_Payment_Gateway_Checkout|WC_Payment_Gateway $gateway
+	 */
+	public function __construct( $gateway ) {
+		$this->gateway = $gateway;
 	}
 
 	/**
-	 * Save refund parameters to perform refund with specified products and amounts.
+	 * Capture.
 	 *
-	 * @param \WC_Order_Refund $refund
-	 * @param $args
+	 * @param WC_Order $order
+	 *
+	 * @return \WP_Error|array
 	 */
-	public static function save_refund_parameters( $refund, $args ) {
-		if ( ! isset( $args['order_id'] ) ) {
-			return;
+	public function capture_payment( $order ) {
+		$order_lines = swedbank_pay_get_order_lines( $order );
+
+		$captured = $order->get_meta( '_payex_captured_items' );
+		$captured = empty( $captured ) ? array() : (array) $captured;
+		if ( count( $captured ) > 0 ) {
+			// Remove captured items from order items list
+			foreach ( $order_lines as $key => &$order_item ) {
+				foreach ( $captured as &$captured_item ) {
+					if ( $order_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ===
+						 $captured_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE]
+					) {
+						$unit_vat = $order_item[Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT] / $order_item[Swedbank_Pay_Order_Item::FIELD_QTY]; //phpcs:ignore
+						$order_item[Swedbank_Pay_Order_Item::FIELD_QTY] -= $captured_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+						$order_item[Swedbank_Pay_Order_Item::FIELD_AMOUNT] = $order_item[Swedbank_Pay_Order_Item::FIELD_QTY] * $order_item[Swedbank_Pay_Order_Item::FIELD_UNITPRICE]; //phpcs:ignore
+						$order_item[Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT] = $order_item[Swedbank_Pay_Order_Item::FIELD_QTY] * $unit_vat; //phpcs:ignore
+
+						$captured_item[Swedbank_Pay_Order_Item::FIELD_QTY] += $order_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+
+						if ( 0 === $order_item[Swedbank_Pay_Order_Item::FIELD_QTY] ) {
+							unset( $order_lines[$key] );
+						}
+					}
+				}
+			}
 		}
 
-		$order = wc_get_order( $args['order_id'] );
-		if ( ! $order ) {
-			return;
-		}
-
-		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
-			return;
-		}
-
-		// Prevent refund credit memo creation through Callback
-		set_transient( 'sb_refund_block_' . $args['order_id'], $args['order_id'], 5 * MINUTE_IN_SECONDS );
-
-		// Save order items of refund
-		set_transient(
-			'sb_refund_parameters_' . $args['order_id'],
-			$args,
-			5 * MINUTE_IN_SECONDS
+		remove_action(
+			'woocommerce_order_status_changed',
+			Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
+			0
 		);
 
-		// Preserve refund
-		$refund_id = $refund->save();
-		if ( $refund_id ) {
-			// Save refund ID to store transaction_id
-			set_transient(
-				'sb_current_refund_id_' . $args['order_id'],
-				$refund_id,
-				5 * MINUTE_IN_SECONDS
-			);
+		// @todo Log capture items $order_lines
+
+		/** @var \WP_Error|array $result */
+		$result = $this->gateway->api->capture_checkout( $order, $order_lines );
+		if ( is_wp_error( $result ) ) {
+			return $result;
 		}
+
+		// Append to exists list if applicable
+		$current_items = $order->get_meta( '_payex_captured_items' );
+		$current_items = empty( $current_items ) ? array() : (array) $current_items;
+
+		foreach ( $order_lines as $captured_line ) {
+			$is_found = false;
+			foreach ( $current_items as &$current_item ) {
+				if ( $current_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === $captured_line[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
+					// Update
+					$current_item[Swedbank_Pay_Order_Item::FIELD_QTY] += $captured_line[Swedbank_Pay_Order_Item::FIELD_QTY];
+					$is_found = true;
+
+					break;
+				}
+			}
+
+			if ( ! $is_found ) {
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_NAME] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_TYPE] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_CLASS] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_ITEM_URL] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_IMAGE_URL] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_DESCRIPTION] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_UNITPRICE] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_QTY_UNIT] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_AMOUNT] );
+				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT] );
+
+				$current_items[] = $captured_line;
+			}
+		}
+
+		$order->update_meta_data( '_payex_captured_items', $current_items );
+		$order->save_meta_data();
+
+		return $result;
 	}
 
 	/**
-	 * Remove refund parameters.
+	 * Cancel.
 	 *
-	 * @param $order_id
-	 * @param $refund_id
+	 * @param WC_Order $order
 	 *
-	 * @return void
-	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 * @return \WP_Error|array
 	 */
-	public static function remove_refund_parameters( $order_id, $refund_id ) {
-		delete_transient( 'sb_refund_parameters_' . $order_id );
-		delete_transient( 'sb_current_refund_id_' . $order_id );
-		delete_transient( 'sb_refund_block_' . $order_id );
+	public function cancel_payment( $order ) {
+		// @todo Add more cancellation logic
+		remove_action(
+			'woocommerce_order_status_changed',
+			Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
+			0
+		);
+
+		/** @var \WP_Error|array $result */
+		return $this->gateway->api->cancel_checkout( $order );
 	}
 
 	/**
 	 * Perform Refund.
 	 *
-	 * @param \Swedbank_Pay_Payment_Gateway_Checkout $gateway
 	 * @param \WC_Order $order
-	 * @param $amount
 	 * @param $reason
 	 *
-	 * @return array
-	 * @throws \SwedbankPay\Core\Exception
-	 * @throws \Exception
+	 * @return \WP_Error|array
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
 	 * @SuppressWarnings(PHPMD.NPathComplexity)
 	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
 	 */
-	public static function refund( $gateway, $order, $amount, $reason ) {
+	public function refund_payment( $order, $reason ) {
 		$args = get_transient( 'sb_refund_parameters_' . $order->get_id() );
 		if ( empty( $args ) ) {
 			$args = array();
 		}
 
+		// Remove transient if exists
+		delete_transient( 'sb_refund_parameters_' . $order->get_id() );
+
 		$lines = isset( $args['line_items'] ) ? $args['line_items'] : array();
 		$items = array();
 
+		// Order lines
+		$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee' ) );
+
+		// Captured items
+		$captured = $order->get_meta( '_payex_captured_items' );
+		$captured = empty( $captured ) ? array() : (array) $captured;
+
+		// Refunded items
+		$refunded = $order->get_meta( '_payex_refunded_items' );
+		$refunded = empty( $refunded ) ? array() : (array) $refunded;
+
 		// Get captured items if applicable
 		if ( 0 === count( $lines ) ) {
-			$captured = $order->get_meta( '_payex_captured_items' );
-			$captured = empty( $captured ) ? array() : (array) $captured;
-
 			foreach ( $captured as $captured_item ) {
-				$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee', 'coupon' ) );
 				foreach ( $line_items as $item_id => $item ) {
 					// Get reference
 					switch ( $item->get_type() ) {
@@ -152,19 +215,39 @@ class Swedbank_Pay_Refund {
 						continue;
 					}
 
-					if ( $reference === $captured_item[OrderItemInterface::FIELD_REFERENCE] ) {
-						$qty                 = $captured_item[OrderItemInterface::FIELD_QTY];
-						$unit_price          = $order->get_line_subtotal( $item, false, false );
-						$unit_price_with_tax = $order->get_line_subtotal( $item, true, false );
-						$tax                 = $unit_price_with_tax - $unit_price;
+					$unit_price          = $order->get_line_total( $item, false, false );
+					$unit_price_with_tax = $order->get_line_total( $item, true, false );
+					$tax                 = $unit_price_with_tax - $unit_price;
 
-						$lines[ $item_id ] = array(
-							'qty'          => $qty,
-							'refund_total' => $unit_price_with_tax * $qty,
-							'refund_tax'   => array(
-								$tax,
-							),
-						);
+					if ( $reference === $captured_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
+						$qty = $captured_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+
+						// Check refunded items
+						foreach ( $refunded as $refunded_item ) {
+							if ( $reference === $refunded_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
+								$qty -= $refunded_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+
+								break;
+							}
+						}
+
+						if ( 'excl' === get_option( 'woocommerce_tax_display_shop' ) ) {
+							$lines[ $item_id ] = array(
+								'qty'          => $qty,
+								'refund_total' => $unit_price * $qty,
+								'refund_tax'   => array(
+									$tax,
+								),
+							);
+						} else {
+							$lines[ $item_id ] = array(
+								'qty'          => $qty,
+								'refund_total' => $unit_price_with_tax * $qty,
+								'refund_tax'   => array(
+									$tax,
+								),
+							);
+						}
 
 						break;
 					}
@@ -218,7 +301,7 @@ class Swedbank_Pay_Refund {
 		}
 
 		// Verify the captured
-		self::validate_items( $order, $lines );
+		$this->validate_items( $order, $lines );
 
 		// Refund with specific items
 		// Build order items list
@@ -226,7 +309,7 @@ class Swedbank_Pay_Refund {
 			/** @var WC_Order_Item $item */
 			$item = $order->get_item( $item_id );
 			if ( ! $item ) {
-				throw new \Exception( 'Unable to retrieve order item: ' . $item_id );
+				return new \WP_Error( 'error', 'Unable to retrieve order item: ' . $item_id );
 			}
 
 			$product_name = trim( $item->get_name() );
@@ -241,23 +324,24 @@ class Swedbank_Pay_Refund {
 
 			$refund_total  = (float) $line['refund_total'];
 			$refund_tax    = (float) array_shift( $line['refund_tax'] );
-			$tax_percent   = ( $refund_tax > 0 ) ? round( 100 / ( $refund_total / $refund_tax ) ) : 0;
+			$tax_percent   = ( $refund_total > 0 && $refund_tax > 0 ) ?
+				round( 100 / ( $refund_total / $refund_tax ) ) : 0;
+
 			if ( 'excl' === get_option( 'woocommerce_tax_display_shop' ) ) {
 				$unit_price    = $qty > 0 ? ( ( $refund_total + $refund_tax ) / $qty ) : 0;
 				$refund_amount = $refund_total + $refund_tax;
 			} else {
 				$unit_price    = $qty > 0 ? ( $refund_total / $qty ) : 0;
-				$refund_amount = $refund_total;
+				$refund_amount = $refund_total + $refund_tax;
 			}
-
 
 			if ( empty( $refund_total ) ) {
 				// Skip zero items
 				continue;
 			}
 
-			$gateway->core->log(
-				LogLevel::INFO,
+			$this->gateway->api->log(
+				WC_Log_Levels::INFO,
 				sprintf(
 					'Refund item %s. qty: %s, total: %s. tax: %s. amount: %s',
 					$item_id,
@@ -269,14 +353,14 @@ class Swedbank_Pay_Refund {
 			);
 
 			$order_item = array(
-				OrderItemInterface::FIELD_NAME        => $product_name,
-				OrderItemInterface::FIELD_DESCRIPTION => $product_name,
-				OrderItemInterface::FIELD_UNITPRICE   => (int) bcmul( 100, $unit_price ),
-				OrderItemInterface::FIELD_VAT_PERCENT => (int) bcmul( 100, $tax_percent ),
-				OrderItemInterface::FIELD_AMOUNT      => (int) bcmul( 100, $refund_amount ),
-				OrderItemInterface::FIELD_VAT_AMOUNT  => (int) bcmul( 100, $refund_tax ),
-				OrderItemInterface::FIELD_QTY         => $qty,
-				OrderItemInterface::FIELD_QTY_UNIT    => 'pcs',
+				Swedbank_Pay_Order_Item::FIELD_NAME        => $product_name,
+				Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $product_name,
+				Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => (int) bcmul( 100, $unit_price ),
+				Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => (int) bcmul( 100, $tax_percent ),
+				Swedbank_Pay_Order_Item::FIELD_AMOUNT      => (int) bcmul( 100, $refund_amount ),
+				Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => (int) bcmul( 100, $refund_tax ),
+				Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
+				Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
 			);
 
 			switch ( $item->get_type() ) {
@@ -327,24 +411,24 @@ class Swedbank_Pay_Refund {
 					}
 
 					if ( null === parse_url( $image, PHP_URL_SCHEME ) &&
-						mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
+						 mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
 					) {
 						$image = wp_guess_url() . $image;
 					}
 
 					// The field Reference must match the regular expression '[\\w-]*'
-					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = $reference;
-					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_PRODUCT;
-					$order_item[ OrderItemInterface::FIELD_CLASS ]     = $product_class;
-					$order_item[ OrderItemInterface::FIELD_ITEM_URL ]  = $product->get_permalink();
-					$order_item[ OrderItemInterface::FIELD_IMAGE_URL ] = $image;
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = $reference;
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_PRODUCT;
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = $product_class;
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ]  = $product->get_permalink();
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] = $image;
 
 					break;
 				case 'shipping':
 					/** @var WC_Order_Item_Shipping $item */
-					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = 'shipping';
-					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_SHIPPING;
-					$order_item[ OrderItemInterface::FIELD_CLASS ]     = apply_filters(
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = 'shipping';
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_SHIPPING;
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = apply_filters(
 						'swedbank_pay_product_class_shipping',
 						'ProductGroup1',
 						$order
@@ -353,9 +437,9 @@ class Swedbank_Pay_Refund {
 					break;
 				case 'fee':
 					/** @var WC_Order_Item_Fee $item */
-					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = 'fee';
-					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_OTHER;
-					$order_item[ OrderItemInterface::FIELD_CLASS ]     = apply_filters(
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = 'fee';
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_OTHER;
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = apply_filters(
 						'swedbank_pay_product_class_fee',
 						'ProductGroup1',
 						$order
@@ -364,9 +448,9 @@ class Swedbank_Pay_Refund {
 					break;
 				case 'coupon':
 					/** @var WC_Order_Item_Coupon $item */
-					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = 'coupon';
-					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_OTHER;
-					$order_item[ OrderItemInterface::FIELD_CLASS ]     = apply_filters(
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = 'coupon';
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_OTHER;
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = apply_filters(
 						'swedbank_pay_product_class_coupon',
 						'ProductGroup1',
 						$order
@@ -375,9 +459,9 @@ class Swedbank_Pay_Refund {
 					break;
 				default:
 					/** @var WC_Order_Item $item */
-					$order_item[ OrderItemInterface::FIELD_REFERENCE ] = 'other';
-					$order_item[ OrderItemInterface::FIELD_TYPE ]      = OrderItemInterface::TYPE_OTHER;
-					$order_item[ OrderItemInterface::FIELD_CLASS ]     = apply_filters(
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = 'other';
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_OTHER;
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = apply_filters(
 						'swedbank_pay_product_class_other',
 						'ProductGroup1',
 						$order
@@ -389,29 +473,31 @@ class Swedbank_Pay_Refund {
 			$items[] = $order_item;
 		}
 
-		try {
-			$result = $gateway->core->refundCheckout( $order->get_id(), $items );
-			if ( ! isset( $result['reversal'] ) ) {
-				throw new Exception( 'Refund has been failed.' );
-			}
-		} catch ( \Exception $exception ) {
+		remove_action(
+			'woocommerce_order_status_changed',
+			Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
+			0
+		);
+
+		$result = $this->gateway->api->refund_checkout( $order, $items );
+		if ( is_wp_error( $result ) ) {
 			$order->add_order_note(
-				'Refund has been failed. Error: ' . $exception->getMessage()
+				'Refund has been failed. Error: ' . $result->get_error_message()
 			);
 
-			throw $exception;
+			return $result;
 		}
 
-		$transaction_id = $result['reversal']['transaction']['number'];
+		$transaction_id = $result['number'];
 
 		$order->add_order_note(
 			sprintf(
 			/* translators: 1: transaction 2: state 3: reason */                __(
-					'Refund process has been executed from order admin. Transaction ID: %1$s. State: %2$s. Reason: %3$s', //phpcs:ignore
-					'swedbank-pay-woocommerce-checkout' //phpcs:ignore
-				), //phpcs:ignore
+				'Refund process has been executed from order admin. Transaction ID: %1$s. State: %2$s. Reason: %3$s', //phpcs:ignore
+				'swedbank-pay-woocommerce-checkout' //phpcs:ignore
+			), //phpcs:ignore
 				$transaction_id,
-				$result['reversal']['transaction']['state'],
+				$result['state'],
 				$reason
 			)
 		);
@@ -427,7 +513,9 @@ class Swedbank_Pay_Refund {
 			}
 		}
 
-		self::save_refunded_items( $order, $lines );
+		$this->save_refunded_items( $order, $lines );
+
+		// @todo Create Refund, and mark order items refunded.
 
 		return $lines;
 	}
@@ -439,9 +527,9 @@ class Swedbank_Pay_Refund {
 	 * @param array $lines
 	 *
 	 * @return void
-	 * @throws Exception
+	 * @throws \Exception
 	 */
-	private static function validate_items( WC_Order $order, array $lines ) {
+	private function validate_items( WC_Order $order, array $lines ) {
 		// @todo Add `_payex_refunded_items` validation
 		$captured = $order->get_meta( '_payex_captured_items' );
 		$captured = empty( $captured ) ? array() : (array) $captured;
@@ -470,8 +558,8 @@ class Swedbank_Pay_Refund {
 						/** @var WC_Order_Item_Product $item */
 						foreach ( $captured as $order_item ) {
 							$sku = $item->get_product()->get_sku();
-							if ($order_item[OrderItemInterface::FIELD_REFERENCE] === $sku &&
-								$qty > $order_item[OrderItemInterface::FIELD_QTY]
+							if ($order_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === $sku &&
+								$qty > $order_item[Swedbank_Pay_Order_Item::FIELD_QTY]
 							) {
 								throw new \Exception(
 									sprintf(
@@ -488,7 +576,7 @@ class Swedbank_Pay_Refund {
 						/** @var WC_Order_Item_Shipping $item */
 						$isCaptured = false;
 						foreach ( $captured as $order_item ) {
-							if ( $order_item[OrderItemInterface::FIELD_REFERENCE] === 'shipping' ) {
+							if ( $order_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === 'shipping' ) {
 								$isCaptured = true;
 								break;
 							}
@@ -509,7 +597,7 @@ class Swedbank_Pay_Refund {
 						/** @var WC_Order_Item_Fee $item */
 						$isCaptured = false;
 						foreach ( $captured as $order_item ) {
-							if ( $order_item[OrderItemInterface::FIELD_REFERENCE] === 'fee' ) {
+							if ( $order_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === 'fee' ) {
 								$isCaptured = true;
 								break;
 							}
@@ -531,7 +619,7 @@ class Swedbank_Pay_Refund {
 		}
 	}
 
-	private static function save_refunded_items( WC_Order $order, array $lines ) {
+	private function save_refunded_items( WC_Order $order, array $lines ) {
 		$order_lines = [];
 		foreach ( $lines as $item_id => $line ) {
 			$qty = (int) $line['qty'];
@@ -557,8 +645,8 @@ class Swedbank_Pay_Refund {
 			}
 
 			$order_lines[] = array(
-				OrderItemInterface::FIELD_REFERENCE => $reference,
-				OrderItemInterface::FIELD_QTY => $qty
+				Swedbank_Pay_Order_Item::FIELD_REFERENCE => $reference,
+				Swedbank_Pay_Order_Item::FIELD_QTY => $qty
 			);
 		}
 
@@ -568,8 +656,8 @@ class Swedbank_Pay_Refund {
 		if ( count( $current_items ) > 0 ) {
 			foreach ( $current_items as &$current_item ) {
 				foreach ( $order_lines as $order_line ) {
-					if ($order_line[OrderItemInterface::FIELD_REFERENCE] === $current_item[OrderItemInterface::FIELD_REFERENCE]) {
-						$current_item[OrderItemInterface::FIELD_QTY] += $order_line[OrderItemInterface::FIELD_QTY];
+					if ( $order_line[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === $current_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
+						$current_item[Swedbank_Pay_Order_Item::FIELD_QTY] += $order_line[Swedbank_Pay_Order_Item::FIELD_QTY];
 						break;
 					} else {
 						$current_items[] = $order_line;
@@ -587,5 +675,3 @@ class Swedbank_Pay_Refund {
 		$order->save_meta_data();
 	}
 }
-
-new Swedbank_Pay_Refund();
