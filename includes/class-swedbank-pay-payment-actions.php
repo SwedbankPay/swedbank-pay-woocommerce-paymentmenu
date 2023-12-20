@@ -215,9 +215,9 @@ class Swedbank_Pay_Payment_Actions {
 						continue;
 					}
 
-					$unit_price          = $order->get_line_total( $item, false, false );
-					$unit_price_with_tax = $order->get_line_total( $item, true, false );
-					$tax                 = $unit_price_with_tax - $unit_price;
+					$row_price          = $order->get_line_total( $item, false, false );
+					$row_price_with_tax = $order->get_line_total( $item, true, false );
+					$tax                = $row_price_with_tax - $row_price;
 
 					if ( $reference === $captured_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
 						$qty = $captured_item[Swedbank_Pay_Order_Item::FIELD_QTY];
@@ -231,23 +231,13 @@ class Swedbank_Pay_Payment_Actions {
 							}
 						}
 
-						if ( 'excl' === get_option( 'woocommerce_tax_display_shop' ) ) {
-							$lines[ $item_id ] = array(
-								'qty'          => $qty,
-								'refund_total' => $unit_price * $qty,
-								'refund_tax'   => array(
-									$tax,
-								),
-							);
-						} else {
-							$lines[ $item_id ] = array(
-								'qty'          => $qty,
-								'refund_total' => $unit_price_with_tax * $qty,
-								'refund_tax'   => array(
-									$tax,
-								),
-							);
-						}
+						$lines[ $item_id ] = array(
+							'qty'          => $qty,
+							'refund_total' => $row_price,
+							'refund_tax'   => array(
+								$tax,
+							),
+						);
 
 						break;
 					}
