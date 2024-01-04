@@ -336,6 +336,10 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
+		if ( 'processing' === $old_status && 'completed' === $new_status ) {
+			return;
+		}
+
 		$gateway = swedbank_pay_get_payment_method( $order );
 
 		$gateway->api->log(

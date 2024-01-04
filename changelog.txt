@@ -1,3 +1,6 @@
+Version 2.0.2
+* Fixed problem with order status changing from 'processing' to 'completed'
+
 Version 2.0.1
 * Fixed Full Refund button issues
 
