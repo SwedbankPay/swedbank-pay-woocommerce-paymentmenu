@@ -58,6 +58,13 @@ class Swedbank_Pay_Admin {
 			10,
 			3
 		);
+
+		add_filter(
+			'woocommerce_admin_order_should_render_refunds',
+			array( $this, 'disable_refund_if_full_was_ran' ),
+			20,
+			3
+		);
 	}
 
 
@@ -336,7 +343,13 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
+		// Allow to change status from `processing` to `completed`
 		if ( 'processing' === $old_status && 'completed' === $new_status ) {
+			return;
+		}
+
+		// Allow to change status from `pending` to `cancelled`
+		if ( 'pending' === $old_status && 'cancelled' === $new_status ) {
 			return;
 		}
 
@@ -394,7 +407,7 @@ class Swedbank_Pay_Admin {
 					break;
 			}
 		} catch ( \Exception $exception ) {
-			\WC_Admin_Meta_Boxes::add_error( 'Order status change error: ' . $exception->getMessage() );
+			\WC_Admin_Meta_Boxes::add_error( 'Order status change action error: ' . $exception->getMessage() );
 
 			// Rollback status
 			remove_action(
@@ -402,9 +415,14 @@ class Swedbank_Pay_Admin {
 				__CLASS__ . '::order_status_changed_transaction',
 				0
 			);
-			$order->update_status(
-				$old_status,
-				sprintf( 'Rollback status. Error: %s', $exception->getMessage() )
+
+			$order->add_order_note(
+				sprintf(
+					'Order status change "%s->%s" action error: %s',
+					$old_status,
+					$new_status,
+					$exception->getMessage()
+				)
 			);
 		}
 	}
@@ -429,13 +447,6 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
-		// Prevent refund credit memo creation through Callback
-		set_transient(
-			'sb_refund_block_' . $args['order_id'],
-			$args['order_id'],
-			5 * MINUTE_IN_SECONDS
-		);
-
 		// Save order items of refund
 		set_transient(
 			'sb_refund_parameters_' . $args['order_id'],
@@ -444,15 +455,7 @@ class Swedbank_Pay_Admin {
 		);
 
 		// Preserve refund
-		$refund_id = $refund->save();
-		if ( $refund_id ) {
-			// Save refund ID to store transaction_id
-			set_transient(
-				'sb_current_refund_id_' . $args['order_id'],
-				$refund_id,
-				5 * MINUTE_IN_SECONDS
-			);
-		}
+		$refund->save();
 	}
 
 	/**
@@ -466,8 +469,33 @@ class Swedbank_Pay_Admin {
 	 */
 	public function remove_refund_parameters( $order_id, $refund_id ) {
 		delete_transient( 'sb_refund_parameters_' . $order_id );
-		delete_transient( 'sb_current_refund_id_' . $order_id );
-		delete_transient( 'sb_refund_block_' . $order_id );
+	}
+
+	/**
+	 * Controls native Refund button.
+	 *
+	 * @param bool $should_render
+	 * @param mixed $order_id
+	 * @param WC_Order $order
+	 *
+	 * @return bool
+	 */
+	public function order_should_render_refunds( $should_render, $order_id, $order ) {
+		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+			return $should_render;
+		}
+
+		$gateway = swedbank_pay_get_payment_method( $order );
+		if ( ! $gateway ) {
+			return $should_render;
+		}
+
+		$can_refund = $gateway->api->can_refund( $order );
+		if ( ! $can_refund ) {
+			return false;
+		}
+
+		return $should_render;
 	}
 
 	/**
@@ -479,7 +507,13 @@ class Swedbank_Pay_Admin {
 	 *
 	 * @return bool
 	 */
-	public function order_should_render_refunds( $should_render, $order_id, $order ) {
+	public function disable_refund_if_full_was_ran( $should_render, $order_id, $order ) {
+		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+			return $should_render;
+		}
+
+		return false;
+
 		$current_items = $order->get_meta( '_payex_refunded_items' );
 		$current_items = empty( $current_items ) ? array() : (array) $current_items;
 		if ( count( $current_items ) > 0 ) {

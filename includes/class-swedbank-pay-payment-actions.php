@@ -492,17 +492,6 @@ class Swedbank_Pay_Payment_Actions {
 			)
 		);
 
-		// Add transaction id
-		$refund_id = get_transient( 'sb_current_refund_id_' . $order->get_id() );
-		if ( $refund_id && $transaction_id ) {
-			// Save transaction id
-			$refund = new WC_Order_Refund( $refund_id );
-			if ( $refund->get_id() ) {
-				$refund->update_meta_data( '_transaction_id', $transaction_id );
-				$refund->save();
-			}
-		}
-
 		$this->save_refunded_items( $order, $lines );
 
 		// @todo Create Refund, and mark order items refunded.

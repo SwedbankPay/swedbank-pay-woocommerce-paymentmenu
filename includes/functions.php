@@ -253,6 +253,32 @@ function swedbank_pay_get_order_lines( WC_Order  $order ) {
 }
 
 /**
+ * @param WC_Order $order
+ * @param float $amount
+ *
+ * @return WC_Order_Refund|null
+ */
+function swedbank_pay_get_last_refund( WC_Order $order, $amount ) {
+	$refunds = $order->get_refunds();
+	foreach ($refunds as $refund) {
+		/** @var WC_Order_Refund $refund */
+		if ( round( $amount, 2 ) == round( $refund->get_amount(), 2 ) ) {
+			// Check the creation time
+			$created_at = $refund->get_date_created();
+			if ( ! $created_at ) {
+				return $refund;
+			}
+
+			if ( $created_at > ( new \WC_DateTime( '-10 minutes' ) ) && $created_at < ( new \WC_DateTime('now') ) ) {
+				return $refund;
+			}
+		}
+	}
+
+	return null;
+}
+
+/**
  * Generate Payee Reference for Order.
  *
  * @param mixed $orderId

@@ -601,28 +601,56 @@ class Swedbank_Pay_Api {
 
 				// Update order status
 				if ( $is_full_refund ) {
+					remove_action(
+						'woocommerce_order_status_changed',
+						__CLASS__ . '::order_status_changed_transaction',
+						0
+					);
+
+					// Prevent refund creation
+					remove_action(
+						'woocommerce_order_status_refunded',
+						'wc_order_fully_refunded'
+					);
+
+					$message = sprintf(
+						'Payment has been refunded. Transaction: %s. Amount: %s',
+						$transaction_id,
+						$transaction['amount'] / 100
+					);
+
 					$order->update_status(
 						'refunded',
-						sprintf(
-							'Payment has been refunded. Transaction: %s. Amount: %s',
-							$transaction_id,
-							$transaction['amount'] / 100
-						)
+						$message
 					);
 				} else {
 					$remaining_amount = isset( $payment_order['remainingReversalAmount'] )
 						? $payment_order['remainingReversalAmount'] / 100 : 0;
 
-					$order->add_order_note(
-						sprintf(
-							'Payment has been partially refunded: Transaction: %s. Amount: %s. Remaining amount: %s', //phpcs:ignore
-							$transaction_id,
-							$transaction['amount'] / 100,
-							$remaining_amount
-						)
+					$message = sprintf(
+						'Payment has been partially refunded: Transaction: %s. Amount: %s. Remaining amount: %s', //phpcs:ignore
+						$transaction_id,
+						$transaction['amount'] / 100,
+						$remaining_amount
 					);
 
+					$order->add_order_note(
+						$message
+					);
+				}
+
+				if ( ! swedbank_pay_get_last_refund( $order, $transaction['amount'] / 100 ) ) {
 					// @todo Create Credit Memo
+					// @todo Prent duplicated Credit Memo creation (by backend, by admin, by transaction callback)
+					wc_create_refund(
+						array(
+							'order_id' => $order->get_id(),
+							'amount' => $transaction['amount'] / 100,
+							'reason' => $message,
+							'refund_payment' => false,
+							'restock_items' => false
+						)
+					);
 				}
 
 				break;
@@ -1303,6 +1331,12 @@ class Swedbank_Pay_Api {
 					strpos( $problem['name'], 'WorkPhoneNumber' ) !== false
 				) {
 					$message = 'Your phone number format is wrong. Please input with country code, for example like this +46707777777'; //phpcs:ignore
+
+					break;
+				}
+
+				if ( strpos( $problem['name'], 'StreetAddress' ) !== false ) {
+					$message = 'Street address can have a max length of 40 and only contain normal characters';
 
 					break;
 				}

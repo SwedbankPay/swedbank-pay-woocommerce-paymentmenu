@@ -1,3 +1,11 @@
+Version 3.0.0
+* Implemented interactive payment status checker on the "thank you" page
+* Added "International Telephone Input" extension (disabled by default)
+* Don't roll back order status if any error is happened
+* Fixed problem with order status changing from 'pending' to 'cancelled'
+* Special validation for StreetAddress field
+* Prevent duplicated WC refund creation
+
 Version 2.0.2
 * Fixed problem with order status changing from 'processing' to 'completed'
 
