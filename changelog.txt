@@ -1,3 +1,6 @@
+Version 3.1.1
+* Fixed: Don't perform online refund when manual refund is clicked
+
 Version 3.1.0
 * Removed Full refund button
 * Improved refund behavior of Refund button

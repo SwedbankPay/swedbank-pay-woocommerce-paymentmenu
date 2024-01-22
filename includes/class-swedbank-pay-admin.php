@@ -51,6 +51,7 @@ class Swedbank_Pay_Admin {
 		// Refund actions
 		add_action( 'woocommerce_create_refund', array( $this, 'save_refund_parameters' ), 10, 2 );
 		add_action( 'woocommerce_order_refunded', array( $this, 'remove_refund_parameters' ), 10, 2 );
+		add_action( 'woocommerce_order_fully_refunded', array( $this, 'prevent_online_refund' ), 10, 2 );
 
 		add_filter(
 			'woocommerce_admin_order_should_render_refunds',
@@ -67,6 +68,18 @@ class Swedbank_Pay_Admin {
 		);
 	}
 
+	public function prevent_online_refund( $order_id, $refund_id ) {
+		$order = wc_get_order( $order_id );
+		$payment_method = $order->get_payment_method();
+		if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+			// Prevent online refund when order status changed to "refunded"
+			set_transient(
+				'sb_refund_prevent_online_refund_' . $order_id,
+				$refund_id,
+				5 * MINUTE_IN_SECONDS
+			);
+		}
+	}
 
 	/**
 	 * Allow processing/completed statuses for capture
@@ -169,9 +182,6 @@ class Swedbank_Pay_Admin {
 	 * @param WC_Order $order
 	 */
 	public static function add_action_buttons( $order ) {
-		//$ddd = $order->get_meta( '_payex_refunded_items' );
-		//var_dump($ddd); exit();
-
 		if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order ) ) {
 			// Buttons are available for orders only
 			return;
@@ -397,6 +407,13 @@ class Swedbank_Pay_Admin {
 
 					break;
 				case 'refunded':
+					$refund_id = get_transient( 'sb_refund_prevent_online_refund_' . $order_id );
+					if ( ! empty( $refund_id ) ) {
+						delete_transient( 'sb_refund_prevent_online_refund_' . $order_id );
+
+						return;
+					}
+
 					$gateway->api->log( WC_Log_Levels::INFO, 'Try to refund...' );
 					$lines = swedbank_pay_get_available_line_items_for_refund( $order );
 					$result = $gateway->payment_actions_handler->refund_payment(
