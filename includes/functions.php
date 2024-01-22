@@ -97,7 +97,7 @@ function swedbank_pay_get_order( $paymentOrderId ) {
  *
  * @param WC_Order $order
  *
- * @return null|\WC_Payment_Gateway
+ * @return null|\WC_Payment_Gateway|\Swedbank_Pay_Payment_Gateway_Checkout
  */
 function swedbank_pay_get_payment_method( WC_Order $order ) {
 	// Get Payment Gateway
@@ -250,6 +250,89 @@ function swedbank_pay_get_order_lines( WC_Order  $order ) {
 	}
 
 	return $items;
+}
+
+function swedbank_pay_get_available_line_items_for_refund( WC_Order $order ) {
+	// Captured items
+	$captured = $order->get_meta( '_payex_captured_items' );
+	$captured = empty( $captured ) ? array() : (array) $captured;
+
+	// Refunded items
+	$refunded = $order->get_meta( '_payex_refunded_items' );
+	$refunded = empty( $refunded ) ? array() : (array) $refunded;
+
+	// Order lines
+	$lines = array();
+	$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee' ) );
+	foreach ( $captured as $captured_item ) {
+		foreach ( $line_items as $item_id => $item ) {
+			// Get reference
+			switch ( $item->get_type() ) {
+				case 'line_item':
+					$reference = trim(
+						str_replace(
+							array( ' ', '.', ',' ),
+							'-',
+							$item->get_product()->get_sku()
+						)
+					);
+
+					break;
+				case 'fee':
+					$reference = 'fee';
+					break;
+				case 'shipping':
+					$reference = 'shipping';
+					break;
+				case 'coupon':
+					$reference = 'discount';
+					break;
+				default:
+					$reference = null;
+					break;
+			}
+
+			if ( ! $reference ) {
+				continue;
+			}
+
+			$ordered_qty        = $item->get_quantity();
+			$row_price          = $order->get_line_total( $item, false, false );
+			$row_price_with_tax = $order->get_line_total( $item, true, false );
+			$row_tax            = $row_price_with_tax - $row_price;
+
+			if ( $reference === $captured_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
+				$qty = $captured_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+
+				// Exclude refunded items
+				foreach ( $refunded as $refunded_item ) {
+					if ( $reference === $refunded_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
+						$qty -= $refunded_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+
+						break;
+					}
+				}
+
+				$lines[ $item_id ] = array(
+					'qty'          => $qty,
+					'refund_total' => $row_price / $ordered_qty * $qty,
+					'refund_tax'   => array(),
+				);
+
+				// Add tax column
+				$order_taxes = wc_tax_enabled() ? $order->get_taxes() : array();
+				if ( count( $order_taxes ) > 0 ) {
+					/** @var WC_Order_Item_Tax $tax */
+					$tax_item = reset( $order_taxes );
+					$lines[ $item_id ]['refund_tax'][ $tax_item->get_rate_id() ] = $row_tax / $ordered_qty * $qty;
+				}
+
+				break;
+			}
+		}
+	}
+
+	return $lines;
 }
 
 /**

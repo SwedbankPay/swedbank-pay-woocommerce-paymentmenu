@@ -598,7 +598,16 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		// It uses transient `sb_refund_parameters_` to get items
-		$result = $this->payment_actions_handler->refund_payment( $order, $reason );
+		$args = get_transient( 'sb_refund_parameters_' . $order->get_id() );
+		if ( empty( $args ) ) {
+			$args = array();
+		}
+		$lines = isset( $args['line_items'] ) ? $args['line_items'] : swedbank_pay_get_available_line_items_for_refund( $order );
+
+		// Remove transient if exists
+		delete_transient( 'sb_refund_parameters_' . $order->get_id() );
+
+		$result = $this->payment_actions_handler->refund_payment( $order, $lines, $reason, false );
 		if ( is_wp_error( $result ) ) {
 			return new WP_Error( 'refund', $result->get_error_message() );
 		}

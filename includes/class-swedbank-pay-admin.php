@@ -169,6 +169,9 @@ class Swedbank_Pay_Admin {
 	 * @param WC_Order $order
 	 */
 	public static function add_action_buttons( $order ) {
+		//$ddd = $order->get_meta( '_payex_refunded_items' );
+		//var_dump($ddd); exit();
+
 		if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order ) ) {
 			// Buttons are available for orders only
 			return;
@@ -316,7 +319,9 @@ class Swedbank_Pay_Admin {
 		// Do refund
 		$result = $gateway->payment_actions_handler->refund_payment(
 			$order,
-			__( 'Full refund.', 'swedbank-pay-woocommerce-checkout' )
+			swedbank_pay_get_available_line_items_for_refund( $order ),
+			__( 'Full refund.', 'swedbank-pay-woocommerce-checkout' ),
+			true
 		);
 		if ( is_wp_error( $result ) ) {
 			/** @var \WP_Error $result */
@@ -324,6 +329,8 @@ class Swedbank_Pay_Admin {
 
 			return;
 		}
+
+		// @todo Create credit memo with order lines
 
 		// Refund will be created on transaction processing
 		wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-woocommerce-checkout' ) );
@@ -391,9 +398,12 @@ class Swedbank_Pay_Admin {
 					break;
 				case 'refunded':
 					$gateway->api->log( WC_Log_Levels::INFO, 'Try to refund...' );
+					$lines = swedbank_pay_get_available_line_items_for_refund( $order );
 					$result = $gateway->payment_actions_handler->refund_payment(
 						$order,
-						__( 'Order status changed to refunded.', 'swedbank-pay-woocommerce-checkout' )
+						$lines,
+						__( 'Order status changed to refunded.', 'swedbank-pay-woocommerce-checkout' ),
+						true
 					);
 					if ( is_wp_error( $result ) ) {
 						/** @var \WP_Error $result */
@@ -512,12 +522,12 @@ class Swedbank_Pay_Admin {
 			return $should_render;
 		}
 
-		return false;
+		//return false;
 
 		$current_items = $order->get_meta( '_payex_refunded_items' );
 		$current_items = empty( $current_items ) ? array() : (array) $current_items;
 		if ( count( $current_items ) > 0 ) {
-			return false;
+			//return false;
 		}
 
 		return $should_render;

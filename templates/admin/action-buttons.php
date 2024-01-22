@@ -25,12 +25,3 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<?php _e( 'Cancel Payment', 'swedbank-pay-woocommerce-checkout' ); ?>
 	</button>
 <?php endif; ?>
-
-<?php if ( $gateway->api->can_refund( $order ) ) : ?>
-	<button id="swedbank_pay_refund"
-			type="button" class="button button-primary"
-			data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"
-			data-order-id="<?php echo esc_html( $order->get_id() ); ?>">
-		<?php _e( 'Full refund', 'swedbank-pay-woocommerce-checkout' ); ?>
-	</button>
-<?php endif; ?>

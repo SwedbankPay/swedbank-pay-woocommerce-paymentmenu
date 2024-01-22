@@ -150,6 +150,8 @@ class Swedbank_Pay_Payment_Actions {
 	 * Perform Refund.
 	 *
 	 * @param \WC_Order $order
+	 * @param array $lines
+	 * @param array $items
 	 * @param $reason
 	 *
 	 * @return \WP_Error|array
@@ -158,143 +160,22 @@ class Swedbank_Pay_Payment_Actions {
 	 * @SuppressWarnings(PHPMD.NPathComplexity)
 	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
 	 */
-	public function refund_payment( $order, $reason ) {
-		$args = get_transient( 'sb_refund_parameters_' . $order->get_id() );
-		if ( empty( $args ) ) {
-			$args = array();
-		}
-
-		// Remove transient if exists
-		delete_transient( 'sb_refund_parameters_' . $order->get_id() );
-
-		$lines = isset( $args['line_items'] ) ? $args['line_items'] : array();
-		$items = array();
-
-		// Order lines
-		$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee' ) );
-
-		// Captured items
-		$captured = $order->get_meta( '_payex_captured_items' );
-		$captured = empty( $captured ) ? array() : (array) $captured;
-
-		// Refunded items
-		$refunded = $order->get_meta( '_payex_refunded_items' );
-		$refunded = empty( $refunded ) ? array() : (array) $refunded;
-
-		// Get captured items if applicable
-		if ( 0 === count( $lines ) ) {
-			foreach ( $captured as $captured_item ) {
-				foreach ( $line_items as $item_id => $item ) {
-					// Get reference
-					switch ( $item->get_type() ) {
-						case 'line_item':
-							$reference = trim(
-								str_replace(
-									array( ' ', '.', ',' ),
-									'-',
-									$item->get_product()->get_sku()
-								)
-							);
-
-							break;
-						case 'fee':
-							$reference = 'fee';
-							break;
-						case 'shipping':
-							$reference = 'shipping';
-							break;
-						case 'coupon':
-							$reference = 'discount';
-							break;
-						default:
-							$reference = null;
-							break;
-					}
-
-					if ( ! $reference ) {
-						continue;
-					}
-
-					$row_price          = $order->get_line_total( $item, false, false );
-					$row_price_with_tax = $order->get_line_total( $item, true, false );
-					$tax                = $row_price_with_tax - $row_price;
-
-					if ( $reference === $captured_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
-						$qty = $captured_item[Swedbank_Pay_Order_Item::FIELD_QTY];
-
-						// Check refunded items
-						foreach ( $refunded as $refunded_item ) {
-							if ( $reference === $refunded_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
-								$qty -= $refunded_item[Swedbank_Pay_Order_Item::FIELD_QTY];
-
-								break;
-							}
-						}
-
-						$lines[ $item_id ] = array(
-							'qty'          => $qty,
-							'refund_total' => $row_price,
-							'refund_tax'   => array(
-								$tax,
-							),
-						);
-
-						break;
-					}
-				}
-			}
-		}
-
-		// Get order lines
-		if ( 0 === count( $lines ) ) {
-			// @todo Use swedbank_pay_get_order_lines()
-			$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee', 'coupon' ) );
-			foreach ( $line_items as $item_id => $item ) {
-				switch ( $item->get_type() ) {
-					case 'line_item':
-						/** @var WC_Order_Item_Product $item */
-						// Use subtotal to get amount without discounts
-						$lines[ $item_id ] = array(
-							'qty'          => $item->get_quantity(),
-							'refund_total' => $item->get_subtotal(),
-							'refund_tax'   => array(
-								$item->get_subtotal_tax(),
-							),
-						);
-
-						break;
-					case 'fee':
-					case 'shipping':
-						/** @var WC_Order_Item_Fee|WC_Order_Item_Shipping $item */
-						$lines[ $item_id ] = array(
-							'qty'          => $item->get_quantity(),
-							'refund_total' => $item->get_total(),
-							'refund_tax'   => array(
-								$item->get_total_tax(),
-							),
-						);
-
-						break;
-					case 'coupon':
-						/** @var WC_Order_Item_Coupon $item */
-						$lines[ $item_id ] = array(
-							'qty'          => $item->get_quantity(),
-							'refund_total' => -1 * $item->get_discount(),
-							'refund_tax'   => array(
-								-1 * $item->get_discount_tax(),
-							),
-						);
-
-						break;
-				}
-			}
-		}
-
+	public function refund_payment( $order, $lines, $reason, $create_credit_memo ) {
 		// Verify the captured
 		$this->validate_items( $order, $lines );
 
+		// Filter items
+		foreach ( $lines as $item_id => $line ) {
+			$qty = (int) $line['qty'];
+			$refund_total  = (float) $line['refund_total'];
+			if ( $qty === 0 || $refund_total <= 0.01 ) {
+				unset( $lines[$item_id] );
+			}
+		}
+
 		// Refund with specific items
 		// Build order items list
+		$items = array();
 		foreach ( $lines as $item_id => $line ) {
 			/** @var WC_Order_Item $item */
 			$item = $order->get_item( $item_id );
@@ -312,8 +193,12 @@ class Swedbank_Pay_Payment_Actions {
 				$qty = 1;
 			}
 
+			$refund_tax = 0;
+			foreach ( $line['refund_tax'] as $tax_id => $refund_tax_value ) {
+				$refund_tax += (float) $refund_tax_value;
+			}
+
 			$refund_total  = (float) $line['refund_total'];
-			$refund_tax    = (float) array_shift( $line['refund_tax'] );
 			$tax_percent   = ( $refund_total > 0 && $refund_tax > 0 ) ?
 				round( 100 / ( $refund_total / $refund_tax ) ) : 0;
 
@@ -494,9 +379,34 @@ class Swedbank_Pay_Payment_Actions {
 
 		$this->save_refunded_items( $order, $lines );
 
-		// @todo Create Refund, and mark order items refunded.
+		// Create Credit Memo
+		if ( $create_credit_memo ) {
+			$amount = 0;
+			foreach ( $items as $item ) {
+				$amount += ( $item[Swedbank_Pay_Order_Item::FIELD_AMOUNT] / 100 );
+			}
 
-		return $lines;
+			$refund = wc_create_refund(
+				array(
+					'order_id'       => $order->get_id(),
+					'amount'         => $amount,
+					'reason'         => $reason,
+					'line_items'     => $lines,
+					'refund_payment' => false,
+					'restock_items'  => true
+				)
+			);
+			if ( is_wp_error( $refund ) ) {
+				$order->add_order_note(
+					sprintf(
+						'Refund could not be created. Error: %s',
+						join('; ', $refund->get_error_messages() )
+					)
+				);
+			}
+		}
+
+		return null;
 	}
 
 	/**

@@ -1,3 +1,8 @@
+Version 3.1.0
+* Removed Full refund button
+* Improved refund behavior of Refund button
+* Improved refund using "refunded" order status changing
+
 Version 3.0.0
 * Implemented interactive payment status checker on the "thank you" page
 * Added "International Telephone Input" extension (disabled by default)

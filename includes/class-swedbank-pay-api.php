@@ -639,20 +639,8 @@ class Swedbank_Pay_Api {
 					);
 				}
 
-				if ( ! swedbank_pay_get_last_refund( $order, $transaction['amount'] / 100 ) ) {
-					// @todo Create Credit Memo
-					// @todo Prent duplicated Credit Memo creation (by backend, by admin, by transaction callback)
-					wc_create_refund(
-						array(
-							'order_id' => $order->get_id(),
-							'amount' => $transaction['amount'] / 100,
-							'reason' => $message,
-							'refund_payment' => false,
-							'restock_items' => false
-						)
-					);
-				}
-
+				// @todo Create Credit Memo
+				// @todo Prent duplicated Credit Memo creation (by backend, by admin, by transaction callback)
 				break;
 			default:
 				return new \WP_Error( sprintf('Error: Unknown type %s', $transaction['type']) );
