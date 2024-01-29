@@ -590,7 +590,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		// Full Refund
 		if ( is_null( $amount ) ) {
-			$amount = $order->get_total();
+			return new WP_Error( 'refund', __( 'Amount must be specified.', 'swedbank-pay-woocommerce-checkout' ) );
 		}
 
 		if ( 0 === absint( $amount ) ) {
@@ -602,15 +602,42 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		if ( empty( $args ) ) {
 			$args = array();
 		}
-		$lines = isset( $args['line_items'] ) ? $args['line_items'] : swedbank_pay_get_available_line_items_for_refund( $order );
+		$lines = isset( $args['line_items'] ) ? $args['line_items'] : array();
 
 		// Remove transient if exists
 		delete_transient( 'sb_refund_parameters_' . $order->get_id() );
 
-		$result = $this->payment_actions_handler->refund_payment( $order, $lines, $reason, false );
+		$refundByAmount = true;
+		if ( count( $lines ) > 0 ) {
+			foreach ( $lines as $line ) {
+				if ( $line['qty'] >= 0.1 ) {
+					$refundByAmount = false;
+					break;
+				}
+			}
+		}
+
+		if ( ! $refundByAmount ) {
+			// Refund by items
+			$result = $this->payment_actions_handler->refund_payment( $order, $lines, $reason, false );
+			if ( is_wp_error( $result ) ) {
+				return new WP_Error( 'refund', $result->get_error_message() );
+			}
+
+			$order->update_meta_data( '_sb_refund_mode', 'items' );
+			$order->save_meta_data();
+
+			return true;
+		}
+
+		// Refund by amount
+		$result = $this->payment_actions_handler->refund_payment_amount( $order, $amount );
 		if ( is_wp_error( $result ) ) {
 			return new WP_Error( 'refund', $result->get_error_message() );
 		}
+
+		$order->update_meta_data( '_sb_refund_mode', 'amount' );
+		$order->save_meta_data();
 
 		return true;
 	}

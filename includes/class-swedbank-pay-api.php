@@ -1030,6 +1030,80 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Refund amount for an order
+	 *
+	 * @param WC_Order $order The order object
+	 * @param float $amount The amount to refund
+	 *
+	 * @return TransactionObject|\WP_Error Returns the refunded transaction object or WP_Error on failure
+	 * @throws ClientException
+	 */
+	public function refund_amount( WC_Order $order, $amount ) {
+		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
+		if ( empty( $payment_order_id ) ) {
+			return new \WP_Error( 0, 'Unable to get the payment order ID' );
+		}
+
+
+		$payee_refrence = apply_filters(
+			'swedbank_pay_payee_reference',
+			swedbank_pay_generate_payee_reference( $order->get_id() )
+		);
+
+		$transaction_data = new TransactionData();
+		$transaction_data
+			->setAmount( round( $amount * 100 ) )
+			->setVatAmount( 0 )
+			->setDescription( sprintf( 'Refund for Order #%s. Amount: %s', $order->get_order_number(), $amount ) ) //phpcs:ignore
+			->setPayeeReference( $payee_refrence )
+			->setReceiptReference( $payee_refrence );
+
+		$transaction = new TransactionObject();
+		$transaction->setTransaction( $transaction_data );
+
+		$requestService = new TransactionReversalV3( $transaction );
+		$requestService->setClient( $this->get_client() )
+					   ->setPaymentOrderId( $payment_order_id );
+
+		try {
+			/** @var ResponseServiceInterface $responseService */
+			$responseService = $requestService->send();
+
+			$this->log(
+				WC_Log_Levels::DEBUG,
+				$requestService->getClient()->getDebugInfo()
+			);
+
+			$result = $responseService->getResponseData();
+
+			// Save transaction
+			$transaction = $result['reversal']['transaction'];
+
+			$gateway = swedbank_pay_get_payment_method( $order );
+			$gateway->transactions->import( $transaction, $order->get_id() );
+
+			$this->process_transaction( $order, $transaction );
+
+			return $transaction;
+		} catch (ClientException $e) {
+			$this->log(
+				WC_Log_Levels::DEBUG,
+				$requestService->getClient()->getDebugInfo()
+			);
+
+			$this->log(
+				WC_Log_Levels::DEBUG,
+				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
+			);
+
+			return new \WP_Error(
+				'refund',
+				$this->format_error_message( $requestService->getClient()->getResponseBody() )
+			);
+		}
+	}
+
+	/**
 	 * Refund Checkout.
 	 *
 	 * @param WC_Order $order
@@ -1139,7 +1213,6 @@ class Swedbank_Pay_Api {
 			);
 		}
 	}
-
 
 	/**
 	 * Log a message.

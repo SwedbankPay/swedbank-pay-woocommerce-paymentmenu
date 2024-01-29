@@ -43,6 +43,7 @@ class Swedbank_Pay_Admin {
 		add_action( 'wp_ajax_swedbank_pay_capture', array( $this, 'ajax_swedbank_pay_capture' ) );
 		add_action( 'wp_ajax_swedbank_pay_cancel', array( $this, 'ajax_swedbank_pay_cancel' ) );
 		add_action( 'wp_ajax_swedbank_pay_refund', array( $this, 'ajax_swedbank_pay_refund' ) );
+		add_action( 'wp_ajax_swedbank_pay_get_refund_mode', array( $this, 'ajax_swedbank_pay_get_refund_mode' ) );
 
 		// Remove "Order fully refunded" hook. See wc_order_fully_refunded()
 		remove_action( 'woocommerce_order_status_refunded', 'wc_order_fully_refunded' );
@@ -57,13 +58,6 @@ class Swedbank_Pay_Admin {
 			'woocommerce_admin_order_should_render_refunds',
 			array( $this, 'order_should_render_refunds' ),
 			10,
-			3
-		);
-
-		add_filter(
-			'woocommerce_admin_order_should_render_refunds',
-			array( $this, 'disable_refund_if_full_was_ran' ),
-			20,
 			3
 		);
 	}
@@ -217,6 +211,8 @@ class Swedbank_Pay_Admin {
 	 * @return void
 	 */
 	public static function admin_enqueue_scripts( $hook ) {
+		global $post_id;
+
 		$hook_to_check = swedbank_pay_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'post.php';
 		if ( $hook_to_check === $hook ) {
 			// Scripts
@@ -230,6 +226,8 @@ class Swedbank_Pay_Admin {
 			$translation_array = array(
 				'ajax_url'  => admin_url( 'admin-ajax.php' ),
 				'text_wait' => __( 'Please wait...', 'swedbank-pay-woocommerce-checkout' ),
+				'nonce'     => wp_create_nonce( 'swedbank_pay' ),
+				'order_id'  => $post_id
 			);
 			wp_localize_script( 'swedbank-pay-admin-js', 'SwedbankPay_Admin', $translation_array );
 
@@ -344,6 +342,66 @@ class Swedbank_Pay_Admin {
 
 		// Refund will be created on transaction processing
 		wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-woocommerce-checkout' ) );
+	}
+
+	/**
+	 * Retrieves the refund mode.
+	 *
+	 * This method checks the refund mode for a given Swedbank Pay transaction based on the provided order ID.
+	 * The refund mode determines how the refund amount should be calculated and processed.
+	 *
+	 * @return void
+	 *
+	 * @throws \WP_Error If the Swedbank Pay payment gateway is not available.
+	 * @global array $_REQUEST The request data.
+	 */
+	public function ajax_swedbank_pay_get_refund_mode() {
+		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
+		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
+			exit( 'No naughty business' );
+		}
+
+		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
+		$order    = wc_get_order( $order_id );
+		$gateway  = swedbank_pay_get_payment_method( $order );
+		if ( ! $gateway ) {
+			wp_send_json_success(
+				array(
+					'mode' => 'default'
+				)
+			);
+
+			return;
+		}
+
+		// If taxes are enabled, using this refund amount can cause issues due to taxes not being refunded also.
+		// The refunds should be added to the line items, not the order as a whole.
+		if ( wc_tax_enabled() ) {
+			wp_send_json_success(
+				array(
+					'mode' => 'items'
+				)
+			);
+
+			return;
+		}
+
+		$mode = $order->get_meta( '_sb_refund_mode' );
+		if ( empty( $mode ) ) {
+			wp_send_json_success(
+				array(
+					'mode' => 'default'
+				)
+			);
+
+			return;
+		}
+
+		wp_send_json_success(
+			array(
+				'mode' => $mode
+			)
+		);
 	}
 
 	/**
@@ -520,31 +578,6 @@ class Swedbank_Pay_Admin {
 		$can_refund = $gateway->api->can_refund( $order );
 		if ( ! $can_refund ) {
 			return false;
-		}
-
-		return $should_render;
-	}
-
-	/**
-	 * Disable native Refund button if the order has `_payex_refunded_items` meta.
-	 *
-	 * @param bool $should_render
-	 * @param mixed $order_id
-	 * @param WC_Order $order
-	 *
-	 * @return bool
-	 */
-	public function disable_refund_if_full_was_ran( $should_render, $order_id, $order ) {
-		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
-			return $should_render;
-		}
-
-		//return false;
-
-		$current_items = $order->get_meta( '_payex_refunded_items' );
-		$current_items = empty( $current_items ) ? array() : (array) $current_items;
-		if ( count( $current_items ) > 0 ) {
-			//return false;
 		}
 
 		return $should_render;

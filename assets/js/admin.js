@@ -1,4 +1,34 @@
 jQuery(document).ready(function ($) {
+    $.ajax( {
+        url: SwedbankPay_Admin.ajax_url,
+        data: {
+            action: 'swedbank_pay_get_refund_mode',
+            nonce: SwedbankPay_Admin.nonce,
+            order_id: SwedbankPay_Admin.order_id
+        },
+        success: function ( response ) {
+            if ( ! response.success ) {
+                alert( response.data );
+                return false;
+            }
+
+            switch (response.data['mode']) {
+                case 'items':
+                    $('.refund_line_total.wc_input_price').prop('readonly', true);
+                    $('.refund_line_tax.wc_input_price').prop('readonly', true);
+                    $('#refund_amount').prop('readonly', true);
+
+                    break;
+                case 'amount':
+                    $('#refund_amount').prop('readonly', false);
+                    $('.refund_order_item_qty').prop('readonly', true).val(0);
+                    $('.refund_line_total.wc_input_price').prop('readonly', true);
+                    $('.refund_line_tax.wc_input_price').prop('readonly', true);
+                    break;
+            }
+        }
+    } );
+
     $( document ).on( 'click', '#swedbank_pay_capture', function (e) {
         e.preventDefault();
 
