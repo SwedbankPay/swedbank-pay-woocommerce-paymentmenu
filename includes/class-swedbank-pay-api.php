@@ -244,12 +244,12 @@ class Swedbank_Pay_Api {
 
 			$this->log(
 				WC_Log_Levels::DEBUG,
-				sprintf('%s: API Exception: %s', __METHOD__, $e->getMessage())
+				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
 			return new \WP_Error(
 				400,
-				$this->format_error_message( $purchaseRequest->getClient()->getResponseBody() )
+				$this->format_error_message( $purchaseRequest->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -963,7 +963,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'capture',
-				$this->format_error_message( $requestService->getClient()->getResponseBody() )
+				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -1024,7 +1024,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'cancel',
-				$this->format_error_message( $requestService->getClient()->getResponseBody() )
+				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -1098,7 +1098,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'refund',
-				$this->format_error_message( $requestService->getClient()->getResponseBody() )
+				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -1209,7 +1209,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'refund',
-				$this->format_error_message( $requestService->getClient()->getResponseBody() )
+				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -1369,16 +1369,17 @@ class Swedbank_Pay_Api {
 	 * Parse and format error response
 	 *
 	 * @param string $response_body
+	 * @param string $err_msg
 	 *
 	 * @return string
 	 */
-	private function format_error_message( $response_body ) {
+	private function format_error_message( $response_body, $err_msg = '' ) {
 		$response_body = json_decode( $response_body, true );
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			return $response_body;
 		}
 
-		$message = isset( $response_body['detail'] ) ? $response_body['detail'] : 'Error';
+		$message = isset( $response_body['detail'] ) ? $response_body['detail'] : '';
 		if ( isset( $response_body['problems'] ) && count( $response_body['problems'] ) > 0) {
 			foreach ( $response_body['problems'] as $problem ) {
 				// Specify error message for invalid phone numbers. It's such fields like:
@@ -1404,6 +1405,10 @@ class Swedbank_Pay_Api {
 
 				$message .= "\n" . sprintf( '%s: %s', $problem['name'], $problem['description'] );
 			}
+		}
+
+		if ( empty( $message ) ) {
+			$message = ! empty( $err_msg ) ? $err_msg : __( 'Error', 'woocommerce' );
 		}
 
 		return $message;

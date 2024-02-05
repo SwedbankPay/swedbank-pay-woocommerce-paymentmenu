@@ -374,6 +374,32 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
+		// If have YITH WooCommerce Gift Cards in Order, amount mode only
+		if ( function_exists( 'YITH_YWGC' ) ) {
+			$gift_amount = 0;
+			$order_gift_cards = $order->get_meta( '_ywgc_applied_gift_cards' );
+			if ( empty( $order_gift_cards ) ) {
+				$order_gift_cards = array();
+			}
+
+			foreach ( $order_gift_cards as $code => $amount ) {
+				$amount = apply_filters( 'ywgc_gift_card_amount_order_total_item', $amount, YITH_YWGC()->get_gift_card_by_code( $code ) );
+				if ( $amount > 0 ) {
+					$gift_amount += $amount;
+				}
+			}
+
+			if ( $gift_amount > 0 ) {
+				wp_send_json_success(
+					array(
+						'mode' => 'amount'
+					)
+				);
+
+				return;
+			}
+		}
+
 		// If taxes are enabled, using this refund amount can cause issues due to taxes not being refunded also.
 		// The refunds should be added to the line items, not the order as a whole.
 		if ( wc_tax_enabled() ) {

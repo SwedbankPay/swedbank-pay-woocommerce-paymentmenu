@@ -310,6 +310,32 @@ class Swedbank_Pay_Instant_Capture {
 			);
 		}
 
+		// YITH WooCommerce Gift Cards
+		if ( function_exists( 'YITH_YWGC' ) ) {
+			$order_gift_cards = $order->get_meta( '_ywgc_applied_gift_cards' );
+			if ( empty( $order_gift_cards ) ) {
+				$order_gift_cards = array();
+			}
+
+			foreach ( $order_gift_cards as $code => $amount ) {
+				$amount = apply_filters( 'ywgc_gift_card_amount_order_total_item', $amount, YITH_YWGC()->get_gift_card_by_code( $code ) );
+				if ( $amount > 0 ) {
+					$items[] = array(
+						Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'gift_card_' . esc_html( $code ),
+						Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Gift card: ' . esc_html( $code ), 'yith-woocommerce-gift-cards' ),
+						Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
+						Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
+						Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
+						Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+						Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( -100 * $amount ),
+						Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => 0,
+						Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( -100 * $amount ),
+						Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => 0,
+					);
+				}
+			}
+		}
+
 		return $items;
 	}
 

@@ -1,3 +1,7 @@
+Version 3.3.0
+* YITH WooCommerce Gift Cards support
+* Error messages improvements
+
 Version 3.2.0
 * Refund modes: by amount, by order items
 

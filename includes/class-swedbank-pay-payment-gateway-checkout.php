@@ -621,7 +621,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			// Refund by items
 			$result = $this->payment_actions_handler->refund_payment( $order, $lines, $reason, false );
 			if ( is_wp_error( $result ) ) {
-				return new WP_Error( 'refund', $result->get_error_message() );
+				return new WP_Error( 'refund', join('; ', $result->get_error_messages() ) );
 			}
 
 			$order->update_meta_data( '_sb_refund_mode', 'items' );
@@ -633,7 +633,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		// Refund by amount
 		$result = $this->payment_actions_handler->refund_payment_amount( $order, $amount );
 		if ( is_wp_error( $result ) ) {
-			return new WP_Error( 'refund', $result->get_error_message() );
+			return new WP_Error( 'refund', join('; ', $result->get_error_messages() ) );
 		}
 
 		$order->update_meta_data( '_sb_refund_mode', 'amount' );
