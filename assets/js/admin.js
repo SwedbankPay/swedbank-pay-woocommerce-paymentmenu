@@ -1,14 +1,19 @@
 jQuery(document).ready(function ($) {
-    $.ajax( {
+    // HPOS failback
+    if ( ! SwedbankPay_Admin.order_id ) {
+        SwedbankPay_Admin.order_id = $( '#post_ID' ).val();
+    }
+
+    $.ajax({
         url: SwedbankPay_Admin.ajax_url,
         data: {
             action: 'swedbank_pay_get_refund_mode',
             nonce: SwedbankPay_Admin.nonce,
             order_id: SwedbankPay_Admin.order_id
         },
-        success: function ( response ) {
-            if ( ! response.success ) {
-                alert( response.data );
+        success: function (response) {
+            if (!response.success) {
+                alert(response.data);
                 return false;
             }
 
@@ -27,15 +32,15 @@ jQuery(document).ready(function ($) {
                     break;
             }
         }
-    } );
+    });
 
-    $( document ).on( 'click', '#swedbank_pay_capture', function (e) {
+    $(document).on('click', '#swedbank_pay_capture', function (e) {
         e.preventDefault();
 
-        var nonce = $( this ).data( 'nonce' );
-        var order_id = $( this ).data( 'order-id' );
-        var self = $( this );
-        $.ajax( {
+        var nonce = $(this).data('nonce');
+        var order_id = $(this).data('order-id');
+        var self = $(this);
+        $.ajax({
             url: SwedbankPay_Admin.ajax_url,
             type: 'POST',
             data: {
@@ -44,30 +49,30 @@ jQuery(document).ready(function ($) {
                 order_id: order_id
             },
             beforeSend: function () {
-                self.data( 'text', self.html() );
-                self.html( SwedbankPay_Admin.text_wait );
-                self.prop( 'disabled', true );
+                self.data('text', self.html());
+                self.html(SwedbankPay_Admin.text_wait);
+                self.prop('disabled', true);
             },
-            success: function ( response ) {
-                self.html( self.data('text') );
-                self.prop( 'disabled', false );
-                if ( !response.success ) {
-                    alert( response.data );
+            success: function (response) {
+                self.html(self.data('text'));
+                self.prop('disabled', false);
+                if (!response.success) {
+                    alert(response.data);
                     return false;
                 }
 
                 window.location.href = location.href;
             }
-        } );
-    } );
+        });
+    });
 
-    $( document ).on( 'click', '#swedbank_pay_cancel', function (e) {
+    $(document).on('click', '#swedbank_pay_cancel', function (e) {
         e.preventDefault();
 
-        var nonce = $( this ).data( 'nonce' );
-        var order_id = $( this ).data( 'order-id' );
-        var self = $( this );
-        $.ajax( {
+        var nonce = $(this).data('nonce');
+        var order_id = $(this).data('order-id');
+        var self = $(this);
+        $.ajax({
             url: SwedbankPay_Admin.ajax_url,
             type: 'POST',
             data: {
@@ -76,30 +81,30 @@ jQuery(document).ready(function ($) {
                 order_id: order_id
             },
             beforeSend: function () {
-                self.data( 'text', self.html() );
-                self.html( SwedbankPay_Admin.text_wait );
-                self.prop( 'disabled', true );
+                self.data('text', self.html());
+                self.html(SwedbankPay_Admin.text_wait);
+                self.prop('disabled', true);
             },
-            success: function ( response ) {
-                self.html( self.data('text') );
-                self.prop( 'disabled', false );
-                if ( ! response.success ) {
-                    alert( response.data );
+            success: function (response) {
+                self.html(self.data('text'));
+                self.prop('disabled', false);
+                if (!response.success) {
+                    alert(response.data);
                     return false;
                 }
 
                 window.location.href = location.href;
             }
-        } );
-    } );
+        });
+    });
 
-    $( document ).on( 'click', '#swedbank_pay_refund', function (e) {
+    $(document).on('click', '#swedbank_pay_refund', function (e) {
         e.preventDefault();
 
-        var nonce = $( this ).data( 'nonce' );
-        var order_id = $( this ).data( 'order-id' );
-        var self = $( this );
-        $.ajax( {
+        var nonce = $(this).data('nonce');
+        var order_id = $(this).data('order-id');
+        var self = $(this);
+        $.ajax({
             url: SwedbankPay_Admin.ajax_url,
             type: 'POST',
             data: {
@@ -108,20 +113,20 @@ jQuery(document).ready(function ($) {
                 order_id: order_id
             },
             beforeSend: function () {
-                self.data( 'text', self.html() );
-                self.html( SwedbankPay_Admin.text_wait );
-                self.prop( 'disabled', true );
+                self.data('text', self.html());
+                self.html(SwedbankPay_Admin.text_wait);
+                self.prop('disabled', true);
             },
-            success: function ( response ) {
-                self.html( self.data('text') );
-                self.prop( 'disabled', false );
-                if ( ! response.success ) {
-                    alert( response.data );
+            success: function (response) {
+                self.html(self.data('text'));
+                self.prop('disabled', false);
+                if (!response.success) {
+                    alert(response.data);
                     return false;
                 }
 
                 window.location.href = location.href;
             }
-        } );
-    } );
+        });
+    });
 });

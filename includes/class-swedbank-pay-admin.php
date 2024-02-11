@@ -211,10 +211,11 @@ class Swedbank_Pay_Admin {
 	 * @return void
 	 */
 	public static function admin_enqueue_scripts( $hook ) {
-		global $post_id;
-
 		$hook_to_check = swedbank_pay_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'post.php';
 		if ( $hook_to_check === $hook ) {
+			global $post_id;
+			global $theorder;
+
 			// Scripts
 			$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 			wp_register_script(
@@ -227,7 +228,7 @@ class Swedbank_Pay_Admin {
 				'ajax_url'  => admin_url( 'admin-ajax.php' ),
 				'text_wait' => __( 'Please wait...', 'swedbank-pay-woocommerce-checkout' ),
 				'nonce'     => wp_create_nonce( 'swedbank_pay' ),
-				'order_id'  => $post_id
+				'order_id'  => $theorder ? $theorder->get_id() : (int) $post_id
 			);
 			wp_localize_script( 'swedbank-pay-admin-js', 'SwedbankPay_Admin', $translation_array );
 
@@ -362,8 +363,28 @@ class Swedbank_Pay_Admin {
 		}
 
 		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
-		$order    = wc_get_order( $order_id );
-		$gateway  = swedbank_pay_get_payment_method( $order );
+		if ( ! $order_id ) {
+			wp_send_json_success(
+				array(
+					'mode' => 'default'
+				)
+			);
+
+			return;
+		}
+
+		$order = wc_get_order( $order_id );
+		if ( ! $order ) {
+			wp_send_json_success(
+				array(
+					'mode' => 'default'
+				)
+			);
+
+			return;
+		}
+
+		$gateway = swedbank_pay_get_payment_method( $order );
 		if ( ! $gateway ) {
 			wp_send_json_success(
 				array(
