@@ -259,6 +259,19 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 		foreach ( $order_gift_cards as $code => $amount ) {
 			$amount = apply_filters( 'ywgc_gift_card_amount_order_total_item', $amount, YITH_YWGC()->get_gift_card_by_code( $code ) );
 			if ( $amount > 0 ) {
+				// Calculate taxes
+				$tax_items = $order->get_items( 'tax' );
+
+				foreach ( $tax_items as $item_id => $item_tax ) {
+					$tax_data = $item_tax->get_data();
+					$tax_rate = $tax_data['rate_percent'];
+				}
+
+				$tax_rate          = isset( $tax_rate ) ? $tax_rate : '0';
+				$rate_aux          = '0.' . $tax_rate;
+				$discount_with_tax = -1 * $amount;
+				$discount          = round( -1 * ( $amount / ( 1 + (float) $rate_aux ) ), 2 );
+
 				$items[] = array(
 					Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'gift_card_' . esc_html( $code ),
 					Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Gift card: ' . esc_html( $code ), 'yith-woocommerce-gift-cards' ),
@@ -266,10 +279,10 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 					Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
 					Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
 					Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
-					Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( -100 * $amount ),
-					Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => 0,
-					Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( -100 * $amount ),
-					Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => 0,
+					Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( 100 * $discount_with_tax ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => 100 * round( 100 * $rate_aux ),
+					Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( 100 * $discount_with_tax ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => 100 * round( $discount_with_tax - $discount )
 				);
 			}
 		}
