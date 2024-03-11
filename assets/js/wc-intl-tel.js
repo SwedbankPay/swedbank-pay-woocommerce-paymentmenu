@@ -10,7 +10,8 @@ jQuery(document).ready(function ($) {
 
         var iti = window.intlTelInput(telInput, {
                 utilsScript: WC_Gateway_Swedbank_Pay_Intl_Tel.utils_script,
-                preferredCountries: ['SE', 'NO', 'FI', 'DK'],
+                preferredCountries: [WC_Gateway_Swedbank_Pay_Intl_Tel.country, 'SE', 'NO', 'FI', 'DK'],
+                defaultToFirstCountry: true,
                 nationalMode: false,
                 formatOnDisplay: true,
                 customContainer: 'form-row-wide'
