@@ -96,12 +96,24 @@ class Swedbank_Intl_Tel {
 			'WC_Gateway_Swedbank_Pay_Intl_Tel',
 			array(
 				'utils_script' => untrailingslashit( plugins_url( '/', __FILE__ ) ) . '/../assets/js/utils' . $suffix . '.js',
+				'country' => $this->get_country()
 			)
 		);
 
 		// Enqueued script with localized data.
 		wp_enqueue_script( 'swedbank-intl-tel-js' );
 		wp_enqueue_script( 'swedbank-wc-intl-tel-js' );
+	}
+
+	/**
+	 * Get the country ISO code based on the IP address of the client.
+	 *
+	 * @return string The country ISO code.
+	 */
+	private function get_country() {
+		return function_exists('geoip_detect2_get_info_from_ip') ?
+			geoip_detect2_get_info_from_ip( geoip_detect2_get_client_ip() )->country->isoCode :
+			\WC_Geolocation::geolocate_ip()['country'];
 	}
 }
 
