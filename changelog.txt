@@ -1,3 +1,8 @@
+Version 3.4.0
+* Use server configuration for curl CA
+* Updated the sdk lib
+* Geolocation detection for "International Telephone Input"
+
 Version 3.3.2
 * YITH WooCommerce Gift Cards: add tax calculation
 
