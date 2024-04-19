@@ -61,6 +61,11 @@ class Swedbank_Pay_Instant_Capture {
 			return;
 		}
 
+		// Disable this feature if "Autocomplete" is active
+		if ( 'yes' === $this->gateway->autocomplete ) {
+			return;
+		}
+
 		// Capture if possible
 		if ( ! $this->gateway->api->is_captured( $payment_order_id ) ) {
 			try {

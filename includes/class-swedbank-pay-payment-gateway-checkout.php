@@ -41,12 +41,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public $payee_id = '';
 
 	/**
-	 * Subsite
-	 * @var string
-	 */
-	public $subsite = '';
-
-	/**
 	 * Test Mode
 	 * @var string
 	 */
@@ -87,6 +81,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @var string
 	 */
 	public $terms_url = '';
+
+	/**
+	 * @var string
+	 */
+	public $autocomplete = 'no';
 
 	/**
 	 * Swedbank Pay ip addresses
@@ -140,13 +139,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->description     = isset( $this->settings['description'] ) ? $this->settings['description'] : '';
 		$this->access_token    = isset( $this->settings['access_token'] ) ? $this->settings['access_token'] : $this->access_token;
 		$this->payee_id        = isset( $this->settings['payee_id'] ) ? $this->settings['payee_id'] : $this->payee_id;
-		$this->subsite         = isset( $this->settings['subsite'] ) ? $this->settings['subsite'] : $this->subsite;
 		$this->testmode        = isset( $this->settings['testmode'] ) ? $this->settings['testmode'] : $this->testmode;
 		$this->ip_check        = defined( 'SWEDBANK_PAY_IP_CHECK' ) ? SWEDBANK_PAY_IP_CHECK : $this->ip_check;
 		$this->culture         = isset( $this->settings['culture'] ) ? $this->settings['culture'] : $this->culture;
 		$this->logo_url        = isset( $this->settings['logo_url'] ) ? $this->settings['logo_url'] : $this->logo_url;
 		$this->instant_capture = isset( $this->settings['instant_capture'] ) ? $this->settings['instant_capture'] : $this->instant_capture;
 		$this->terms_url       = isset( $this->settings['terms_url'] ) ? $this->settings['terms_url'] : get_site_url();
+		$this->autocomplete    = isset( $this->settings['autocomplete'] ) ? $this->settings['autocomplete'] : 'no';
 
 		// TermsOfServiceUrl contains unsupported scheme value http in Only https supported.
 		if ( ! filter_var( $this->terms_url, FILTER_VALIDATE_URL ) ) {
@@ -302,17 +301,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					return $value;
 				},
 			),
-			'advanced'        => array(
-				'title' => __( 'Advanced', 'swedbank-pay-woocommerce-checkout' ),
-				'desc'  => __( 'Advanced', 'swedbank-pay-woocommerce-checkout' ),
-				'id'    => 'advanced',
-				'type'  => 'advanced',
-			),
-			'subsite'         => array(
-				'title'       => __( 'Subsite', 'swedbank-pay-woocommerce-checkout' ),
-				'type'        => 'text',
-				'description' => __( 'Subsite', 'swedbank-pay-woocommerce-checkout' ),
-				'default'     => $this->subsite,
+			'autocomplete'        => array(
+				'title'   => __( 'Automatic order status', 'swedbank-pay-woocommerce-checkout' ),
+				'type'    => 'checkbox',
+				'label'   => __( 'Set order in completed status immediately after payment', 'swedbank-pay-woocommerce-checkout' ),
+				'default' => $this->autocomplete,
 			),
 		);
 	}
@@ -416,6 +409,15 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$order = wc_get_order( $order_id ); // reload order
 			$order->update_meta_data( '_payex_finalized', 1 );
 			$order->save_meta_data();
+		}
+
+		if ( 'yes' === $this->autocomplete && ! $order->has_status( 'completed' ) ) {
+			// Set completed
+			$result = $this->payment_actions_handler->capture_payment( $order );
+			if ( ! is_wp_error( $result ) ) {
+				$order->payment_complete();
+				$order->update_status( 'completed' );
+			}
 		}
 	}
 
