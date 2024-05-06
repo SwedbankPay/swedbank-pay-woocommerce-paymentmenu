@@ -1,3 +1,6 @@
+Version 3.6.0
+* YITH WooCommerce Gift Cards v4.11 fixes
+
 Version 3.5.0
 * Added "Autocomplete" option
 * Removed "Subsite" option

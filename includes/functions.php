@@ -256,12 +256,19 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 			$order_gift_cards = array();
 		}
 
+		// Compatibility: YITH WooCommerce Gift Cards v4.11
+		if ( 0 === count( $order_gift_cards ) ) {
+			foreach ( $order->get_items( 'yith_gift_card' ) as $gift_card ) {
+				/** @var \YITH_Gift_Card_Order_Item $gift_card */
+				$order_gift_cards[ $gift_card->get_code() ] = abs( $gift_card->get_amount() );
+			}
+		}
+
 		foreach ( $order_gift_cards as $code => $amount ) {
 			$amount = apply_filters( 'ywgc_gift_card_amount_order_total_item', $amount, YITH_YWGC()->get_gift_card_by_code( $code ) );
 			if ( $amount > 0 ) {
 				// Calculate taxes
 				$tax_items = $order->get_items( 'tax' );
-
 				foreach ( $tax_items as $item_id => $item_tax ) {
 					$tax_data = $item_tax->get_data();
 					$tax_rate = $tax_data['rate_percent'];
