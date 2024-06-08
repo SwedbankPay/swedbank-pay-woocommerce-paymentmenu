@@ -1,3 +1,6 @@
+Version 3.6.1
+* Additional fixed in the background queue
+
 Version 3.6.0
 * YITH WooCommerce Gift Cards v4.11 fixes
 

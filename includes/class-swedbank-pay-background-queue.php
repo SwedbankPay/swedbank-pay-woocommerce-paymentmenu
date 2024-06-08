@@ -208,6 +208,20 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			return false;
 		}
 
+		if ( ! property_exists( $gateway, 'api' ) ||
+			 ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) )
+		{
+			$this->log(
+				sprintf( '[ERROR]: Order #%s has not been paid with the swedbank pay. Payment method: %s',
+					$order->get_id(),
+					$order->get_payment_method()
+				)
+			);
+
+			// Remove from queue
+			return false;
+		}
+
 		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
 		$result = $gateway->api->finalize_payment( $order, $payment_order_id, $transaction_number );
 		if ( is_wp_error( $result ) ) {
