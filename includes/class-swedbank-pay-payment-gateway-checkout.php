@@ -411,15 +411,19 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$order->save_meta_data();
 		}
 
-		if ( 'yes' === $this->autocomplete && ! $order->has_status( 'completed' ) ) {
-			// Set completed
-			$result = $this->payment_actions_handler->capture_payment( $order );
-			if ( is_wp_error( $result ) ) {
-				return;
-			}
-
+		// Set `completed` status if it is `processing`
+		if ( 'yes' === $this->autocomplete && $order->has_status( 'processing' ) ) {
 			$order->payment_complete();
 			$order->update_status( 'completed' );
+		}
+
+		// Capture payment is applicable
+		if ( 'yes' === $this->autocomplete && $order->has_status( 'on-hold' )  ) {
+			$result = $this->payment_actions_handler->capture_payment( $order );
+			if ( ! is_wp_error( $result ) ) {
+				$order->payment_complete();
+				$order->update_status( 'completed' );
+			}
 		}
 	}
 

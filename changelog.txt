@@ -1,3 +1,6 @@
+Version 3.6.3
+* Additional behavior changes for Autocomplete option
+
 Version 3.6.2
 * Autocomplete option fixes: set complete order status for 1-phase payments
 
