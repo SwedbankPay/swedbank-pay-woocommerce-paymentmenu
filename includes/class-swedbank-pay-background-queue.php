@@ -176,12 +176,20 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 				throw new \Exception( 'Error: Invalid transaction number' );
 			}
 
-			// Get Order by Payment Order Id
 			$transaction_number = $data['transaction']['number'];
 			$payment_order_id   = $data['paymentOrder']['id'];
-			$order              = swedbank_pay_get_order( $payment_order_id );
+
+			// Get order by `orderReference`
+			if ( isset( $data['orderReference'] ) ) {
+				$order = wc_get_order( $data['orderReference'] );
+			} else {
+				// Get Order by Payment Order Id
+				$order = swedbank_pay_get_order( $payment_order_id );
+				$this->log( sprintf( 'Found order #%s by payment Order ID %s.', $order->get_id(), $payment_order_id ) );
+			}
+
 			if ( ! $order ) {
-				throw new \Exception( sprintf( 'Error: Failed to get Order by Payment Order Id %s', $payment_order_id ) );
+				throw new \Exception( 'Failed to find order' );
 			}
 
 			$gateway = swedbank_pay_get_payment_method( $order );
