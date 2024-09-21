@@ -1,3 +1,6 @@
+Version 3.6.4
+* Transaction callback: get order by `orderReference`
+
 Version 3.6.3
 * Additional behavior changes for Autocomplete option
 
