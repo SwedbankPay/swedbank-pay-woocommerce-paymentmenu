@@ -400,11 +400,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return;
 		}
 
-		$this->api->log( WC_Log_Levels::INFO, __METHOD__ );
+		$this->api->log( WC_Log_Levels::INFO, __METHOD__, [ $order_id ] );
 		$is_finalized     = $order->get_meta( '_payex_finalized' );
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $is_finalized ) && $payment_order_id ) {
-			$this->api->finalize_payment( $order, $payment_order_id );
+			$this->api->finalize_payment( $order, null );
 
 			$order = wc_get_order( $order_id ); // reload order
 			$order->update_meta_data( '_payex_finalized', 1 );
@@ -553,8 +553,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			if ( ! isset( $data['transaction'] ) || ! isset( $data['transaction']['number'] ) ) {
 				throw new \Exception( 'Error: Invalid transaction number' );
 			}
-
-			sleep(20);
 
 			// Create Background Process Task
 			$background_process = new Swedbank_Pay_Background_Queue();

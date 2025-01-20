@@ -174,8 +174,6 @@ class Swedbank_Thankyou {
 					'state' => 'failed',
 					'message' => 'Transaction failed: ' . join('; ', $problems )
 				) );
-
-				return;
 		}
 	}
 }

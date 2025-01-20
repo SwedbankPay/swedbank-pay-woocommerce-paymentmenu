@@ -402,11 +402,31 @@ class Swedbank_Pay_Api {
 	/**
 	 * Finalize Payment Order.
 	 *
-	 * @param $payment_order_id
+	 * @param null $transaction_number
 	 *
 	 * @return true|WP_Error
 	 */
-	public function finalize_payment( WC_Order $order, $payment_order_id, $transaction_number = null ) {
+	public function finalize_payment( WC_Order $order, $transaction_number = null ) {
+		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
+		$this->log(
+			WC_Log_Levels::DEBUG,
+			sprintf(
+				'Finalize payment for Order #%s. Payment ID: %s. Transaction number: %s',
+				$order->get_id(),
+				$payment_order_id,
+				$transaction_number
+			)
+		);
+		if ( empty( $payment_order_id ) ) {
+			return new WP_Error(
+				'error',
+				sprintf(
+					'Payment Order ID is missing. Order ID: %s',
+					$order->get_id()
+				)
+			);
+		}
+
 		$data = $this->request( 'GET', $payment_order_id . '/paid' );
 		if ( is_wp_error( $data ) ) {
 			return $data;
@@ -417,9 +437,9 @@ class Swedbank_Pay_Api {
 		}
 
 		$result = $this->request( 'GET', $payment_order_id . '/financialtransactions' );
-		$transactionsList = $result['financialTransactions']['financialTransactionsList'];
+		$transactions_list = $result['financialTransactions']['financialTransactionsList'];
 		// @todo Sort by "created" field using array_multisort
-		foreach ( $transactionsList as $transaction ) {
+		foreach ( $transactions_list as $transaction ) {
 			if ( $transaction_number === $transaction['number'] ) {
 				$this->log(
 					WC_Log_Levels::DEBUG,
@@ -436,7 +456,7 @@ class Swedbank_Pay_Api {
 
 		// Some Authorize, Sale transaction are not in the list
 		// Financial transaction list is empty, initiate workaround / failback
-		if ( 0 === count( $transactionsList ) ) {
+		if ( 0 === count( $transactions_list ) ) {
 			$this->log(
 				WC_Log_Levels::DEBUG,
 				sprintf( 'Transaction List is empty. Run failback for Transaction #%s', $transaction_number )
@@ -504,7 +524,6 @@ class Swedbank_Pay_Api {
 		$payment_order = $payment_order['paymentOrder'];
 
 		// Apply action
-
 		switch ( $transaction['type'] ) {
 			case self::TYPE_VERIFICATION:
 				break;

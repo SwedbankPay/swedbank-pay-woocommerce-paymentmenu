@@ -182,14 +182,25 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			// Get order by `orderReference`
 			if ( isset( $data['orderReference'] ) ) {
 				$order = wc_get_order( $data['orderReference'] );
+				if ( ! $order ) {
+					throw new \Exception( 'Failed to find order: ' . $data['orderReference'] );
+				}
+
+				$this->log(
+					sprintf(
+						'Found order #%s by order reference %s.',
+						$order->get_id(),
+						$data['orderReference']
+					)
+				);
 			} else {
 				// Get Order by Payment Order Id
 				$order = swedbank_pay_get_order( $payment_order_id );
-				$this->log( sprintf( 'Found order #%s by payment Order ID %s.', $order->get_id(), $payment_order_id ) );
-			}
+				if ( ! $order ) {
+					throw new \Exception( 'Failed to find order: ' . $payment_order_id );
+				}
 
-			if ( ! $order ) {
-				throw new \Exception( 'Failed to find order' );
+				$this->log( sprintf( 'Found order #%s by payment Order ID %s.', $order->get_id(), $payment_order_id ) );
 			}
 
 			$gateway = swedbank_pay_get_payment_method( $order );
@@ -200,6 +211,20 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 						$item['payment_method_id']
 					)
 				);
+			}
+
+			if ( ! property_exists( $gateway, 'api' ) ||
+				 ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) )
+			{
+				$this->log(
+					sprintf( '[ERROR]: Order #%s has not been paid with the swedbank pay. Payment method: %s',
+						$order->get_id(),
+						$order->get_payment_method()
+					)
+				);
+
+				// Remove from queue
+				return false;
 			}
 
 			$transactions = (array) $order->get_meta( '_swedbank_pay_transactions' );
@@ -216,22 +241,8 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			return false;
 		}
 
-		if ( ! property_exists( $gateway, 'api' ) ||
-			 ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) )
-		{
-			$this->log(
-				sprintf( '[ERROR]: Order #%s has not been paid with the swedbank pay. Payment method: %s',
-					$order->get_id(),
-					$order->get_payment_method()
-				)
-			);
-
-			// Remove from queue
-			return false;
-		}
-
 		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
-		$result = $gateway->api->finalize_payment( $order, $payment_order_id, $transaction_number );
+		$result = $gateway->api->finalize_payment( $order, $transaction_number );
 		if ( is_wp_error( $result ) ) {
 			/** @var \WP_Error $result */
 			$this->log( sprintf( '[ERROR]: %s', $result->get_error_message() ) );
