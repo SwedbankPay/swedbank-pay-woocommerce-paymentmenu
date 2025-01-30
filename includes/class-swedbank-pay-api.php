@@ -496,6 +496,9 @@ class Swedbank_Pay_Api {
 	 */
 	public function process_transaction( WC_Order $order, array $transaction ) {
 		$transaction_id = $transaction['number'];
+		
+		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts
+		$order->read_meta_data();
 
 		// Don't update order status if transaction ID was applied before
 		$transactions = $order->get_meta( '_swedbank_pay_transactions' );
