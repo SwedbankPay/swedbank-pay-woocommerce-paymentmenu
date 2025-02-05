@@ -270,8 +270,13 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 	 * Save and run queue.
 	 */
 	public function dispatch_queue() {
-		if ( ! empty( $this->data ) ) {
-			$this->save()->dispatch();
-		}
+        if ( ! empty( $this->data ) ) {
+            $this->save();
+            if (apply_filters('swedbank_pay_dispatch_queue_at_shutdown', true, $this)) {
+                $this->dispatch();
+            } else {
+                $this->schedule_event();
+            }
+        }
 	}
 }
