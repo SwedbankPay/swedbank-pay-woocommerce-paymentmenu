@@ -437,7 +437,7 @@ class Swedbank_Pay_Api {
 		}
 
 		$result = $this->request( 'GET', $payment_order_id . '/financialtransactions' );
-		$transactions_list = $result['financialTransactions']['financialTransactionsList'];
+		$transactions_list = $result['financialTransactions']['financialTransactionsList'] ?? [];
 		// @todo Sort by "created" field using array_multisort
 		foreach ( $transactions_list as $transaction ) {
 			if ( $transaction_number === $transaction['number'] ) {
