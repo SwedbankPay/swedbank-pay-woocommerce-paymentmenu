@@ -497,12 +497,8 @@ class Swedbank_Pay_Api {
 	public function process_transaction( WC_Order $order, array $transaction ) {
 		$transaction_id = $transaction['number'];
 		
-		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts
-		$order->read_meta_data();
-
 		// Don't update order status if transaction ID was applied before
-		$transactions = $order->get_meta( '_swedbank_pay_transactions' );
-		$transactions = empty( $transactions ) ? array() : (array) $transactions;
+		$transactions = $this->get_latest_swedbank_transactions($order);
 		if ( in_array( $transaction_id, $transactions ) ) {
 			$this->log(
 				WC_Log_Levels::INFO,
@@ -669,9 +665,11 @@ class Swedbank_Pay_Api {
 		}
 
 		// Save transaction ID
-		$transactions[] = $transaction_id;
-		$order->update_meta_data( '_swedbank_pay_transactions', $transactions );
-		$order->save();
+		$latest_transactions = $this->get_latest_swedbank_transactions($order);
+        $latest_transactions[] = $transaction_id;
+        $order->update_meta_data( '_swedbank_pay_transactions', $latest_transactions );
+		$order->save_meta_data();
+        $order->save();
 
 		$this->log(
 			WC_Log_Levels::DEBUG,
@@ -681,7 +679,19 @@ class Swedbank_Pay_Api {
 		return true;
 	}
 
-	/**
+    /**
+     * Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts
+     * @param WC_Order $order
+     * @return array
+     */
+    private function get_latest_swedbank_transactions(WC_Order $order) {
+        $order->read_meta_data();
+        $transactions = $order->get_meta('_swedbank_pay_transactions');
+
+        return empty($transactions) ? array() : (array) $transactions;
+    }
+
+    /**
 	 * Update Order Status.
 	 *
 	 * @param WC_Order $order
