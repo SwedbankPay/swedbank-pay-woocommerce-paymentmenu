@@ -151,17 +151,18 @@ class Swedbank_Pay_Payment_Actions {
 	 *
 	 * @param WC_Order $order The order object.
 	 * @param float $amount The amount to refund.
+	 * @param float $vat_amount The VAT amount to refund.
 	 *
 	 * @return \WP_Error|array The refund result.
 	 */
-	public function refund_payment_amount( $order, $amount ) {
+	public function refund_payment_amount( $order, $amount, $vat_amount = 0 ) {
 		remove_action(
 			'woocommerce_order_status_changed',
 			Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
 			0
 		);
 
-		$result = $this->gateway->api->refund_amount( $order, $amount );
+		$result = $this->gateway->api->refund_amount( $order, $amount, $vat_amount );
 		if ( is_wp_error( $result ) ) {
 			$order->add_order_note(
 				'Refund has been failed. Error: ' . $result->get_error_message()

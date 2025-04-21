@@ -101,6 +101,7 @@ class Swedbank_Pay_Plugin {
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-instant-capture.php' );
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-payment-actions.php' );
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-admin.php' );
+		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-admin-refund.php' );
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-thankyou.php' );
 		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-intl-tel.php' );
 

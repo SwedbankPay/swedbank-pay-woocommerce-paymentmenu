@@ -496,7 +496,7 @@ class Swedbank_Pay_Api {
 	 */
 	public function process_transaction( WC_Order $order, array $transaction ) {
 		$transaction_id = $transaction['number'];
-		
+
 		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts
 		$order->read_meta_data();
 
@@ -1056,11 +1056,12 @@ class Swedbank_Pay_Api {
 	 *
 	 * @param WC_Order $order The order object
 	 * @param float $amount The amount to refund
+	 * @param float $vat_amount The VAT amount to refund.
 	 *
 	 * @return TransactionObject|\WP_Error Returns the refunded transaction object or WP_Error on failure
 	 * @throws ClientException
 	 */
-	public function refund_amount( WC_Order $order, $amount ) {
+	public function refund_amount( WC_Order $order, $amount, $vat_amount ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 0, 'Unable to get the payment order ID' );
@@ -1075,7 +1076,7 @@ class Swedbank_Pay_Api {
 		$transaction_data = new TransactionData();
 		$transaction_data
 			->setAmount( round( $amount * 100 ) )
-			->setVatAmount( 0 )
+			->setVatAmount( round( $vat_amount * 100 ) )
 			->setDescription( sprintf( 'Refund for Order #%s. Amount: %s', $order->get_order_number(), $amount ) ) //phpcs:ignore
 			->setPayeeReference( $payee_refrence )
 			->setReceiptReference( $payee_refrence );

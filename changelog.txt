@@ -1,3 +1,6 @@
+Version 3.7.0
+* Added Refund UI for manual refunds
+
 Version 3.6.6
 * Added `swedbank_pay_dispatch_queue_at_shutdown` wp filter
 
