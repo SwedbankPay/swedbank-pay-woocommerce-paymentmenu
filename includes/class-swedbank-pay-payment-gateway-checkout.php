@@ -161,12 +161,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->instant_capture     = $this->settings['instant_capture'] ?? $this->instant_capture;
 		$this->terms_url           = $this->settings['terms_url'] ?? get_site_url();
 		$this->autocomplete        = $this->settings['autocomplete'] ?? 'no';
-		$this->exclude_order_lines = $this->settings['exclude_order_lines'] ?? 'no';
+		$this->exclude_order_lines = wc_string_to_bool( $this->settings['exclude_order_lines'] ?? 'no' );
 
 		// TermsOfServiceUrl contains unsupported scheme value http in Only https supported.
 		if ( ! filter_var( $this->terms_url, FILTER_VALIDATE_URL ) ) {
 			$this->terms_url = '';
-		} elseif ( 'https' !== parse_url( $this->terms_url, PHP_URL_SCHEME ) ) {
+		} elseif ( 'https' !== wp_parse_url( $this->terms_url, PHP_URL_SCHEME ) ) {
 			$this->terms_url = '';
 		}
 
