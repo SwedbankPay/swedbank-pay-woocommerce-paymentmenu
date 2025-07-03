@@ -73,7 +73,7 @@ class Swedbank_Pay_Scheduler {
 	 * @return false|null
 	 */
 	public function run( $payment_method_id, $webhook_data ) {
-		$this->log( sprintf( 'Start task: %s', wp_json_encode( array( $payment_method_id, $webhook_data ) ) ) );
+		$this->log( sprintf( '[SCHEDULER]: Start task: %s', wp_json_encode( array( $payment_method_id, $webhook_data ) ) ) );
 
 		try {
 			$data = json_decode( $webhook_data, true );
