@@ -107,10 +107,16 @@ class Swedbank_Pay_Api {
 		return $this;
 	}
 
+	/**
+	 * Create a Client for payment.
+	 *
+	 * @param WC_Order $order WC Order.
+	 * @return WP_Error|ResponseServiceInterface
+	 */
 	public function initiate_purchase( WC_Order $order ) {
 		$gateway = swedbank_pay_get_payment_method( $order );
 
-		$callbackUrl = add_query_arg(
+		$callback_url = add_query_arg(
 			array(
 				'order_id' => $order->get_id(),
 				'key'      => $order->get_order_key(),
@@ -118,36 +124,36 @@ class Swedbank_Pay_Api {
 			WC()->api_request_url( get_class( $gateway ) )
 		);
 
-		$completeUrl = $gateway->get_return_url( $order );
-		$cancelUrl   = $order->get_cancel_order_url_raw();
+		$complete_url = $gateway->get_return_url( $order );
+		$cancel_url   = $order->get_cancel_order_url_raw();
 
 		$user_agent = $order->get_customer_user_agent();
-		if ( empty( $userAgent ) ) {
+		if ( empty( $user_agent ) ) {
 			$user_agent = 'WooCommerce/' . WC()->version;
 		}
 
-		$urlData = new PaymentorderUrl();
-		$urlData
+		$url_data = new PaymentorderUrl();
+		$url_data
 			->setHostUrls(
 				$this->get_host_urls(
 					array(
-						$completeUrl,
-						$cancelUrl,
-						$callbackUrl,
+						$complete_url,
+						$cancel_url,
+						$callback_url,
 						$gateway->terms_url,
 						$gateway->logo_url,
 					)
 				)
 			)
-			->setCompleteUrl( $completeUrl )
-			->setCancelUrl( $cancelUrl )
-			->setCallbackUrl( $callbackUrl )
+			->setCompleteUrl( $complete_url )
+			->setCancelUrl( $cancel_url )
+			->setCallbackUrl( $callback_url )
 			->setTermsOfService( $gateway->terms_url )
 			->setLogoUrl( $gateway->logo_url );
 
-		$payeeInfo = $this->get_payee_info( $order );
+		$payee_info = $this->get_payee_info( $order );
 
-		// Add metadata
+		// Add metadata.
 		$metadata = new PaymentorderMetadata();
 		$metadata->setData( 'order_id', $order->get_id() );
 
@@ -214,8 +220,8 @@ class Swedbank_Pay_Api {
 			->setProductName( 'Checkout3' )
 			->setImplementation( 'PaymentsOnly' )
 			->setDisablePaymentMenu( false )
-			->setUrls( $urlData )
-			->setPayeeInfo( $payeeInfo )
+			->setUrls( $url_data )
+			->setPayeeInfo( $payee_info )
 			->setMetadata( $metadata );
 
 		if ( ! $gateway->exclude_order_lines ) {
@@ -227,23 +233,23 @@ class Swedbank_Pay_Api {
 		$payment_order_object = new PaymentorderObject();
 		$payment_order_object->setPaymentorder( $payment_order );
 
-		$purchaseRequest = new Purchase( $payment_order_object );
-		$purchaseRequest->setClient( $this->get_client() );
+		$purchase_request = new Purchase( $payment_order_object );
+		$purchase_request->setClient( $this->get_client() );
 
 		try {
-			/** @var ResponseServiceInterface $responseService */
-			$responseService = $purchaseRequest->send();
+			/** @var ResponseServiceInterface $response_service */
+			$response_service = $purchase_request->send();
 
 			$this->log(
 				WC_Log_Levels::DEBUG,
-				$purchaseRequest->getClient()->getDebugInfo()
+				$purchase_request->getClient()->getDebugInfo()
 			);
 
-			return $responseService;
+			return $response_service;
 		} catch ( ClientException $e ) {
 			$this->log(
 				WC_Log_Levels::DEBUG,
-				$purchaseRequest->getClient()->getDebugInfo()
+				$purchase_request->getClient()->getDebugInfo()
 			);
 
 			$this->log(
@@ -251,9 +257,9 @@ class Swedbank_Pay_Api {
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
-			return new \WP_Error(
+			return new WP_Error(
 				400,
-				$this->format_error_message( $purchaseRequest->getClient()->getResponseBody(), $e->getMessage() )
+				$this->format_error_message( $purchase_request->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -271,7 +277,7 @@ class Swedbank_Pay_Api {
 	public function request( $method, $url, $params = array() ) {
 		// Get rid of full url. There's should be an endpoint only.
 		if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
-			$parsed = parse_url( $url );
+			$parsed = wp_parse_url( $url );
 			$url    = $parsed['path'];
 			if ( ! empty( $parsed['query'] ) ) {
 				$url .= '?' . $parsed['query'];
@@ -282,7 +288,7 @@ class Swedbank_Pay_Api {
 			return new \WP_Error( 'validation', 'Invalid url' );
 		}
 
-		// Process params
+		// Process params.
 		array_walk_recursive(
 			$params,
 			function ( &$input ) {
@@ -335,10 +341,10 @@ class Swedbank_Pay_Api {
 				isset( $data['title'] ) &&
 				isset( $data['detail'] )
 			) {
-				// Format error message
+				// Format error message.
 				$message = sprintf( '%s. %s', $data['title'], $data['detail'] );
 
-				// Get details
+				// Get details.
 				if ( isset( $data['problems'] ) ) {
 					$detailed = '';
 					$problems = $data['problems'];
@@ -459,7 +465,7 @@ class Swedbank_Pay_Api {
 		}
 
 		// Some Authorize, Sale transaction are not in the list
-		// Financial transaction list is empty, initiate workaround / failback
+		// Financial transaction list is empty, initiate workaround / failback.
 		if ( 0 === count( $transactions_list ) ) {
 			$this->log(
 				WC_Log_Levels::DEBUG,
@@ -876,7 +882,7 @@ class Swedbank_Pay_Api {
 		$result = array();
 		foreach ( $urls as $url ) {
 			if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
-				$parsed   = parse_url( $url );
+				$parsed   = wp_parse_url( $url );
 				$result[] = sprintf( '%s://%s', $parsed['scheme'], $parsed['host'] );
 			}
 		}
@@ -958,15 +964,15 @@ class Swedbank_Pay_Api {
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
-			/** @var ResponseServiceInterface $responseService */
-			$responseService = $requestService->send();
+			/** @var ResponseServiceInterface $response_service */
+			$response_service = $requestService->send();
 
 			$this->log(
 				WC_Log_Levels::DEBUG,
 				$requestService->getClient()->getDebugInfo()
 			);
 
-			$result = $responseService->getResponseData();
+			$result = $response_service->getResponseData();
 
 			// Save transaction
 			$transaction = $result['capture']['transaction'];
@@ -1018,15 +1024,15 @@ class Swedbank_Pay_Api {
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
-			/** @var ResponseServiceInterface $responseService */
-			$responseService = $requestService->send();
+			/** @var ResponseServiceInterface $response_service */
+			$response_service = $requestService->send();
 
 			$this->log(
 				WC_Log_Levels::DEBUG,
 				$requestService->getClient()->getDebugInfo()
 			);
 
-			$result = $responseService->getResponseData();
+			$result = $response_service->getResponseData();
 
 			// Save transaction
 			$transaction = $result['cancellation']['transaction'];
@@ -1091,15 +1097,15 @@ class Swedbank_Pay_Api {
 						->setPaymentOrderId( $payment_order_id );
 
 		try {
-			/** @var ResponseServiceInterface $responseService */
-			$responseService = $requestService->send();
+			/** @var ResponseServiceInterface $response_service */
+			$response_service = $requestService->send();
 
 			$this->log(
 				WC_Log_Levels::DEBUG,
 				$requestService->getClient()->getDebugInfo()
 			);
 
-			$result = $responseService->getResponseData();
+			$result = $response_service->getResponseData();
 
 			// Save transaction
 			$transaction = $result['reversal']['transaction'];
@@ -1202,15 +1208,15 @@ class Swedbank_Pay_Api {
 						->setPaymentOrderId( $payment_order_id );
 
 		try {
-			/** @var ResponseServiceInterface $responseService */
-			$responseService = $requestService->send();
+			/** @var ResponseServiceInterface $response_service */
+			$response_service = $requestService->send();
 
 			$this->log(
 				WC_Log_Levels::DEBUG,
 				$requestService->getClient()->getDebugInfo()
 			);
 
-			$result = $responseService->getResponseData();
+			$result = $response_service->getResponseData();
 
 			// Save transaction
 			$transaction = $result['reversal']['transaction'];

@@ -56,18 +56,18 @@ class Swedbank_Pay_Payment_Actions {
 			// Remove captured items from order items list
 			foreach ( $order_lines as $key => &$order_item ) {
 				foreach ( $captured as &$captured_item ) {
-					if ( $order_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ===
-						 $captured_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE]
+					if ( $order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ===
+						$captured_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ]
 					) {
 						$unit_vat = $order_item[Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT] / $order_item[Swedbank_Pay_Order_Item::FIELD_QTY]; //phpcs:ignore
-						$order_item[Swedbank_Pay_Order_Item::FIELD_QTY] -= $captured_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+						$order_item[ Swedbank_Pay_Order_Item::FIELD_QTY ]     -= $captured_item[ Swedbank_Pay_Order_Item::FIELD_QTY ];
 						$order_item[Swedbank_Pay_Order_Item::FIELD_AMOUNT] = $order_item[Swedbank_Pay_Order_Item::FIELD_QTY] * $order_item[Swedbank_Pay_Order_Item::FIELD_UNITPRICE]; //phpcs:ignore
 						$order_item[Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT] = $order_item[Swedbank_Pay_Order_Item::FIELD_QTY] * $unit_vat; //phpcs:ignore
 
-						$captured_item[Swedbank_Pay_Order_Item::FIELD_QTY] += $order_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+						$captured_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] += $order_item[ Swedbank_Pay_Order_Item::FIELD_QTY ];
 
-						if ( 0 === $order_item[Swedbank_Pay_Order_Item::FIELD_QTY] ) {
-							unset( $order_lines[$key] );
+						if ( 0 === $order_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] ) {
+							unset( $order_lines[ $key ] );
 						}
 					}
 				}
@@ -95,9 +95,9 @@ class Swedbank_Pay_Payment_Actions {
 		foreach ( $order_lines as $captured_line ) {
 			$is_found = false;
 			foreach ( $current_items as &$current_item ) {
-				if ( $current_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === $captured_line[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
+				if ( $current_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] === $captured_line[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ) {
 					// Update
-					$current_item[Swedbank_Pay_Order_Item::FIELD_QTY] += $captured_line[Swedbank_Pay_Order_Item::FIELD_QTY];
+					$current_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] += $captured_line[ Swedbank_Pay_Order_Item::FIELD_QTY ];
 					$is_found = true;
 
 					break;
@@ -105,17 +105,17 @@ class Swedbank_Pay_Payment_Actions {
 			}
 
 			if ( ! $is_found ) {
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_NAME] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_TYPE] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_CLASS] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_ITEM_URL] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_IMAGE_URL] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_DESCRIPTION] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_UNITPRICE] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_QTY_UNIT] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_AMOUNT] );
-				unset( $captured_line[Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_NAME ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_TYPE ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_CLASS ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_UNITPRICE ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_QTY_UNIT ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ] );
 
 				$current_items[] = $captured_line;
 			}
@@ -150,7 +150,7 @@ class Swedbank_Pay_Payment_Actions {
 	 * Refund payment amount.
 	 *
 	 * @param WC_Order $order The order object.
-	 * @param float $amount The amount to refund.
+	 * @param float    $amount The amount to refund.
 	 *
 	 * @return \WP_Error|array The refund result.
 	 */
@@ -175,8 +175,8 @@ class Swedbank_Pay_Payment_Actions {
 	 * Perform Refund.
 	 *
 	 * @param \WC_Order $order
-	 * @param array $lines
-	 * @param array $items
+	 * @param array     $lines
+	 * @param array     $items
 	 * @param $reason
 	 *
 	 * @return \WP_Error|array
@@ -191,10 +191,10 @@ class Swedbank_Pay_Payment_Actions {
 
 		// Filter items
 		foreach ( $lines as $item_id => $line ) {
-			$qty = (int) $line['qty'];
-			$refund_total  = (float) $line['refund_total'];
+			$qty          = (int) $line['qty'];
+			$refund_total = (float) $line['refund_total'];
 			if ( $qty === 0 || $refund_total <= 0.01 ) {
-				unset( $lines[$item_id] );
+				unset( $lines[ $item_id ] );
 			}
 		}
 
@@ -223,8 +223,8 @@ class Swedbank_Pay_Payment_Actions {
 				$refund_tax += (float) $refund_tax_value;
 			}
 
-			$refund_total  = (float) $line['refund_total'];
-			$tax_percent   = ( $refund_total > 0 && $refund_tax > 0 ) ?
+			$refund_total = (float) $line['refund_total'];
+			$tax_percent  = ( $refund_total > 0 && $refund_tax > 0 ) ?
 				round( 100 / ( $refund_total / $refund_tax ) ) : 0;
 
 			if ( 'excl' === get_option( 'woocommerce_tax_display_shop' ) ) {
@@ -310,8 +310,8 @@ class Swedbank_Pay_Payment_Actions {
 						$image = wc_placeholder_img_src( 'full' );
 					}
 
-					if ( null === parse_url( $image, PHP_URL_SCHEME ) &&
-						 mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
+					if ( null === wp_parse_url( $image, PHP_URL_SCHEME ) &&
+						mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
 					) {
 						$image = wp_guess_url() . $image;
 					}
@@ -408,7 +408,7 @@ class Swedbank_Pay_Payment_Actions {
 		if ( $create_credit_memo ) {
 			$amount = 0;
 			foreach ( $items as $item ) {
-				$amount += ( $item[Swedbank_Pay_Order_Item::FIELD_AMOUNT] / 100 );
+				$amount += ( $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] / 100 );
 			}
 
 			$refund = wc_create_refund(
@@ -418,14 +418,14 @@ class Swedbank_Pay_Payment_Actions {
 					'reason'         => $reason,
 					'line_items'     => $lines,
 					'refund_payment' => false,
-					'restock_items'  => true
+					'restock_items'  => true,
 				)
 			);
 			if ( is_wp_error( $refund ) ) {
 				$order->add_order_note(
 					sprintf(
 						'Refund could not be created. Error: %s',
-						join('; ', $refund->get_error_messages() )
+						join( '; ', $refund->get_error_messages() )
 					)
 				);
 			}
@@ -438,7 +438,7 @@ class Swedbank_Pay_Payment_Actions {
 	 * Validate order lines.
 	 *
 	 * @param WC_Order $order
-	 * @param array $lines
+	 * @param array    $lines
 	 *
 	 * @return void
 	 * @throws \Exception
@@ -472,8 +472,8 @@ class Swedbank_Pay_Payment_Actions {
 						/** @var WC_Order_Item_Product $item */
 						foreach ( $captured as $order_item ) {
 							$sku = $item->get_product()->get_sku();
-							if ($order_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === $sku &&
-								$qty > $order_item[Swedbank_Pay_Order_Item::FIELD_QTY]
+							if ( $order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] === $sku &&
+								$qty > $order_item[ Swedbank_Pay_Order_Item::FIELD_QTY ]
 							) {
 								throw new \Exception(
 									sprintf(
@@ -490,7 +490,7 @@ class Swedbank_Pay_Payment_Actions {
 						/** @var WC_Order_Item_Shipping $item */
 						$isCaptured = false;
 						foreach ( $captured as $order_item ) {
-							if ( $order_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === 'shipping' ) {
+							if ( $order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] === 'shipping' ) {
 								$isCaptured = true;
 								break;
 							}
@@ -511,7 +511,7 @@ class Swedbank_Pay_Payment_Actions {
 						/** @var WC_Order_Item_Fee $item */
 						$isCaptured = false;
 						foreach ( $captured as $order_item ) {
-							if ( $order_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === 'fee' ) {
+							if ( $order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] === 'fee' ) {
 								$isCaptured = true;
 								break;
 							}
@@ -534,7 +534,7 @@ class Swedbank_Pay_Payment_Actions {
 	}
 
 	private function save_refunded_items( WC_Order $order, array $lines ) {
-		$order_lines = [];
+		$order_lines = array();
 		foreach ( $lines as $item_id => $line ) {
 			$qty = (int) $line['qty'];
 			if ( $qty < 1 ) {
@@ -560,7 +560,7 @@ class Swedbank_Pay_Payment_Actions {
 
 			$order_lines[] = array(
 				Swedbank_Pay_Order_Item::FIELD_REFERENCE => $reference,
-				Swedbank_Pay_Order_Item::FIELD_QTY => $qty
+				Swedbank_Pay_Order_Item::FIELD_QTY       => $qty,
 			);
 		}
 
@@ -570,8 +570,8 @@ class Swedbank_Pay_Payment_Actions {
 		if ( count( $current_items ) > 0 ) {
 			foreach ( $current_items as &$current_item ) {
 				foreach ( $order_lines as $order_line ) {
-					if ( $order_line[Swedbank_Pay_Order_Item::FIELD_REFERENCE] === $current_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
-						$current_item[Swedbank_Pay_Order_Item::FIELD_QTY] += $order_line[Swedbank_Pay_Order_Item::FIELD_QTY];
+					if ( $order_line[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] === $current_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ) {
+						$current_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] += $order_line[ Swedbank_Pay_Order_Item::FIELD_QTY ];
 						break;
 					} else {
 						$current_items[] = $order_line;

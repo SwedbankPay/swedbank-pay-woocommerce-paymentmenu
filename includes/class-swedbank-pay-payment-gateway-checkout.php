@@ -310,7 +310,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					if ( ! empty( $value ) ) {
 						if ( ! filter_var( $value, FILTER_VALIDATE_URL ) ) {
 							throw new Exception( __( 'Logo Url is invalid.', 'swedbank-pay-woocommerce-checkout' ) );
-						} elseif ( 'https' !== parse_url( $value, PHP_URL_SCHEME ) ) {
+						} elseif ( 'https' !== wp_parse_url( $value, PHP_URL_SCHEME ) ) {
 							throw new Exception( __( 'Logo Url should use https scheme.', 'swedbank-pay-woocommerce-checkout' ) );
 						}
 					}
