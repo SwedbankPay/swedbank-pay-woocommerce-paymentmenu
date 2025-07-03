@@ -20,6 +20,14 @@ class Swedbank_Pay_Scheduler {
 	public const ACTION_ID = 'swedbank_pay_scheduler_run';
 
 	/**
+	 * Logger instance.
+	 *
+	 * @var WC_Logger
+	 */
+	private $logger;
+
+
+	/**
 	 * @var Swedbank_Pay_Scheduler
 	 */
 	private static $instance = null;
@@ -36,13 +44,6 @@ class Swedbank_Pay_Scheduler {
 
 		return self::$instance;
 	}
-
-	/**
-	 * Logger instance.
-	 *
-	 * @var WC_Logger
-	 */
-	private $logger;
 
 	/**
 	 * Class constructor.
