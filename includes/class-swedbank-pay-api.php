@@ -4,7 +4,6 @@ namespace SwedbankPay\Checkout\WooCommerce;
 
 defined( 'ABSPATH' ) || exit;
 
-use Exception;
 use WP_Error;
 use WC_Log_Levels;
 use WC_Order;
@@ -44,21 +43,21 @@ use SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class Swedbank_Pay_Api {
-	const MODE_TEST = 'test';
-	const MODE_LIVE = 'live';
+	public const MODE_TEST = 'test';
+	public const MODE_LIVE = 'live';
 
-	const INTENT_AUTOCAPTURE   = 'AutoCapture';
-	const INTENT_AUTHORIZATION = 'Authorization';
-	const INTENT_SALE          = 'Sale';
+	public const INTENT_AUTOCAPTURE   = 'AutoCapture';
+	public const INTENT_AUTHORIZATION = 'Authorization';
+	public const INTENT_SALE          = 'Sale';
 
-	const OPERATION_PURCHASE = 'Purchase';
+	public const OPERATION_PURCHASE = 'Purchase';
 
-	const TYPE_VERIFICATION  = 'Verification';
-	const TYPE_AUTHORIZATION = 'Authorization';
-	const TYPE_CAPTURE       = 'Capture';
-	const TYPE_SALE          = 'Sale';
-	const TYPE_CANCELLATION  = 'Cancellation';
-	const TYPE_REVERSAL      = 'Reversal';
+	public const TYPE_VERIFICATION  = 'Verification';
+	public const TYPE_AUTHORIZATION = 'Authorization';
+	public const TYPE_CAPTURE       = 'Capture';
+	public const TYPE_SALE          = 'Sale';
+	public const TYPE_CANCELLATION  = 'Cancellation';
+	public const TYPE_REVERSAL      = 'Reversal';
 
 	/**
 	 * @var string

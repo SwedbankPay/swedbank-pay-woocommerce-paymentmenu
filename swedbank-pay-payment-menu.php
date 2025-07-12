@@ -1,5 +1,5 @@
-<?php // phpcs:disable
-/*
+<?php
+/**
  * Plugin Name: Swedbank Pay Payment Menu
  * Plugin URI: https://www.swedbankpay.com/
  * Description: Provides the Swedbank Pay Payment Menu for WooCommerce.
@@ -10,17 +10,29 @@
  * Version: 3.6.6
  * Text Domain: swedbank-pay-woocommerce-checkout
  * Domain Path: /languages
+ *
  * WC requires at least: 5.5.1
  * WC tested up to: 9.3.1
+ * Requires Plugins: woocommerce
+ *
+ * @package SwedbankPay
  */
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
+use Krokedil\Support\Logger;
 
 defined( 'ABSPATH' ) || exit;
+define( 'SWEDBANK_PAY_VERSION', '3.6.6' );
+define( 'SWEDBANK_PAY_MAIN_FILE', __FILE__ );
+define( 'SWEDBANK_PAY_PLUGIN_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
+define( 'SWEDBANK_PAY_PLUGIN_URL', untrailingslashit( plugin_dir_url( __FILE__ ) ) );
+define( 'SwedbankPay\Checkout\WooCommerce\PLUGIN_PATH', plugin_basename( __FILE__ ) );
 
-include_once( dirname( __FILE__ ) . '/includes/class-swedbank-pay-plugin.php' );
+require_once __DIR__ . '/includes/class-swedbank-pay-plugin.php';
 
 /**
+ * This class is the main entry point for the Swedbank Pay Payment Menu plugin.
+ *
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
  * @SuppressWarnings(PHPMD.CamelCaseParameterName)
@@ -30,30 +42,85 @@ include_once( dirname( __FILE__ ) . '/includes/class-swedbank-pay-plugin.php' );
  * @SuppressWarnings(PHPMD.StaticAccess)
  */
 class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
-	const TEXT_DOMAIN = 'swedbank-pay-woocommerce-checkout';
-	// phpcs:enable
+	public const TEXT_DOMAIN = 'swedbank-pay-woocommerce-checkout';
+
+	/**
+	 * Logger instance.
+	 *
+	 * @var Logger
+	 */
+	private $logger;
+
+	/**
+	 * Instance of the class
+	 *
+	 * @var object
+	 */
+	private static $instance;
+
+	/**
+	 * Get the instance of the class
+	 *
+	 * @return object
+	 */
+	public static function get_instance() {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+
+		return self::$instance;
+	}
+
+	/**
+	 * Private clone method to prevent cloning of the instance of the
+	 * *Singleton* instance.
+	 *
+	 * @return void
+	 */
+	private function __clone() {
+		wc_doing_it_wrong( __FUNCTION__, __( 'Nope' ), '1.0' );
+	}
+
+	/**
+	 * Private unserialize method to prevent unserializing of the *Singleton*
+	 * instance.
+	 *
+	 * @return void
+	 */
+	public function __wakeup() {
+		wc_doing_it_wrong( __FUNCTION__, __( 'Nope' ), '1.0' );
+	}
+
+	/**
+	 * Logger instance.
+	 *
+	 * @return Logger
+	 */
+	public function logger() {
+		return $this->logger;
+	}
 
 	/**
 	 * Constructor
 	 */
 	public function __construct() {
-		define( 'SwedbankPay\Checkout\WooCommerce\PLUGIN_PATH', plugin_basename( __FILE__ ) );
-
-		if ( in_array( 'swedbank-pay-checkout/swedbank-pay-woocommerce-checkout.php', get_option( 'active_plugins' ) ) ) { //phpcs:ignore
+		// If the plugin is already loaded, do not load it again.
+		if ( in_array( 'swedbank-pay-checkout/swedbank-pay-woocommerce-checkout.php', get_option( 'active_plugins' ), true ) ) {
 			return;
 		}
 
-		parent::__construct();
+		add_action( 'plugin_loaded', array( $this, 'init' ) );
 
-		// Activation
-		register_activation_hook( __FILE__, array( $this, 'install' ) );
+		// Activation.
+		// register_activation_hook( __FILE__, array( $this, 'install' ) );
 
-		// Actions
-		add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
-		add_action( 'woocommerce_loaded', array( $this, 'woocommerce_loaded' ), 30 );
+		// Actions.
+		add_action( 'init', array( $this, 'load_textdomain' ) );
+
+		// Declare feature compatibility. Anonymous function is OK in this case, since this should not be easily removable.
 		add_action(
 			'before_woocommerce_init',
-			function() {
+			function () {
 				if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
 					\Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
 						'custom_order_tables',
@@ -66,34 +133,94 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	}
 
 	/**
-	 * Init localisations and files
+	 * Initialize and register the gateway.
+	 *
 	 * @return void
 	 */
 	public function init() {
-		// Localization
-		load_plugin_textdomain(
-			'swedbank-pay-woocommerce-checkout',
-			false,
-			dirname( plugin_basename( __FILE__ ) ) . '/languages'
-		);
-	}
-
-	/**
-	 * WooCommerce Loaded: load classes
-	 * @return void
-	 */
-	public function woocommerce_loaded() {
-		// Check if WooCommerce is missing
-		if ( ! class_exists( 'WooCommerce', false ) || ! defined( 'WC_ABSPATH' ) ) {
-			add_action( 'admin_notices', __CLASS__ . '::missing_woocommerce_notice' );
-
+		if ( ! self::init_composer() ) {
 			return;
 		}
 
-		include_once( dirname( __FILE__ ) . '/includes/class-swedbank-pay-payment-gateway-checkout.php' );
+		if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
+			return;
+		}
 
-		// Register Gateway
-		Swedbank_Pay_Payment_Menu::register_gateway( Swedbank_Pay_Payment_Gateway_Checkout::class );
+		include_once __DIR__ . '/includes/class-swedbank-pay-payment-gateway-checkout.php';
+
+		parent::__construct();
+
+		$plugin_settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+		$this->logger    = new Logger( 'payex_checkout', true );
+
+		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateways' ) );
+	}
+
+	/**
+	 * Add the gateways to WooCommerce.
+	 *
+	 * @param array $methods Payment methods.
+	 * @return array Payment methods with Dintero added.
+	 */
+	public function add_gateways( $methods ) {
+		$methods[] = Swedbank_Pay_Payment_Gateway_Checkout::class;
+
+		return $methods;
+	}
+
+	/**
+	 * Load the plugin text domain for translation.
+	 *
+	 * @return void
+	 */
+	public function load_textdomain() {
+		load_plugin_textdomain(
+			'swedbank-pay-woocommerce-checkout',
+			false,
+			SWEDBANK_PAY_PLUGIN_PATH . '/languages'
+		);
+	}
+
+
+	/**
+	 * Try to load the autoloader from Composer.
+	 *
+	 * @return bool Whether the autoloader was successfully loaded.
+	 */
+	public function init_composer() {
+		$autoloader = __DIR__ . '/vendor/autoload.php';
+		if ( ! is_readable( $autoloader ) ) {
+			self::missing_autoloader();
+			return false;
+		}
+
+		$autoloader_result = require $autoloader;
+		return $autoloader_result ? true : false;
+	}
+
+	/**
+	 * Print error message if the composer autoloader is missing.
+	 *
+	 * @return void
+	 */
+	protected static function missing_autoloader() {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+	        error_log( // phpcs:ignore
+				esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-woocommerce-checkout' )
+			);
+		}
+		add_action(
+			'admin_notices',
+			function () {
+				?>
+			<div class="notice notice-error">
+				<p>
+					<?php echo esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-woocommerce-checkout' ); ?>
+				</p>
+			</div>
+				<?php
+			}
+		);
 	}
 
 	/**
@@ -109,12 +236,13 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 				<?php
 				echo esc_html__( 'WooCommerce plugin is inactive or missing. Please install and active it.', 'swedbank-pay-woocommerce-checkout' );
 				echo '<br />';
-				echo sprintf(
-				/* translators: 1: plugin name */                        esc_html__(  //phpcs:ignore
-					'%1$s will be deactivated.',
-					'swedbank-pay-woocommerce-checkout'
-				),
-					self::PLUGIN_NAME
+				printf(
+				/* translators: 1: plugin name */
+					esc_html__(
+						'%1$s will be deactivated.',
+						'swedbank-pay-woocommerce-checkout'
+					),
+					self::PLUGIN_NAME //phpcs:ignore
 				);
 
 				?>
@@ -122,9 +250,18 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		</div>
 		<?php
 
-		// Deactivate the plugin
+		// Deactivate the plugin.
 		deactivate_plugins( plugin_basename( __FILE__ ), true );
 	}
 }
 
-new Swedbank_Pay_Payment_Menu();
+/**
+ * Get the instance of the plugin.
+ *
+ * @return Swedbank_Pay_Payment_Menu
+ */
+function Swedbank_Pay() {
+	return Swedbank_Pay_Payment_Menu::get_instance();
+}
+
+Swedbank_Pay();
