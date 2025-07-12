@@ -490,7 +490,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			throw new Exception( 'Zero order is not supported.' );
 		}
 
-		// Initiate Payment Order
+		// Initiate Payment Order.
 		$result = $this->api->initiate_purchase( $order );
 		if ( is_wp_error( $result ) ) {
 			throw new Exception(
