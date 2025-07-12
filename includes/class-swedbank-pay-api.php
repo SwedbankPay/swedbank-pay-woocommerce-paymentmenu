@@ -239,22 +239,13 @@ class Swedbank_Pay_Api {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $purchase_request->send();
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$purchase_request->getClient()->getDebugInfo()
-			);
+			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
 
 			return $response_service;
 		} catch ( ClientException $e ) {
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$purchase_request->getClient()->getDebugInfo()
-			);
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
-			);
+			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
 
 			return new WP_Error(
 				400,
@@ -298,8 +289,7 @@ class Swedbank_Pay_Api {
 		);
 
 		$start = microtime( true );
-		$this->log(
-			WC_Log_Levels::DEBUG,
+		Swedbank_Pay()->logger()->debug(
 			sprintf(
 				'Request: %s %s %s',
 				$method,
@@ -316,8 +306,7 @@ class Swedbank_Pay_Api {
 			$response_body = $client->getResponseBody();
 			$result        = json_decode( $response_body, true );
 			$time          = microtime( true ) - $start;
-			$this->log(
-				WC_Log_Levels::DEBUG,
+			Swedbank_Pay()->logger()->debug(
 				sprintf( '[%.4F] Response: %s', $time, $response_body )
 			);
 
@@ -325,8 +314,7 @@ class Swedbank_Pay_Api {
 		} catch ( \SwedbankPay\Api\Client\Exception $exception ) {
 			$httpCode = (int) $this->get_client()->getResponseCode();
 			$time     = microtime( true ) - $start;
-			$this->log(
-				WC_Log_Levels::DEBUG,
+			Swedbank_Pay()->logger()->debug(
 				sprintf(
 					'[%.4F] Client Exception. Check debug info: %s',
 					$time,
@@ -380,8 +368,7 @@ class Swedbank_Pay_Api {
 		$result = $this->request( 'GET', $payment_id_url );
 		if ( is_wp_error( $result ) ) {
 			/** @var \WP_Error $result */
-			$this->log(
-				WC_Log_Levels::DEBUG,
+			Swedbank_Pay()->logger()->debug(
 				sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() )
 			);
 
@@ -417,8 +404,7 @@ class Swedbank_Pay_Api {
 	 */
 	public function finalize_payment( WC_Order $order, $transaction_number = null ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		$this->log(
-			WC_Log_Levels::DEBUG,
+		Swedbank_Pay()->logger()->debug(
 			sprintf(
 				'Finalize payment for Order #%s. Payment ID: %s. Transaction number: %s',
 				$order->get_id(),
@@ -450,8 +436,7 @@ class Swedbank_Pay_Api {
 		// @todo Sort by "created" field using array_multisort
 		foreach ( $transactions_list as $transaction ) {
 			if ( $transaction_number === $transaction['number'] ) {
-				$this->log(
-					WC_Log_Levels::DEBUG,
+				Swedbank_Pay()->logger()->debug(
 					sprintf(
 						'Handle Transaction #%s for Order #%s.',
 						$transaction_number,
@@ -466,8 +451,7 @@ class Swedbank_Pay_Api {
 		// Some Authorize, Sale transaction are not in the list
 		// Financial transaction list is empty, initiate workaround / failback.
 		if ( 0 === count( $transactions_list ) ) {
-			$this->log(
-				WC_Log_Levels::DEBUG,
+			Swedbank_Pay()->logger()->debug(
 				sprintf( 'Transaction List is empty. Run failback for Transaction #%s', $transaction_number )
 			);
 
@@ -521,8 +505,7 @@ class Swedbank_Pay_Api {
 			return true;
 		}
 
-		$this->log(
-			WC_Log_Levels::DEBUG,
+		Swedbank_Pay()->logger()->debug(
 			sprintf( 'Process transaction: %s', var_export( $transaction, true ) )
 		);
 
@@ -562,8 +545,7 @@ class Swedbank_Pay_Api {
 				// Check if the payment was captured fully
 				// `remainingCaptureAmount` is missing if the payment was captured fully
 				if ( ! isset( $payment_order['remainingCaptureAmount'] ) ) {
-					$this->log(
-						WC_Log_Levels::DEBUG,
+					Swedbank_Pay()->logger()->debug(
 						sprintf(
 							'Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingCaptureAmount is missing. Full action?', //phpcs:ignore
 							$payment_order_id,
@@ -616,8 +598,7 @@ class Swedbank_Pay_Api {
 				// `remainingReversalAmount` is missing if the payment was refunded fully
 				$is_full_refund = false;
 				if ( ! isset( $payment_order['remainingReversalAmount'] ) ) {
-					$this->log(
-						WC_Log_Levels::DEBUG,
+					Swedbank_Pay()->logger()->debug(
 						sprintf(
 							'Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingReversalAmount is missing. Full action?', //phpcs:ignore
 							$payment_order_id,
@@ -682,8 +663,7 @@ class Swedbank_Pay_Api {
 		$order->update_meta_data( '_swedbank_pay_transactions', $transactions );
 		$order->save();
 
-		$this->log(
-			WC_Log_Levels::DEBUG,
+		Swedbank_Pay()->logger()->debug(
 			sprintf( 'Transaction #%s has been processed.', $transaction['number'] )
 		);
 
@@ -966,10 +946,7 @@ class Swedbank_Pay_Api {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $requestService->send();
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$requestService->getClient()->getDebugInfo()
-			);
+			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseData();
 
@@ -982,13 +959,9 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$requestService->getClient()->getDebugInfo()
-			);
+			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
+			Swedbank_Pay()->logger()->debug(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -1026,10 +999,7 @@ class Swedbank_Pay_Api {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $requestService->send();
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$requestService->getClient()->getDebugInfo()
-			);
+			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseData();
 
@@ -1043,13 +1013,9 @@ class Swedbank_Pay_Api {
 
 			return $result;
 		} catch ( ClientException $e ) {
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$requestService->getClient()->getDebugInfo()
-			);
+			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
+			Swedbank_Pay()->logger()->debug(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -1099,10 +1065,7 @@ class Swedbank_Pay_Api {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $requestService->send();
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$requestService->getClient()->getDebugInfo()
-			);
+			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseData();
 
@@ -1116,13 +1079,9 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$requestService->getClient()->getDebugInfo()
-			);
+			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
+			Swedbank_Pay()->logger()->debug(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -1210,10 +1169,7 @@ class Swedbank_Pay_Api {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $requestService->send();
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$requestService->getClient()->getDebugInfo()
-			);
+			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseData();
 
@@ -1227,13 +1183,9 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			$this->log(
-				WC_Log_Levels::DEBUG,
-				$requestService->getClient()->getDebugInfo()
-			);
+			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
-			$this->log(
-				WC_Log_Levels::DEBUG,
+			Swedbank_Pay()->logger()->debug(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
