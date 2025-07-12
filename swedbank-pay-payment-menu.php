@@ -109,10 +109,14 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 			return;
 		}
 
+		// Initialize the parent class before the plugin is loaded.
+		// This is required since the 'install' method is dependant on classes being loaded by the parent class.
+		parent::__construct();
+
 		add_action( 'plugin_loaded', array( $this, 'init' ) );
 
 		// Activation.
-		// register_activation_hook( __FILE__, array( $this, 'install' ) );
+		register_activation_hook( __FILE__, array( $this, 'install' ) );
 
 		// Actions.
 		add_action( 'init', array( $this, 'load_textdomain' ) );
@@ -147,8 +151,6 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		}
 
 		include_once __DIR__ . '/includes/class-swedbank-pay-payment-gateway-checkout.php';
-
-		parent::__construct();
 
 		$plugin_settings = get_option( 'woocommerce_payex_checkout_settings', array() );
 		$this->logger    = new Logger( 'swedbank_pay', wc_string_to_bool( $plugin_settings['logger'] ?? true ) );
