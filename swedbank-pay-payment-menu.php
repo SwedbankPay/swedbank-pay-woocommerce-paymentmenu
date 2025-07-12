@@ -151,7 +151,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		parent::__construct();
 
 		$plugin_settings = get_option( 'woocommerce_payex_checkout_settings', array() );
-		$this->logger    = new Logger( 'payex_checkout', true );
+		$this->logger    = new Logger( 'swedbank_pay', wc_string_to_bool( $plugin_settings['logger'] ?? true ) );
 
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateways' ) );
 	}
