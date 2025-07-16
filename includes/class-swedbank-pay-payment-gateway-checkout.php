@@ -3,7 +3,6 @@
 defined( 'ABSPATH' ) || exit;
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Background_Queue;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Transactions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Instant_Capture;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Payment_Actions;
@@ -400,7 +399,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		// Test API Credentials
 		try {
-			new SwedbankPay\Api\Service\Paymentorder\Request\Test(
+			new KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Test(
 				$this->access_token,
 				$this->payee_id,
 				'yes' === $this->testmode

@@ -9,24 +9,24 @@ use WC_Log_Levels;
 use WC_Order;
 use WC_Payment_Gateway;
 use Swedbank_Pay_Payment_Gateway_Checkout;
-use SwedbankPay\Api\Client\Client;
-use SwedbankPay\Api\Client\Exception as ClientException;
-use SwedbankPay\Api\Response;
-use SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
-use SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCaptureV3;
-use SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCancelV3;
-use SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionReversalV3;
-use SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\Transaction as TransactionData;
-use SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
-use SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
-use SwedbankPay\Api\Service\Paymentorder\Resource\Collection\Item\OrderItem;
-use SwedbankPay\Api\Service\Paymentorder\Resource\Collection\OrderItemsCollection;
-use SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderMetadata;
-use SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
-use SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayeeInfo;
-use SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayer;
-use SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderUrl;
-use SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Response;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCaptureV3;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCancelV3;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionReversalV3;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\Transaction as TransactionData;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\Item\OrderItem;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\OrderItemsCollection;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderMetadata;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayeeInfo;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayer;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderUrl;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -311,7 +311,7 @@ class Swedbank_Pay_Api {
 			);
 
 			return $result;
-		} catch ( \SwedbankPay\Api\Client\Exception $exception ) {
+		} catch ( \KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception $exception ) {
 			$httpCode = (int) $this->get_client()->getResponseCode();
 			$time     = microtime( true ) - $start;
 			Swedbank_Pay()->logger()->debug(

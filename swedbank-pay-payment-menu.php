@@ -19,7 +19,7 @@
  */
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
-use Krokedil\Support\Logger;
+use KrokedilSwedbankPayDeps\Krokedil\Support\Logger;
 
 defined( 'ABSPATH' ) || exit;
 define( 'SWEDBANK_PAY_VERSION', '3.6.6' );
@@ -190,14 +190,18 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @return bool Whether the autoloader was successfully loaded.
 	 */
 	public function init_composer() {
-		$autoloader = __DIR__ . '/vendor/autoload.php';
-		if ( ! is_readable( $autoloader ) ) {
+		$autoloader              = __DIR__ . '/vendor/autoload.php';
+		$autoloader_dependencies = __DIR__ . '/dependencies/scoper-autoload.php';
+
+		// Check if the autoloaders was read.
+		$autoloader_result              = is_readable( $autoloader ) && require $autoloader;
+		$autoloader_dependencies_result = is_readable( $autoloader_dependencies ) && require $autoloader_dependencies;
+		if ( ! $autoloader_result || ! $autoloader_dependencies_result ) {
 			self::missing_autoloader();
 			return false;
 		}
 
-		$autoloader_result = require $autoloader;
-		return $autoloader_result ? true : false;
+		return true;
 	}
 
 	/**

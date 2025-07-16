@@ -2,7 +2,6 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
-use SwedbankPay\Core\Api\FinancialTransaction;
 use WC_Background_Process;
 use WC_Logger;
 

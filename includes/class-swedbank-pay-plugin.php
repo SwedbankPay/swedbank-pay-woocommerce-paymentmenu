@@ -8,6 +8,7 @@ use WC_Order;
 use Automattic\Jetpack\Constants;
 use Exception;
 use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
+use KrokedilSwedbankPayDeps\Ramsey\Uuid\Uuid;
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
@@ -201,7 +202,7 @@ class Swedbank_Pay_Plugin {
 	 * @return string
 	 */
 	public function generate_uuid( $node ) {
-		return \Ramsey\Uuid\Uuid::uuid5( \Ramsey\Uuid\Uuid::NAMESPACE_OID, $node )->toString();
+		return Uuid::uuid5( Uuid::NAMESPACE_OID, $node )->toString();
 	}
 
 	/**

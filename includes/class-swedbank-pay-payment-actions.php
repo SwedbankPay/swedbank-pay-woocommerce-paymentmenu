@@ -10,7 +10,6 @@ use WC_Order_Item_Coupon;
 use WC_Order_Item_Product;
 use WC_Order_Item_Fee;
 use WC_Order_Item_Shipping;
-use WC_Order_Refund;
 use WC_Product;
 use WC_Payment_Gateway;
 use WC_Log_Levels;
