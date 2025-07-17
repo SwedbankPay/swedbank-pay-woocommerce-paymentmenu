@@ -366,7 +366,7 @@ class Swedbank_Pay_Api {
 		}
 
 		$result = $this->request( 'GET', $payment_id_url );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			/** @var \WP_Error $result */
 			Swedbank_Pay()->logger()->debug(
 				sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() )
@@ -487,7 +487,7 @@ class Swedbank_Pay_Api {
 	 *
 	 * @return true|WP_Error
 	 */
-	public function process_transaction( WC_Order $order, array $transaction ) {
+public function process_transaction( WC_Order $order, array $transaction ) {
 		$transaction_id = $transaction['number'];
 
 		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts

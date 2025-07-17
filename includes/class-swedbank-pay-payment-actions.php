@@ -83,7 +83,7 @@ class Swedbank_Pay_Payment_Actions {
 
 		/** @var \WP_Error|array $result */
 		$result = $this->gateway->api->capture_checkout( $order, $order_lines );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			return $result;
 		}
 
@@ -161,7 +161,7 @@ class Swedbank_Pay_Payment_Actions {
 		);
 
 		$result = $this->gateway->api->refund_amount( $order, $amount );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$order->add_order_note(
 				'Refund has been failed. Error: ' . $result->get_error_message()
 			);
@@ -379,7 +379,7 @@ class Swedbank_Pay_Payment_Actions {
 		);
 
 		$result = $this->gateway->api->refund_checkout( $order, $items );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$order->add_order_note(
 				'Refund has been failed. Error: ' . $result->get_error_message()
 			);

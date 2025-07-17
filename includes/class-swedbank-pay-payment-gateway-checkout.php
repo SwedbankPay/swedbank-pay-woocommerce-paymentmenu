@@ -446,7 +446,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		// Capture payment is applicable
 		if ( 'yes' === $this->autocomplete && $order->has_status( 'on-hold' ) ) {
 			$result = $this->payment_actions_handler->capture_payment( $order );
-			if ( ! is_wp_error( $result ) ) {
+			if ( ! is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 				$order->payment_complete();
 				$order->update_status( 'completed' );
 			}
@@ -491,7 +491,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		// Initiate Payment Order.
 		$result = $this->api->initiate_purchase( $order );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			throw new Exception(
 				$result->get_error_message(),
 				$result->get_error_code()
@@ -661,7 +661,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		if ( ! $refundByAmount ) {
 			// Refund by items
 			$result = $this->payment_actions_handler->refund_payment( $order, $lines, $reason, false );
-			if ( is_wp_error( $result ) ) {
+			if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 				return new WP_Error( 'refund', join( '; ', $result->get_error_messages() ) );
 			}
 
@@ -673,7 +673,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		// Refund by amount
 		$result = $this->payment_actions_handler->refund_payment_amount( $order, $amount );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			return new WP_Error( 'refund', join( '; ', $result->get_error_messages() ) );
 		}
 
@@ -706,7 +706,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			if ( ! empty( $payment_order_id ) ) {
 				// Fetch payment info
 				$result = $this->api->request( 'GET', $payment_order_id . '/paid' );
-				if ( is_wp_error( $result ) ) {
+				if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 					// Request failed
 					return $value;
 				}

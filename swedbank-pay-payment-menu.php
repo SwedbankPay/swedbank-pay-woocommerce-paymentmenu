@@ -20,6 +20,8 @@
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 use KrokedilSwedbankPayDeps\Krokedil\Support\Logger;
+use KrokedilSwedbankPayDeps\Krokedil\Support\SystemReport;
+
 
 defined( 'ABSPATH' ) || exit;
 define( 'SWEDBANK_PAY_VERSION', '3.6.6' );
@@ -50,6 +52,14 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @var Logger
 	 */
 	private $logger;
+	
+	/**
+	 * Support instance.
+	 *
+	 * @var SystemReport
+	 */
+	private $system_report;
+
 
 	/**
 	 * Instance of the class
@@ -98,6 +108,15 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 */
 	public function logger() {
 		return $this->logger;
+	}
+	
+	/**
+	 * SystemReport instance.
+	 *
+	 * @return SystemReport
+	 */
+	public function system_report() {
+		return $this->system_report;
 	}
 
 	/**
@@ -154,6 +173,22 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 
 		$plugin_settings = get_option( 'woocommerce_payex_checkout_settings', array() );
 		$this->logger    = new Logger( 'swedbank_pay', wc_string_to_bool( $plugin_settings['logger'] ?? true ) );
+
+		$system_report_options = array(
+			array(
+				'type' => 'checkbox',
+			),
+			array(
+				'type' => 'select',
+			),
+			array(
+				'type' => 'text',
+				'exclude' => array(
+					'title' => __( 'Access Token', 'swedbank-pay-woocommerce-checkout' ),
+				)
+			),
+		);
+		$this->system_report  = new SystemReport( 'payex_checkout', 'Swedbank Pay', $system_report_options);
 
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateways' ) );
 	}

@@ -130,7 +130,7 @@ class Swedbank_Thankyou {
 
 		$gateway = swedbank_pay_get_payment_method( $order );
 		$result = $gateway->api->request( 'GET', $payment_id );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			wp_send_json_error( 'Failed to get payment status' );
 
 			return;
@@ -155,7 +155,7 @@ class Swedbank_Thankyou {
 			default:
 				// Check in `failedAttempts`
 				$result = $gateway->api->request( 'GET', $payment_id . '/failedAttempts' );
-				if ( is_wp_error( $result ) ) {
+				if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 					wp_send_json_success( array(
 						'state' => 'failed',
 						'message' => 'Unable to verify the payment: ' . join('; ', $result->get_error_messages() )

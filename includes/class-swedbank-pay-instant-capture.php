@@ -98,7 +98,7 @@ class Swedbank_Pay_Instant_Capture {
 		$this->gateway->api->log( WC_Log_Levels::INFO, __METHOD__, array( $items ) );
 		if ( count( $items ) > 0 ) {
 			$result = $this->gateway->api->capture_checkout( $order, $items );
-			if ( is_wp_error( $result ) ) {
+			if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 				/** @var \WP_Error $result */
 				throw new \Exception( $result->get_error_message() );
 			}

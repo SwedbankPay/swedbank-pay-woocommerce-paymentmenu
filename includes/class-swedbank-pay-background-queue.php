@@ -242,7 +242,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 
 		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
 		$result = $gateway->api->finalize_payment( $order, $transaction_number );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			/** @var \WP_Error $result */
 			$this->log( sprintf( '[ERROR]: %s', $result->get_error_message() ) );
 
