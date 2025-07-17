@@ -184,7 +184,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 			array(
 				'type' => 'text',
 				'exclude' => array(
-					'title' => __( 'Access Token', 'swedbank-pay-woocommerce-checkout' ),
+					'title' => 'Access Token',
 				)
 			),
 		);
