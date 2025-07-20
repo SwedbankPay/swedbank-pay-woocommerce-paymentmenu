@@ -64,10 +64,8 @@ class Swedbank_Thankyou {
 			return;
 		}
 
-		global $wp;
-
 		$order_id  = absint( get_query_var( 'order-received', 0 ) );
-		$order_key = filter_input( INPUT_GET, 'order_key', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
+		$order_key = filter_input( INPUT_GET, 'key', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
 
 		$order = wc_get_order( $order_id );
 		if ( empty( $order ) || ! $order->get_id() || ! $order->key_is_valid( $order_key ) ) {
