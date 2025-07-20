@@ -117,7 +117,7 @@ class Swedbank_Thankyou {
 		$order_key = isset( $_POST['order_key'] ) ? wc_clean( $_POST['order_key'] ) : '';
 
 		$order = wc_get_order( $order_id );
-		if ( ! $order->get_id() || ! $order->key_is_valid( $order_key ) ) {
+		if ( empty( $order ) || ! $order->get_id() || ! $order->key_is_valid( $order_key ) ) {
 			wp_send_json_error( 'Invalid order' );
 			return;
 		}
