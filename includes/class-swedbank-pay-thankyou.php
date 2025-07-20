@@ -44,7 +44,7 @@ class Swedbank_Thankyou {
 			$located = wc_locate_template(
 				'checkout/thankyou.php',
 				$template_path,
-				dirname( __FILE__ ) . '/../templates/'
+				__DIR__ . '/../templates/'
 			);
 		}
 
@@ -66,11 +66,11 @@ class Swedbank_Thankyou {
 
 		global $wp;
 
-		$order_id  = absint( $wp->query_vars['order-received'] );
+		$order_id  = absint( get_query_var( 'order-received', 0 ) );
 		$order_key = isset( $_GET['key'] ) ? wc_clean( wp_unslash( $_GET['key'] ) ) : ''; // WPCS: input var ok, CSRF ok.
 
 		$order = wc_get_order( $order_id );
-		if ( ! $order->get_id() || ! $order->key_is_valid( $order_key ) ) {
+		if ( empty( $order ) || ! $order->get_id() || ! $order->key_is_valid( $order_key ) ) {
 			return;
 		}
 
@@ -85,13 +85,13 @@ class Swedbank_Thankyou {
 			untrailingslashit( plugins_url( '/', __FILE__ ) ) . '/../assets/js/payment-status' . $suffix . '.js',
 			array(
 				'jquery',
-				'jquery-blockui'
+				'jquery-blockui',
 			),
 			false,
 			true
 		);
 
-		// Localize the script with new data
+		// Localize the script with new data.
 		wp_localize_script(
 			'swedbank-pay-payment-status-check',
 			'Swedbank_Pay_Payment_Status_Check',
@@ -103,7 +103,7 @@ class Swedbank_Thankyou {
 				'check_message' => __(
 					'Please wait. We\'re checking the order status.',
 					'swedbank-pay-woocommerce-checkout'
-				)
+				),
 			)
 		);
 
@@ -114,7 +114,7 @@ class Swedbank_Thankyou {
 		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
 		$order_id  = isset( $_POST['order_id'] ) ? wc_clean( $_POST['order_id'] ) : '';
-		$order_key  = isset( $_POST['order_key'] ) ? wc_clean( $_POST['order_key'] ) : '';
+		$order_key = isset( $_POST['order_key'] ) ? wc_clean( $_POST['order_key'] ) : '';
 
 		$order = wc_get_order( $order_id );
 		if ( ! $order->get_id() || ! $order->key_is_valid( $order_key ) ) {
@@ -129,7 +129,7 @@ class Swedbank_Thankyou {
 		}
 
 		$gateway = swedbank_pay_get_payment_method( $order );
-		$result = $gateway->api->request( 'GET', $payment_id );
+		$result  = $gateway->api->request( 'GET', $payment_id );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			wp_send_json_error( 'Failed to get payment status' );
 
@@ -137,43 +137,51 @@ class Swedbank_Thankyou {
 		}
 
 		$status = $result['paymentOrder']['status'];
-		switch ($status) {
+		switch ( $status ) {
 			case 'Paid':
-				wp_send_json_success( array(
-					'state' => 'paid',
-					'message' => 'Order has been paid'
-				) );
+				wp_send_json_success(
+					array(
+						'state'   => 'paid',
+						'message' => 'Order has been paid',
+					)
+				);
 
 				return;
 			case 'Aborted':
-				wp_send_json_success( array(
-					'state' => 'failed',
-					'message' => 'The payment has been aborted'
-				) );
+				wp_send_json_success(
+					array(
+						'state'   => 'failed',
+						'message' => 'The payment has been aborted',
+					)
+				);
 
 				return;
 			default:
 				// Check in `failedAttempts`
 				$result = $gateway->api->request( 'GET', $payment_id . '/failedAttempts' );
 				if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-					wp_send_json_success( array(
-						'state' => 'failed',
-						'message' => 'Unable to verify the payment: ' . join('; ', $result->get_error_messages() )
-					) );
+					wp_send_json_success(
+						array(
+							'state'   => 'failed',
+							'message' => 'Unable to verify the payment: ' . join( '; ', $result->get_error_messages() ),
+						)
+					);
 
 					return;
 				}
 
-				$problems = array();
+				$problems        = array();
 				$failed_attempts = $result['failedAttempts']['failedAttemptList'];
 				foreach ( $failed_attempts as $attempt ) {
 					$problems[] = $attempt['problem']['title'];
 				}
 
-				wp_send_json_success( array(
-					'state' => 'failed',
-					'message' => 'Transaction failed: ' . join('; ', $problems )
-				) );
+				wp_send_json_success(
+					array(
+						'state'   => 'failed',
+						'message' => 'Transaction failed: ' . join( '; ', $problems ),
+					)
+				);
 		}
 	}
 }
