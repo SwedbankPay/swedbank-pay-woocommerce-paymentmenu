@@ -87,7 +87,7 @@ class Swedbank_Thankyou {
 				'jquery',
 				'jquery-blockui',
 			),
-			false,
+			SWEDBANK_PAY_VERSION,
 			true
 		);
 
