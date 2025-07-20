@@ -115,10 +115,10 @@ class Swedbank_Pay_Plugin {
 	 * Install
 	 */
 	public function install() {
-		// Install Schema
+		// Install Schema.
 		Swedbank_Pay_Transactions::instance()->install_schema();
 
-		// Set Version
+		// Set Version.
 		if ( ! get_option( self::DB_VERSION_SLUG ) ) {
 			add_option( self::DB_VERSION_SLUG, self::DB_VERSION );
 		}
@@ -144,13 +144,6 @@ class Swedbank_Pay_Plugin {
 		);
 
 		return array_merge( $plugin_links, $links );
-	}
-
-	/**
-	 * Init localisations and files
-	 */
-	public function init() {
-		// Functions
 	}
 
 	/**

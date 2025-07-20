@@ -52,7 +52,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @var Logger
 	 */
 	private $logger;
-	
+
 	/**
 	 * Support instance.
 	 *
@@ -109,7 +109,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	public function logger() {
 		return $this->logger;
 	}
-	
+
 	/**
 	 * SystemReport instance.
 	 *
@@ -182,13 +182,13 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 				'type' => 'select',
 			),
 			array(
-				'type' => 'text',
+				'type'    => 'text',
 				'exclude' => array(
 					'title' => 'Access Token',
-				)
+				),
 			),
 		);
-		$this->system_report  = new SystemReport( 'payex_checkout', 'Swedbank Pay', $system_report_options);
+		$this->system_report   = new SystemReport( 'payex_checkout', 'Swedbank Pay', $system_report_options );
 
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateways' ) );
 	}
