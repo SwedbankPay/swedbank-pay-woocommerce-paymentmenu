@@ -372,6 +372,27 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	}
 
 	/**
+	 * Check if payment method should be available.
+	 *
+	 * @hook swedbank_pay_is_available
+	 * @return boolean
+	 */
+	public function is_available() {
+		return apply_filters( 'swedbank_pay_is_available', $this->check_availability(), $this );
+	}
+
+	/**
+	 * Check if the gateway should be available.
+	 *
+	 * This function is extracted to create the 'swedbank_pay_is_available' filter.
+	 *
+	 * @return bool
+	 */
+	private function check_availability() {
+		return wc_string_to_bool( $this->enabled );
+	}
+
+	/**
 	 * Return the gateway's title.
 	 *
 	 * @return string
