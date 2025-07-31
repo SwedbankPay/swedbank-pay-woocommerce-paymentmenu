@@ -158,7 +158,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 	 * @SuppressWarnings(PHPMD.NPathComplexity)
 	 */
 	protected function task( $item ) {
-		$this->log( sprintf( 'Start task: %s', var_export( $item, true ) ) );
+		$this->log( sprintf( 'Start task: %s', wp_json_encode( $item ) ) );
 
 		try {
 			$payload = $item['webhook_data'];
