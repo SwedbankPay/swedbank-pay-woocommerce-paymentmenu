@@ -522,7 +522,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		// Initiate Payment Order.
 		$result = $this->api->initiate_purchase( $order );
-		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+		if ( is_wp_error( $result ) ) {
 			throw new Exception(
 				$result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-woocommerce-checkout' ),
 				$result->get_error_code()
