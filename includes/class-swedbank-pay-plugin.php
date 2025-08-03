@@ -106,6 +106,8 @@ class Swedbank_Pay_Plugin {
 		require_once __DIR__ . '/class-swedbank-pay-thankyou.php';
 		require_once __DIR__ . '/class-swedbank-pay-intl-tel.php';
 		require_once __DIR__ . '/class-swedbank-pay-scheduler.php';
+		require_once __DIR__ . '/class-swedbank-pay-subscription.php';
+
 		require_once SWEDBANK_PAY_PLUGIN_PATH . '/classes/helpers/order.php';
 
 		if ( class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {

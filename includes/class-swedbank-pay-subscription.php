@@ -1,0 +1,566 @@
+<?php //phpcs:ignore
+/**
+ * Class for handling Woo subscriptions.
+ *
+ * @package SwedbankPay\Checkout\WooCommerce
+ */
+
+namespace SwedbankPay\Checkout\WooCommerce;
+
+use Exception;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Creditcard\Request\Purchase;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+
+/**
+ * Class for handling subscriptions.
+ */
+class Swedbank_Pay_Subscription {
+	public const GATEWAY_ID        = 'payex_checkout';
+	public const RECURRENCE_TOKEN  = '_' . self::GATEWAY_ID . '_recurrence_token';
+	public const UNSCHEDULED_TOKEN = '_' . self::GATEWAY_ID . '_unscheduled_token';
+
+	/**
+	 * Register hooks.
+	 */
+	public function __construct() {
+		add_action( 'woocommerce_scheduled_subscription_payment_' . self::GATEWAY_ID, array( $this, 'process_scheduled_payment' ), 10, 2 );
+
+		add_filter( 'swedbank_pay_payment_order', array( $this, 'generate_unscheduled_token' ), 10, 2 );
+
+		// Set the return_url for change payment method.
+		add_filter( 'swedbank_pay_checkout_payment_token_args', array( $this, 'set_subscription_order_redirect_urls' ), 10, 2 );
+
+		// Whether the gateway should be available when handling subscriptions.
+		add_filter( 'swedbank_pay_is_available', array( $this, 'is_available' ) );
+
+		// On successful payment method change, the customer is redirected back to the subscription view page. We need to handle the redirect and create a recurring token.
+		add_action( 'woocommerce_account_view-subscription_endpoint', array( $this, 'handle_redirect_from_change_payment_method' ) );
+
+		// Show the recurring token on the subscription page in the billing fields.
+		add_action( 'woocommerce_admin_order_data_after_billing_address', array( $this, 'show_payment_token' ) );
+
+		// Adds supports for free (or trial-only) subscriptions.
+		add_filter( 'woocommerce_cart_needs_payment', array( $this, 'cart_needs_payment' ) );
+
+		// Ensure wp_safe_redirect do not redirect back to default dashboard or home page on change_payment_method.
+		add_filter( 'allowed_redirect_hosts', array( $this, 'extend_allowed_domains_list' ) );
+
+		// Save payment token to the subscription when the merchant updates the order from the subscription page.
+		add_action( 'woocommerce_saved_order_items', array( $this, 'subscription_updated_from_order_page' ), 10, 2 );
+
+		// Add the generateUnscheduledToken to the payment order if the cart contains a subscription.
+		add_filter( 'swedbank_pay_payment_order', array( $this, 'maybe_generate_unscheduled_token' ), 10, 2 );
+		add_filter( 'swedbank_pay_payment_order', array( $this, 'maybe_set_unscheduled_token' ), 10, 2 );
+
+		// Retrieve and save the unscheduled token when the customer is redirected back to the order received page.
+		add_action( 'template_redirect', array( $this, 'order_received' ), 10 );
+
+		// Saves the subscription token, if missing, when the webhook is received.
+		add_action( 'swedbank_pay_scheduler_run_after', array( $this, 'callback_received' ), 10, 2 );
+	}
+
+	/**
+	 * Retrieves from Swedbank, and saves the unscheduled token to the order.
+	 *
+	 * @see https://developer.swedbankpay.com/checkout-v3/get-started/recurring#post-purchase--post-verify.
+	 *
+	 * @param  \WC_Order                              $order The WC order containing a subscription.
+	 * @param  \Swedbank_Pay_Payment_Gateway_Checkout $gateway The Swedbank Pay payment gateway instance.
+	 * @return void
+	 */
+	private function save_subscription_token( $order, $gateway ) {
+		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
+		$response         = $gateway->api->request( 'GET', "{$payment_order_id}/paid" );
+
+		if ( ! is_wp_error( $response ) ) {
+			$paid = $response['paid'];
+			foreach ( $paid['tokens'] as $token ) {
+				if ( 'unscheduled' === $token['type'] ) {
+					$order->update_meta_data( self::UNSCHEDULED_TOKEN, $token['token'] );
+					$order->save_meta_data();
+
+					break;
+				}
+			}
+		}
+	}
+
+	/**
+	 * Perform post-purchase subscriptions actions.
+	 *
+	 * @return void
+	 */
+	public function order_received() {
+		if ( ! is_wc_endpoint_url( 'order-received' ) ) {
+			return;
+		}
+
+		$order_id  = absint( get_query_var( 'order-received', 0 ) );
+		$order_key = filter_input( INPUT_GET, 'key', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
+
+		$order = wc_get_order( $order_id );
+		if ( ! ( $order && hash_equals( $order->get_order_key(), $order_key ) ) ) {
+			return;
+		}
+
+		if ( ! self::order_has_subscription( $order ) ) {
+			return;
+		}
+		if ( ! empty( $order->get_meta( self::UNSCHEDULED_TOKEN ) ) ) {
+			return;
+		}
+
+		$gateway = swedbank_pay_get_payment_method( $order );
+		if ( ! $gateway ) {
+			return;
+		}
+
+		$this->save_subscription_token( $order, $gateway );
+	}
+
+	/**
+	 * Saves the subscription token, if missing, when the webhook is received.
+	 *
+	 * @param \WC_Order                              $order The WooCommerce order.
+	 * @param \Swedbank_Pay_Payment_Gateway_Checkout $gateway The Swedbank Pay payment gateway instance.
+	 * @return void
+	 */
+	public function callback_received( $order, $gateway ) {
+		if ( ! self::order_has_subscription( $order ) ) {
+			return;
+		}
+
+		if ( ! empty( $order->get_meta( self::UNSCHEDULED_TOKEN ) ) ) {
+			return;
+		}
+
+		$this->save_subscription_token( $order, $gateway );
+	}
+
+	/**
+	 * Check if the order has a subscription, and then set the generateUnscheduledToken to true.
+	 *
+	 * @param Paymentorder $payment_order The Swedbank Pay payment order.
+	 * @param \WC_Order    $order The WC order.
+	 */
+	public function maybe_generate_unscheduled_token( $payment_order, $order ) {
+		if ( ! self::order_has_subscription( $order ) ) {
+			return $payment_order;
+		}
+
+		// Do not generate unscheduled token if the order already has one. Most likely this is a renewal order.
+		if ( ! empty( $order->get_meta( self::UNSCHEDULED_TOKEN ) ) ) {
+			return $payment_order;
+		}
+
+		return $payment_order->setGenerateUnscheduledToken( true );
+	}
+
+	/**
+	 * Check if the order has a subscription, and then set the unscheduled token.
+	 *
+	 * @param Paymentorder $payment_order The Swedbank Pay payment order.
+	 * @param \WC_Order    $order The WC order.
+	 */
+	public function maybe_set_unscheduled_token( $payment_order, $order ) {
+		if ( ! self::order_has_subscription( $order ) ) {
+			return $payment_order;
+		}
+
+		$token = $order->get_meta( self::UNSCHEDULED_TOKEN );
+		if ( empty( $token ) ) {
+			return $payment_order;
+		}
+
+		return $payment_order->setUnscheduledToken( $token );
+	}
+
+	/**
+	 * Process subscription renewal.
+	 *
+	 * @param float     $amount_to_charge Amount to charge.
+	 * @param \WC_Order $renewal_order The Woo order that will be created as a result of the renewal.
+	 * @return void
+	 */
+	public function process_scheduled_payment( $amount_to_charge, $renewal_order ) {
+		$subscriptions = wcs_get_subscriptions_for_renewal_order( $renewal_order );
+		$token         = $renewal_order->get_meta( self::UNSCHEDULED_TOKEN );
+
+		$gateway = swedbank_pay_get_payment_method( $renewal_order );
+		if ( ! $gateway ) {
+			$renewal_order->add_order_note( __( 'Failed to process subscription renewal. No Swedbank Pay payment gateway found.', 'swedbank-pay-woocommerce-checkout' ) );
+			return;
+		}
+
+		$payment  = $gateway->api->initiate_purchase( $renewal_order );
+		$purchase = new Purchase( $payment );
+		if ( is_wp_error( $response ) ) {
+			$renewal_order->add_order_note(
+				sprintf(
+				/* translators: %s: error message */
+					__( 'Failed to process subscription renewal. Error: %s', 'swedbank-pay-woocommerce-checkout' ),
+					$response->get_error_message()
+				)
+			);
+			return;
+		}
+
+		$success_message = sprintf(
+			/* translators: %s: subscription id */
+			__( 'Subscription renewal was made successfully via Swedbank Pay. Payment token: %s', 'swedbank-pay-woocommerce-checkout' ),
+			$token
+		);
+		$renewal_order->add_order_note( $success_message );
+
+		// TODO: Iterate through every subscription, and mark them as complete.
+		foreach ( $subscriptions as $subscription ) {
+			if ( isset( $swedbank_order_id ) ) {
+				$subscription->payment_complete( $swedbank_order_id );
+				$subscription->add_order_note( $success_message );
+				$subscription->save();
+			} else {
+				$subscription->payment_failed();
+			}
+
+			// Save to the subscription.
+			$subscription->update_meta_data( self::UNSCHEDULED_TOKEN, $token );
+		}
+	}
+
+	/**
+	 * Whether a recurring token should be generated for the payment order.
+	 *
+	 * @param Paymentorder $payment_order The Swedbank Pay payment order.
+	 * @param \WC_Order    $order The WooCommerce order.
+	 * @return Paymentorder Set the generateUnscheduledToken to true if the cart contains a subscription.
+	 */
+	public function generate_unscheduled_token( $payment_order, $order ) {
+		if ( ! self::order_has_subscription( $order ) ) {
+			return $payment_order;
+		}
+
+		return $payment_order->setGenerateUnscheduledToken( true );
+	}
+
+
+	/**
+	 * Whether the gateway should be available if it contains a subscriptions.
+	 *
+	 * @param bool $is_available Whether the gateway is available.
+	 * @return bool
+	 */
+	public function is_available( $is_available ) {
+		// If no subscription is found, we don't need to do anything.
+		if ( ! self::cart_has_subscription() ) {
+			return $is_available;
+		}
+
+		// Allow free orders when changing subscription payment method.
+		if ( self::is_change_payment_method() ) {
+			return true;
+		}
+
+		// Mixed checkout not allowed.
+		if ( class_exists( 'WC_Subscriptions_Product' ) ) {
+			foreach ( WC()->cart->cart_contents as $key => $item ) {
+				if ( ! \WC_Subscriptions_Product::is_subscription( $item['data'] ) ) {
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Whether the cart needs payment. Since Swedbank supports free subscriptions, we must check if the cart contains a subscription.
+	 *
+	 * @param bool $needs_payment Whether the cart needs payment.
+	 * @return bool
+	 */
+	public function cart_needs_payment( $needs_payment ) {
+		if ( self::GATEWAY_ID !== WC()->session->chosen_payment_method ) {
+			return $needs_payment;
+		}
+
+		return $this->is_available( $needs_payment );
+	}
+	/**
+	 * Set the session URLs for change payment method request.
+	 *
+	 * Used for changing payment method.
+	 *
+	 * @see Swedbank_Checkout_Payment_Token
+	 *
+	 * @param array                           $request The request data.
+	 * @param Swedbank_Checkout_Payment_Token $instance An instance of the request class.
+	 * @return array
+	 */
+	public function set_subscription_order_redirect_urls( $request, $instance ) {
+		if ( ! self::is_change_payment_method() ) {
+			return $request;
+		}
+
+		$body                                 = json_decode( $request['body'], true );
+		$subscription                         = self::get_subscription( $instance->arguments()['order_id'] );
+		$body['session']['url']['return_url'] = add_query_arg( 'dwc_redirect', 'subscription', $subscription->get_view_order_url() );
+		$request['body']                      = wp_json_encode( $body );
+
+		return $request;
+	}
+
+	/**
+	 * Handle the redirect from the change payment method page.
+	 *
+	 * @param int $subscription_id The subscription ID.
+	 * @return void
+	 */
+	public function handle_redirect_from_change_payment_method( $subscription_id ) {
+		// We need to distinguish between whether the customer has changed payment method or is viewing a subscription as this endpoint will be triggered in either case.
+		if ( wc_get_var( $_GET['swedpay_redirect'], '' ) !== 'subscription' ) {
+			return;
+		}
+
+		$subscription = self::get_subscription( $subscription_id );
+		if ( self::GATEWAY_ID !== $subscription->get_payment_method() ) {
+			return;
+		}
+
+		if ( isset( $_REQUEST['error'] ) ) {
+			$reason = sanitize_text_field( wp_unslash( $_REQUEST['error'] ) );
+
+			if ( 'cancelled' === $reason ) {
+				$message = __( 'Change payment method to Swedbank Pay for subscription failed. Customer cancelled the checkout payment.', 'swedbank-pay-woocommerce-checkout' );
+			} elseif ( 'authorization' === $reason ) {
+				$message = __( 'Change payment method to Swedbank Pay for subscription failed. Customer did not authorize the payment.', 'swedbank-pay-woocommerce-checkout' );
+			} else {
+				$message = __( 'Change payment method to Swedbank Pay for subscription failed. An error may have occurred during transaction processing or was rejected by Swedbank.', 'swedbank-pay-woocommerce-checkout' );
+			}
+
+			// Woo will always consider a redirect back to the view order URL as a successful payment method change.
+			// And a notice saying, 'Payment method updated.'  will appear. We must therefore indicate otherwise.
+			if ( function_exists( 'wc_print_notice' ) ) {
+				wc_print_notice( $message, 'error' );
+			}
+
+			$subscription->add_order_note( $message );
+			$subscription->save();
+			return;
+		}
+
+		$transaction_id = filter_input( INPUT_GET, 'transaction_id', FILTER_SANITIZE_SPECIAL_CHARS );
+		// TODO: Retrieve the payment unscheduled token.
+		$response = throw new Exception( 'TODO: Retrieve the payment unscheduled token.' );
+		if ( is_wp_error( $response ) ) {
+			$message = sprintf(
+			/* translators: Error message. */
+				__( 'Failed to create payment token. Reason: %s', 'swedbank-pay-woocommerce-checkout' ),
+				$response->get_error_message()
+			);
+		} else {
+			$token   = throw new Exception( 'TODO: Retrieve the payment unscheduled token.' );
+			$message = sprintf(
+			/* translators: Payment token. */
+				__( 'Payment token created: %s', 'swedbank-pay-woocommerce-checkout' ),
+				$token
+			);
+
+			$subscription->update_meta_data( self::UNSCHEDULED_TOKEN, $token );
+		}
+
+		$subscription->add_order_note( $message );
+		$subscription->save();
+	}
+
+	/**
+	 * Add an order note to the subscription(s).
+	 *
+	 * @param WC_Subscription|WC_Subscription[] $subscriptions The WooCommerce subscription(s).
+	 * @param string                            $note The note to add.
+	 * @return void
+	 */
+	public static function add_order_note( $subscriptions, $note ) {
+		if ( ! is_array( $subscriptions ) ) {
+			$subscriptions->add_order_note( $note );
+			$subscriptions->save();
+
+			return;
+		}
+
+		foreach ( $subscriptions as $subscription ) {
+			$subscription->add_order_note( $note );
+			$subscription->save();
+		}
+	}
+
+	/**
+	 * Get a subscription's parent order.
+	 *
+	 * @param int $order_id The WooCommerce order id.
+	 * @return WC_Order|false The parent order or false if none is found.
+	 */
+	public static function get_parent_order( $order_id ) {
+		$subscriptions = wcs_get_subscriptions_for_renewal_order( $order_id );
+		foreach ( $subscriptions as $subscription ) {
+			$parent_order = $subscription->get_parent();
+			return $parent_order;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if the current request is for changing the payment method.
+	 *
+	 * @return bool
+	 */
+	public static function is_change_payment_method() {
+		return isset( $_GET['change_payment_method'] );
+	}
+
+	/**
+	 * Check if an order contains a subscription.
+	 *
+	 * @param \WC_Order $order The WooCommerce order or leave empty to use the cart (default).
+	 * @return bool
+	 */
+	public static function order_has_subscription( $order ) {
+		if ( empty( $order ) ) {
+			return false;
+		}
+
+		return function_exists( 'wcs_order_contains_subscription' ) && wcs_order_contains_subscription( $order, array( 'parent', 'resubscribe', 'switch', 'renewal' ) );
+	}
+
+	/**
+	 * Check if a cart contains a subscription.
+	 *
+	 * @return bool
+	 */
+	public static function cart_has_subscription() {
+		if ( ! is_checkout() ) {
+			return false;
+		}
+
+		return ( class_exists( 'WC_Subscriptions_Cart' ) && \WC_Subscriptions_Cart::cart_contains_subscription() ) || ( function_exists( 'wcs_cart_contains_failed_renewal_order_payment' ) && wcs_cart_contains_failed_renewal_order_payment() );
+	}
+
+	/**
+	 * Whether the cart contains only free trial subscriptions.
+	 *
+	 * If invoked from anywhere but the checkout page, this will return FALSE.
+	 *
+	 * @return boolean
+	 */
+	public static function cart_has_only_free_trial() {
+		if ( ! is_checkout() ) {
+			return false;
+		}
+
+		return ( class_exists( 'WC_Subscriptions_Cart' ) ) ? \WC_Subscriptions_Cart::all_cart_items_have_free_trial() : false;
+	}
+
+	/**
+	 * Retrieve a WC_Subscription from order ID.
+	 *
+	 * @param int $order_id  Woo order ID.
+	 * @return bool|\WC_Subscription The subscription object, or false if it cannot be found.
+	 */
+	public static function get_subscription( $order_id ) {
+		return ! function_exists( 'wcs_get_subscription' ) ? false : wcs_get_subscription( $order_id );
+	}
+
+	/**
+	 * Add Swedbank Pay redirect payment page as allowed external url for wp_safe_redirect.
+	 * We do this because WooCommerce Subscriptions use wp_safe_redirect when processing a payment method change request (from v5.1.0).
+	 *
+	 * @param array $hosts Domains that are allowed when wp_safe_redirect is used.
+	 * @return array
+	 */
+	public function extend_allowed_domains_list( $hosts ) {
+		$hosts[] = 'ecom.externalintegration.payex.com';
+		return $hosts;
+	}
+
+	/**
+	 * Save the payment token to the subscription when the merchant updates the order from the subscription page.
+	 *
+	 * @param int   $order_id The Woo order ID.
+	 * @param array $items The posted data (includes even the data that was not updated).
+	 * @return bool True if the payment token was updated, false otherwise.
+	 */
+	public function subscription_updated_from_order_page( $order_id, $items ) {
+		$order = wc_get_order( $order_id );
+
+		// The action hook woocommerce_saved_order_items is triggered for all order updates, so we must check if the payment method is Swedbank Pay.
+		if ( self::GATEWAY_ID !== $order->get_payment_method() ) {
+			return false;
+		}
+
+		// Are we on the subscription page?
+		if ( 'shop_subscription' === $order->get_type() ) {
+			// Retrieve the stored token, and the one included in the posted data.
+			$payment_token  = wc_get_var( $items[ self::UNSCHEDULED_TOKEN ] );
+			$existing_token = $order->get_meta( self::UNSCHEDULED_TOKEN );
+
+			// Did the customer update the subscription's payment token?
+			if ( ! empty( $payment_token ) && $existing_token !== $payment_token ) {
+				$order->update_meta_data( self::UNSCHEDULED_TOKEN, $payment_token );
+				$order->add_order_note(
+					sprintf(
+					// translators: 1: User name, 2: Existing token, 3: New token.
+						__( '%1$s updated the subscription payment token from "%2$s" to "%3$s".', 'swedbank-pay-woocommerce-checkout' ),
+						ucfirst( wp_get_current_user()->display_name ),
+						$existing_token,
+						$payment_token
+					)
+				);
+
+				$order->save();
+				return true;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Shows the recurring token for the order.
+	 *
+	 * @param \WC_Order $order The WooCommerce order.
+	 * @return void
+	 */
+	public function show_payment_token( $order ) {
+		$subscription_token = $order->get_meta( self::UNSCHEDULED_TOKEN );
+		if ( 'shop_subscription' === $order->get_type() ) {
+			?>
+			<div class="order_data_column" style="clear:both; float:none; width:100%;">
+				<div class="address">
+					<p>
+						<strong><?php echo esc_html( 'Subscription token' ); ?>:</strong><?php echo esc_html( $subscription_token ); ?>
+					</p>
+				</div>
+				<div class="edit_address">
+				<?php
+				woocommerce_wp_text_input(
+					array(
+						'id'            => self::UNSCHEDULED_TOKEN,
+						'label'         => __( 'Subscription token', 'swedbank-pay-woocommerce-checkout' ),
+						'wrapper_class' => '_billing_company_field',
+						'value'         => $subscription_token,
+					)
+				);
+				?>
+				</div>
+			</div>
+				<?php
+		}
+	}
+}
+
+	new Swedbank_Pay_Subscription();
