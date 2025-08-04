@@ -11,6 +11,14 @@ use Exception;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Creditcard\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 
+use WP_Error;
+use WC_Order;
+use Swedbank_Pay_Payment_Gateway_Checkout;
+use SwedbankPay\Checkout\WooCommerce\Helpers\Order;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -61,6 +69,131 @@ class Swedbank_Pay_Subscription {
 
 		// Saves the subscription token, if missing, when the webhook is received.
 		add_action( 'swedbank_pay_scheduler_run_after', array( $this, 'callback_received' ), 10, 2 );
+	}
+
+	/**
+	 * Process subscription renewal.
+	 *
+	 * @param float     $amount_to_charge Amount to charge.
+	 * @param \WC_Order $renewal_order The Woo order that will be created as a result of the renewal.
+	 * @return void
+	 */
+	public function process_scheduled_payment( $amount_to_charge, $renewal_order ) {
+		$gateway = swedbank_pay_get_payment_method( $renewal_order );
+		if ( ! $gateway ) {
+			$renewal_order->add_order_note( __( 'Failed to process subscription renewal. No Swedbank Pay payment gateway found.', 'swedbank-pay-woocommerce-checkout' ) );
+			return;
+		}
+
+		$subscriptions = wcs_get_subscriptions_for_renewal_order( $renewal_order );
+		$token         = self::get_token_from_order( $renewal_order );
+
+		$response = self::charge_customer( $renewal_order, $token );
+		if ( is_wp_error( $response ) ) {
+			$renewal_order->add_order_note(
+				sprintf(
+				/* translators: %s: error message */
+					__( 'Failed to process subscription renewal. Error: %s', 'swedbank-pay-woocommerce-checkout' ),
+					$response->get_error_message()
+				)
+			);
+
+			return;
+		}
+
+		$success_message = sprintf(
+			/* translators: %s: subscription id */
+			__( 'Subscription renewal was made successfully via Swedbank Pay. Payment token: %s', 'swedbank-pay-woocommerce-checkout' ),
+			$token
+		);
+		$renewal_order->add_order_note( $success_message );
+
+		// TODO: Iterate through every subscription, and mark them as complete.
+		foreach ( $subscriptions as $subscription ) {
+			if ( isset( $swedbank_order_id ) ) {
+				$subscription->payment_complete( $swedbank_order_id );
+				$subscription->add_order_note( $success_message );
+				$subscription->save();
+			} else {
+				$subscription->payment_failed();
+			}
+
+			// Save to the subscription.
+			$subscription->update_meta_data( self::UNSCHEDULED_TOKEN, $token );
+		}
+	}
+
+	/**
+	 * Charge the customer using the unscheduled token.
+	 *
+	 * @see https://developer.swedbankpay.com/checkout-v3/features/optional/unscheduled#performing-the-unscheduled-purchase.
+	 *
+	 * @param \WC_Order $order The WooCommerce order containing a subscription.
+	 * @param string    $token The unscheduled token to charge.
+	 * @return ResponseServiceInterface|WP_Error
+	 */
+	public static function charge_customer( $order, $token ) {
+		$helper = new Order( $order );
+
+		$payment_order = $helper->get_payment_order()
+		->setOperation( Order::OPERATION_UNSCHEDULED )
+		->setUnscheduledToken( $token );
+
+		$payment_order_object = new PaymentorderObject();
+		$payment_order_object->setPaymentorder( $payment_order );
+
+		$purchase_request = new Purchase( $payment_order_object );
+		$purchase_request->setClient( Order::get_client() );
+
+		try {
+			$response_service = $purchase_request->send();
+
+			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
+
+			return $response_service;
+		} catch ( ClientException $e ) {
+
+			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
+
+			return Swedbank_Pay()->system_report()->request(
+				new WP_Error(
+					400,
+					wp_json_encode( array( $purchase_request->getClient()->getResponseBody(), $e->getMessage() ) )
+				)
+			);
+		}
+	}
+
+	/**
+	 * Retrieve the unscheduled token from the order, its parent order, or any subscriptions associated with the order.
+	 *
+	 * @param \WC_Order $order The WooCommerce order.
+	 * @return string|false The unscheduled token if found, false otherwise.
+	 */
+	public static function get_token_from_order( $order ) {
+		$token = $order->get_meta( self::UNSCHEDULED_TOKEN );
+		if ( ! empty( $token ) ) {
+			return $token;
+		}
+
+		$parent_order = self::get_parent_order( $order->get_id() );
+		if ( ! empty( $parent_order ) ) {
+			$token = $parent_order->get_meta( self::UNSCHEDULED_TOKEN );
+			if ( ! empty( $token ) ) {
+				return $token;
+			}
+		}
+
+		$subscriptions = wcs_get_subscriptions_for_renewal_order( $order );
+		foreach ( $subscriptions as $subscription ) {
+			$token = $subscription->get_meta( self::UNSCHEDULED_TOKEN );
+			if ( ! empty( $token ) ) {
+				return $token;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -158,59 +291,6 @@ class Swedbank_Pay_Subscription {
 		}
 
 		return $payment_order->setGenerateUnscheduledToken( true );
-	}
-
-
-	/**
-	 * Process subscription renewal.
-	 *
-	 * @param float     $amount_to_charge Amount to charge.
-	 * @param \WC_Order $renewal_order The Woo order that will be created as a result of the renewal.
-	 * @return void
-	 */
-	public function process_scheduled_payment( $amount_to_charge, $renewal_order ) {
-		$subscriptions = wcs_get_subscriptions_for_renewal_order( $renewal_order );
-		$token         = $renewal_order->get_meta( self::UNSCHEDULED_TOKEN );
-
-		$gateway = swedbank_pay_get_payment_method( $renewal_order );
-		if ( ! $gateway ) {
-			$renewal_order->add_order_note( __( 'Failed to process subscription renewal. No Swedbank Pay payment gateway found.', 'swedbank-pay-woocommerce-checkout' ) );
-			return;
-		}
-
-		$payment  = $gateway->api->initiate_purchase( $renewal_order );
-		$purchase = new Purchase( $payment );
-		if ( is_wp_error( $response ) ) {
-			$renewal_order->add_order_note(
-				sprintf(
-				/* translators: %s: error message */
-					__( 'Failed to process subscription renewal. Error: %s', 'swedbank-pay-woocommerce-checkout' ),
-					$response->get_error_message()
-				)
-			);
-			return;
-		}
-
-		$success_message = sprintf(
-			/* translators: %s: subscription id */
-			__( 'Subscription renewal was made successfully via Swedbank Pay. Payment token: %s', 'swedbank-pay-woocommerce-checkout' ),
-			$token
-		);
-		$renewal_order->add_order_note( $success_message );
-
-		// TODO: Iterate through every subscription, and mark them as complete.
-		foreach ( $subscriptions as $subscription ) {
-			if ( isset( $swedbank_order_id ) ) {
-				$subscription->payment_complete( $swedbank_order_id );
-				$subscription->add_order_note( $success_message );
-				$subscription->save();
-			} else {
-				$subscription->payment_failed();
-			}
-
-			// Save to the subscription.
-			$subscription->update_meta_data( self::UNSCHEDULED_TOKEN, $token );
-		}
 	}
 
 	/**
