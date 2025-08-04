@@ -191,7 +191,7 @@ class Order {
 		);
 
 		$complete_url = $this->gateway->get_return_url( $this->order );
-		$cancel_url   = $this->order->get_cancel_order_url_raw();
+		$cancel_url   = is_checkout() ? wc_get_checkout_url() : $this->order->get_cancel_order_url_raw();
 
 		$url_data = ( new PaymentorderUrl() )
 			->setHostUrls(
