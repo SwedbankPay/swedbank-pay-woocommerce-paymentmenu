@@ -21,7 +21,8 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
  * It also provides methods to calculate total amounts and VAT amounts for the order.
  */
 class Order {
-	public const OPERATION_PURCHASE = 'Purchase';
+	public const OPERATION_PURCHASE    = 'Purchase';
+	public const OPERATION_UNSCHEDULED = 'UnscheduledPurchase';
 
 	/**
 	 * This is the WooCommerce order or refund object.
