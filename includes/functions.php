@@ -127,29 +127,16 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 		$price          = $order->get_line_subtotal( $order_item, false, false );
 		$price_with_tax = $order->get_line_subtotal( $order_item, true, false );
 		$tax            = $price_with_tax - $price;
-		$tax_percent    = ( $tax > 0 ) ? round( 100 / ( $price / $tax ) ) : 0;
+		$tax_percent    = $tax > 0 ? round( 100 / ( $price / $tax ) ) : 0;
 		$qty            = $order_item->get_quantity();
-		$image          = wp_get_attachment_image_src( $order_item->get_product()->get_image_id(), 'full' );
 
-		if ( $image ) {
-			$image = array_shift( $image );
-		} else {
-			$image = wc_placeholder_img_src( 'full' );
-		}
-
-		if ( null === wp_parse_url( $image, PHP_URL_SCHEME ) &&
-			mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
-		) {
-			$image = wp_guess_url() . $image;
-		}
-
-		// Get Product Class
+		// Get Product Class.
 		$product_class = $product->get_meta( '_swedbank_pay_product_class' );
 		if ( empty( $product_class ) ) {
 			$product_class = 'ProductGroup1';
 		}
 
-		// Get Product Sku
+		// Get Product Sku.
 		$product_reference = trim(
 			str_replace(
 				array( ' ', '.', ',' ),
@@ -162,17 +149,23 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 			$product_reference = wp_generate_password( 12, false );
 		}
 
-		$product_name = trim( $order_item->get_name() );
+		$product_name = trim( $product->get_name() );
+
+		$image_url = wc_placeholder_img_src( 'shop_single' );
+		if ( $product->get_image_id() > 0 ) {
+			$image_id  = $product->get_image_id();
+			$image_url = wp_get_attachment_image_url( $image_id, 'shop_single', false );
+		}
 
 		$items[] = array(
-			// The field Reference must match the regular expression '[\\w-]*'
+			// The field Reference must match the regular expression '[\\w-]*'.
 			Swedbank_Pay_Order_Item::FIELD_REFERENCE   => $product_reference,
 			Swedbank_Pay_Order_Item::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
 			Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_PRODUCT,
 			Swedbank_Pay_Order_Item::FIELD_CLASS       => $product_class,
-			Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
-			Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image,
-			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $order_item->get_name(),
+			Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $product->get_permalink(),
+			Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image_url,
+			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $product->get_description(),
 			Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
 			Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
 			Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
@@ -182,12 +175,12 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 		);
 	}
 
-	// Add Shipping Total
+	// Add Shipping Total.
 	if ( (float) $order->get_shipping_total() > 0 ) {
 		$shipping          = (float) $order->get_shipping_total();
 		$tax               = (float) $order->get_shipping_tax();
 		$shipping_with_tax = $shipping + $tax;
-		$tax_percent       = ( $tax > 0 ) ? round( 100 / ( $shipping / $tax ) ) : 0;
+		$tax_percent       = $tax > 0 ? round( 100 / ( $shipping / $tax ) ) : 0;
 		$shipping_method   = trim( $order->get_shipping_method() );
 
 		$items[] = array(
@@ -207,7 +200,7 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 		);
 	}
 
-	// Add fees
+	// Add fees.
 	foreach ( $order->get_fees() as $order_fee ) {
 		/** @var \WC_Order_Item_Fee $order_fee */
 		$fee          = (float) $order_fee->get_total();
@@ -229,12 +222,12 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 		);
 	}
 
-	// Add discounts
+	// Add discounts.
 	if ( $order->get_total_discount( false ) > 0 ) {
 		$discount          = abs( $order->get_total_discount( true ) );
 		$discount_with_tax = abs( $order->get_total_discount( false ) );
 		$tax               = $discount_with_tax - $discount;
-		$tax_percent       = ( $tax > 0 ) ? round( 100 / ( $discount / $tax ) ) : 0;
+		$tax_percent       = $tax > 0 ? round( 100 / ( $discount / $tax ) ) : 0;
 
 		$items[] = array(
 			Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
@@ -250,7 +243,7 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 		);
 	}
 
-	// YITH WooCommerce Gift Cards
+	// YITH WooCommerce Gift Cards.
 	if ( function_exists( 'YITH_YWGC' ) ) {
 		$order_gift_cards = $order->get_meta( '_ywgc_applied_gift_cards' );
 		if ( empty( $order_gift_cards ) ) {
