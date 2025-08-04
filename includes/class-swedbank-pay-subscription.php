@@ -55,7 +55,6 @@ class Swedbank_Pay_Subscription {
 
 		// Add the generateUnscheduledToken to the payment order if the cart contains a subscription.
 		add_filter( 'swedbank_pay_payment_order', array( $this, 'maybe_generate_unscheduled_token' ), 10, 2 );
-		add_filter( 'swedbank_pay_payment_order', array( $this, 'maybe_set_unscheduled_token' ), 10, 2 );
 
 		// Retrieve and save the unscheduled token when the customer is redirected back to the order received page.
 		add_action( 'template_redirect', array( $this, 'order_received' ), 10 );
@@ -161,24 +160,6 @@ class Swedbank_Pay_Subscription {
 		return $payment_order->setGenerateUnscheduledToken( true );
 	}
 
-	/**
-	 * Check if the order has a subscription, and then set the unscheduled token.
-	 *
-	 * @param Paymentorder $payment_order The Swedbank Pay payment order.
-	 * @param \WC_Order    $order The WC order.
-	 */
-	public function maybe_set_unscheduled_token( $payment_order, $order ) {
-		if ( ! self::order_has_subscription( $order ) ) {
-			return $payment_order;
-		}
-
-		$token = $order->get_meta( self::UNSCHEDULED_TOKEN );
-		if ( empty( $token ) ) {
-			return $payment_order;
-		}
-
-		return $payment_order->setUnscheduledToken( $token );
-	}
 
 	/**
 	 * Process subscription renewal.
