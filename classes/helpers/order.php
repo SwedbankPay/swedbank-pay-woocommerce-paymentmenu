@@ -332,7 +332,6 @@ class Order {
 		$transaction_data = ( new TransactionData() )
 			->setAmount( $this->calculate_total_amount( $items ) )
 			->setVatAmount( $this->calculate_vat_amount( $items ) )
-			->setDescription( sprintf( 'Capture for Order #%s', $this->order->get_order_number() ) )
 			->setPayeeReference( $payee_reference )
 			->setOrderItems( $order_items );
 
