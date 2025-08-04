@@ -10,7 +10,6 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Reques
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayeeInfo;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderUrl;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayer;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 
@@ -255,7 +254,7 @@ class Order {
 	 * implementation type, URLs, payee information, metadata, and payer information.
 	 *
 	 * @hook swedbank_pay_payment_order
-	 * @return PaymentorderObject
+	 * @return Paymentorder
 	 */
 	public function get_payment_order() {
 		$items = $this->get_formatted_items_from_order();
