@@ -755,8 +755,10 @@ class Swedbank_Pay_Api {
 		}
 
 		$helper           = new Order( $order, $items );
-		$transaction_data = $helper->get_transaction_data();
-		$transaction      = new TransactionObject( $transaction_data );
+		$transaction_data = $helper->get_transaction_data()->setDescription( sprintf( 'Capture for Order #%s', $order->get_order_number() ) );
+
+		$transaction = new TransactionObject();
+		$transaction->setTransaction( $transaction_data );
 
 		$requestService = ( new TransactionCaptureV3( $transaction ) )
 			->setClient( Order::get_client() )
