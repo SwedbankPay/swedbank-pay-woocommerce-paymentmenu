@@ -10,7 +10,6 @@ use WC_Order;
 use WC_Payment_Gateway;
 use Swedbank_Pay_Payment_Gateway_Checkout;
 use SwedbankPay\Checkout\WooCommerce\Helpers\Order;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Response;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
@@ -21,7 +20,6 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Res
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayeeInfo;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -374,13 +372,13 @@ class Swedbank_Pay_Api {
 	public function process_transaction( WC_Order $order, array $transaction ) {
 		$transaction_id = $transaction['number'];
 
-		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts
+		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts.
 		$order->read_meta_data();
 
-		// Don't update order status if transaction ID was applied before
+		// Don't update order status if transaction ID was applied before.
 		$transactions = $order->get_meta( '_swedbank_pay_transactions' );
 		$transactions = empty( $transactions ) ? array() : (array) $transactions;
-		if ( in_array( $transaction_id, $transactions ) ) {
+		if ( in_array( $transaction_id, $transactions, true ) ) {
 			$this->log(
 				WC_Log_Levels::INFO,
 				sprintf( 'Skip transaction processing #%s. Order ID: %s', $transaction_id, $order->get_id() )
@@ -758,7 +756,7 @@ class Swedbank_Pay_Api {
 
 		$helper           = new Order( $order, $items );
 		$transaction_data = $helper->get_transaction_data();
-		$transaction      = ( new TransactionObject() )->setTransaction( $transaction_data );
+		$transaction      = new TransactionObject( $transaction_data );
 
 		$requestService = ( new TransactionCaptureV3( $transaction ) )
 			->setClient( Order::get_client() )
@@ -772,7 +770,7 @@ class Swedbank_Pay_Api {
 
 			$result = $response_service->getResponseData();
 
-			// Save transaction
+			// Save transaction.
 			$transaction = $result['capture']['transaction'];
 			$gateway     = swedbank_pay_get_payment_method( $order );
 			$gateway->transactions->import( $transaction, $order->get_id() );
