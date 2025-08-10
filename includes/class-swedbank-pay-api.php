@@ -124,8 +124,8 @@ class Swedbank_Pay_Api {
 			return $response_service;
 		} catch ( ClientException $e ) {
 
-			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
-			Swedbank_Pay()->logger()->debug( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
+			Swedbank_Pay()->logger()->error( $purchase_request->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
 
 			return Swedbank_Pay()->system_report()->request(
 				new WP_Error(
@@ -770,6 +770,7 @@ class Swedbank_Pay_Api {
 
 			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
+			// FIXME: This is always returning null. Recreate: enable automatic capture, place an order. On redirect to store, fatal error due to $transaction being overwritten with the null value from $result.
 			$result = $response_service->getResponseData();
 
 			// Save transaction.

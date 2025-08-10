@@ -153,8 +153,8 @@ class Swedbank_Pay_Subscription {
 			return $response_service;
 		} catch ( ClientException $e ) {
 
-			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
-			Swedbank_Pay()->logger()->debug( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
+			Swedbank_Pay()->logger()->error( $purchase_request->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
 
 			return Swedbank_Pay()->system_report()->request(
 				new WP_Error(
