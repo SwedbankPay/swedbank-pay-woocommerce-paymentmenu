@@ -416,10 +416,12 @@ class Swedbank_Pay_Api {
 
 				break;
 			case self::TYPE_SALE:
+			case self::TYPE_CAPTURE:
+				// FIXME: Do we set to Completed even if partially captured?
 				$is_full_capture = false;
 
 				// Check if the payment was captured fully
-				// `remainingCaptureAmount` is missing if the payment was captured fully
+				// `remainingCaptureAmount` is missing if the payment was captured fully.
 				if ( ! isset( $payment_order['remainingCaptureAmount'] ) ) {
 					Swedbank_Pay()->logger()->debug(
 						sprintf(
@@ -434,11 +436,11 @@ class Swedbank_Pay_Api {
 					$is_full_capture = true;
 				}
 
-				// Update order status
+				// Update order status.
 				if ( $is_full_capture ) {
 					$this->update_order_status(
 						$order,
-						'processing',
+						'completed',
 						$transaction_id,
 						sprintf(
 							'Payment has been captured. Transaction: %s. Amount: %s',

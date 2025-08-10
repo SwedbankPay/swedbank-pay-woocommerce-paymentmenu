@@ -423,12 +423,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public function process_admin_options() {
 		$result = parent::process_admin_options();
 
-		// Reload settings
+		// Reload settings.
 		$this->init_settings();
 		$this->access_token = isset( $this->settings['access_token'] ) ? $this->settings['access_token'] : $this->access_token; // phpcs:ignore
 		$this->payee_id     = isset( $this->settings['payee_id'] ) ? $this->settings['payee_id'] : $this->payee_id;
 
-		// Test API Credentials
+		// Test API Credentials.
 		try {
 			new KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Test(
 				$this->access_token,
@@ -445,7 +445,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	/**
 	 * Thank you page
 	 *
-	 * @param $order_id
+	 * @param string $order_id The WooCommerce order ID.
 	 */
 	public function thankyou_page( $order_id ) {
 		$order = wc_get_order( $order_id );
@@ -468,19 +468,10 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$order->save_meta_data();
 		}
 
-		// Set `completed` status if it is `processing`.
-		if ( wc_string_to_bool( $this->autocomplete ) && $order->has_status( 'processing' ) ) {
-			$order->payment_complete();
-			$order->update_status( 'completed' );
-		}
-
-		// Capture payment is applicable.
-		if ( wc_string_to_bool( $this->autocomplete ) && $order->has_status( 'on-hold' ) ) {
-			$result = $this->payment_actions_handler->capture_payment( $order );
-			if ( ! is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-				$order->payment_complete();
-				$order->update_status( 'completed' );
-			}
+		// WC will always capture an order that doesn't need processing. Therefore, we only have to set it is as completed if it needs it.
+		if ( wc_string_to_bool( $this->autocomplete ) && $order->needs_processing() ) {
+			$order->update_status( 'completed', __( 'Order automatically captured after payment.', 'swedbank-pay-woocommerce-checkout' ) );
+			$order->save();
 		}
 	}
 

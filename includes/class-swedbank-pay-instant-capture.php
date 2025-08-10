@@ -34,15 +34,15 @@ class Swedbank_Pay_Instant_Capture {
 	 * Constructor.
 	 */
 	public function __construct() {
-		add_action( 'woocommerce_order_status_on-hold', array( $this, 'maybe_capture_instantly' ), 50, 10 );
+		add_action( 'woocommerce_order_status_completed', array( $this, 'maybe_capture_instantly' ), 50, 10 );
 	}
 
 	/**
 	 * Maybe capture instantly.
 	 *
-	 * @param $order_id
+	 * @param $order_id The WooCommerce order ID.
 	 *
-	 * @throws \Exception
+	 * @throws \Exception If the capture fails.
 	 */
 	public function maybe_capture_instantly( $order_id ) {
 		$order          = wc_get_order( $order_id );
@@ -61,12 +61,12 @@ class Swedbank_Pay_Instant_Capture {
 			return;
 		}
 
-		// Disable this feature if "Autocomplete" is active
+		// Disable this feature if "Autocomplete" is active.
 		if ( 'yes' === $this->gateway->autocomplete ) {
 			return;
 		}
 
-		// Capture if possible
+		// Capture if possible.
 		if ( ! $this->gateway->api->is_captured( $payment_order_id ) ) {
 			try {
 				$this->instant_capture( $order );
