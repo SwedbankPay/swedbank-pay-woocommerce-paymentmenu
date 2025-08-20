@@ -96,9 +96,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public $autocomplete = 'no';
 
 	/**
-	 * @var string
+	 * @var bool
 	 */
-	public $exclude_order_lines = 'no';
+	public $exclude_order_lines = false;
 
 	/**
 	 * Swedbank Pay ip addresses
