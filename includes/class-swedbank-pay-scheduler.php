@@ -135,7 +135,7 @@ class Swedbank_Pay_Scheduler {
 
 		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
 		$result = $gateway->api->finalize_payment( $order, $transaction_number );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$this->log( "[ERROR]: {$result->get_error_message()}" );
 			return false;
 		}

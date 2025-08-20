@@ -2,7 +2,6 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
-use SwedbankPay\Core\Api\FinancialTransaction;
 use WC_Background_Process;
 use WC_Logger;
 
@@ -163,7 +162,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 
 		try {
 			$payload = $item['webhook_data'];
-			$data = json_decode( $payload, true );
+			$data    = json_decode( $payload, true );
 			if ( JSON_ERROR_NONE !== json_last_error() ) {
 				throw new \Exception( 'Invalid webhook data' );
 			}
@@ -214,10 +213,10 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			}
 
 			if ( ! property_exists( $gateway, 'api' ) ||
-				 ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) )
-			{
+				! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 				$this->log(
-					sprintf( '[ERROR]: Order #%s has not been paid with the swedbank pay. Payment method: %s',
+					sprintf(
+						'[ERROR]: Order #%s has not been paid with the swedbank pay. Payment method: %s',
 						$order->get_id(),
 						$order->get_payment_method()
 					)
@@ -243,7 +242,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 
 		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
 		$result = $gateway->api->finalize_payment( $order, $transaction_number );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			/** @var \WP_Error $result */
 			$this->log( sprintf( '[ERROR]: %s', $result->get_error_message() ) );
 

@@ -8,6 +8,7 @@ use WC_Order;
 use Automattic\Jetpack\Constants;
 use Exception;
 use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
+use KrokedilSwedbankPayDeps\Ramsey\Uuid\Uuid;
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
@@ -114,10 +115,10 @@ class Swedbank_Pay_Plugin {
 	 * Install
 	 */
 	public function install() {
-		// Install Schema
+		// Install Schema.
 		Swedbank_Pay_Transactions::instance()->install_schema();
 
-		// Set Version
+		// Set Version.
 		if ( ! get_option( self::DB_VERSION_SLUG ) ) {
 			add_option( self::DB_VERSION_SLUG, self::DB_VERSION );
 		}
@@ -143,13 +144,6 @@ class Swedbank_Pay_Plugin {
 		);
 
 		return array_merge( $plugin_links, $links );
-	}
-
-	/**
-	 * Init localisations and files
-	 */
-	public function init() {
-		// Functions
 	}
 
 	/**
@@ -201,7 +195,7 @@ class Swedbank_Pay_Plugin {
 	 * @return string
 	 */
 	public function generate_uuid( $node ) {
-		return \Ramsey\Uuid\Uuid::uuid5( \Ramsey\Uuid\Uuid::NAMESPACE_OID, $node )->toString();
+		return Uuid::uuid5( Uuid::NAMESPACE_OID, $node )->toString();
 	}
 
 	/**

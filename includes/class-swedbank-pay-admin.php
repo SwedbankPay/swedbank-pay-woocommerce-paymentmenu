@@ -154,7 +154,7 @@ class Swedbank_Pay_Admin {
 
 		// Fetch payment info
 		$result = $gateway->api->request( 'GET', $payment_order_id . '/paid' );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			return;
 		}
 
@@ -260,7 +260,7 @@ class Swedbank_Pay_Admin {
 		// Get Payment Gateway
 		$gateway = swedbank_pay_get_payment_method( $order );
 		$result = $gateway->payment_actions_handler->capture_payment( $order );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			wp_send_json_error( join('; ', $result->get_error_messages() ) );
 			return;
 		}
@@ -292,7 +292,7 @@ class Swedbank_Pay_Admin {
 		// Get Payment Gateway
 		$gateway = swedbank_pay_get_payment_method( $order );
 		$result = $gateway->payment_actions_handler->cancel_payment( $order );
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			wp_send_json_error( join('; ', $result->get_error_messages() ) );
 			return;
 		}
@@ -332,7 +332,7 @@ class Swedbank_Pay_Admin {
 			__( 'Full refund.', 'swedbank-pay-woocommerce-checkout' ),
 			true
 		);
-		if ( is_wp_error( $result ) ) {
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			/** @var \WP_Error $result */
 			wp_send_json_error( join('; ', $result->get_error_messages() ) );
 
@@ -496,7 +496,7 @@ class Swedbank_Pay_Admin {
 				case 'completed':
 					$gateway->api->log( WC_Log_Levels::INFO, 'Try to capture...' );
 					$result = $gateway->payment_actions_handler->capture_payment( $order );
-					if ( is_wp_error( $result ) ) {
+					if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 						/** @var \WP_Error $result */
 						throw new \Exception( $result->get_error_message() );
 					}
@@ -509,7 +509,7 @@ class Swedbank_Pay_Admin {
 				case 'cancelled':
 					$gateway->api->log( WC_Log_Levels::INFO, 'Try to cancel...' );
 					$result = $gateway->payment_actions_handler->cancel_payment( $order );
-					if ( is_wp_error( $result ) ) {
+					if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 						/** @var \WP_Error $result */
 						throw new \Exception( $result->get_error_message() );
 					}
@@ -535,7 +535,7 @@ class Swedbank_Pay_Admin {
 						__( 'Order status changed to refunded.', 'swedbank-pay-woocommerce-checkout' ),
 						true
 					);
-					if ( is_wp_error( $result ) ) {
+					if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 						/** @var \WP_Error $result */
 						throw new \Exception( $result->get_error_message() );
 					}
