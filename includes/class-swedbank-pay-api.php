@@ -159,27 +159,6 @@ class Swedbank_Pay_Api {
 		// Build items collection.
 		$items = swedbank_pay_get_order_lines( $order );
 
-		$order_items = new OrderItemsCollection();
-		foreach ( $items as $item ) {
-			$order_item = new OrderItem();
-			$order_item
-			->setReference( $item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] )
-			->setName( $item[ Swedbank_Pay_Order_Item::FIELD_NAME ] )
-			->setType( $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] )
-			->setItemClass( $item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] )
-			->setItemUrl( $item[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ] ?? '' )
-			->setImageUrl( $item[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] ?? '' )
-			->setDescription( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] ?? '' )
-			->setQuantity( $item[ Swedbank_Pay_Order_Item::FIELD_QTY ] )
-			->setUnitPrice( $item[ Swedbank_Pay_Order_Item::FIELD_UNITPRICE ] )
-			->setQuantityUnit( $item[ Swedbank_Pay_Order_Item::FIELD_QTY_UNIT ] )
-			->setVatPercent( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT ] )
-			->setAmount( $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] )
-			->setVatAmount( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ] );
-
-			$order_items->addItem( $order_item );
-		}
-
 		$payment_order = new Paymentorder();
 		$payment_order
 			->setOperation( self::OPERATION_PURCHASE )
@@ -224,6 +203,27 @@ class Swedbank_Pay_Api {
 			->setMetadata( $metadata );
 
 		if ( ! $gateway->exclude_order_lines ) {
+			$order_items = new OrderItemsCollection();
+			foreach ( $items as $item ) {
+				$order_item = new OrderItem();
+				$order_item
+				->setReference( $item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] )
+				->setName( $item[ Swedbank_Pay_Order_Item::FIELD_NAME ] )
+				->setType( $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] )
+				->setItemClass( $item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] )
+				->setItemUrl( $item[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ] )
+				->setImageUrl( $item[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] )
+				->setDescription( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] )
+				->setQuantity( $item[ Swedbank_Pay_Order_Item::FIELD_QTY ] )
+				->setUnitPrice( $item[ Swedbank_Pay_Order_Item::FIELD_UNITPRICE ] )
+				->setQuantityUnit( $item[ Swedbank_Pay_Order_Item::FIELD_QTY_UNIT ] )
+				->setVatPercent( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT ] )
+				->setAmount( $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] )
+				->setVatAmount( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ] );
+
+				$order_items->addItem( $order_item );
+			}
+
 			$payment_order->setOrderItems( $order_items );
 		}
 
