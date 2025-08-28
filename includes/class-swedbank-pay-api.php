@@ -417,15 +417,15 @@ class Swedbank_Pay_Api {
 				break;
 			case self::TYPE_SALE:
 			case self::TYPE_CAPTURE:
-				// FIXME: Do we set to Completed even if partially captured?
 				$is_full_capture = false;
 
 				// Check if the payment was captured fully
 				// `remainingCaptureAmount` is missing if the payment was captured fully.
 				if ( ! isset( $payment_order['remainingCaptureAmount'] ) ) {
 					Swedbank_Pay()->logger()->debug(
+						// translators: 1: payment order ID, 2: transaction ID, 3: transaction amount, 4: order amount.
 						sprintf(
-							'Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingCaptureAmount is missing. Full action?', //phpcs:ignore
+							'Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingCaptureAmount is missing. Full action?',
 							$payment_order_id,
 							$transaction_id,
 							$transaction['amount'] / 100,
@@ -453,7 +453,8 @@ class Swedbank_Pay_Api {
 
 					$order->add_order_note(
 						sprintf(
-							'Payment has been partially captured: Transaction: %s. Amount: %s. Remaining amount: %s', //phpcs:ignore
+							// translators: 1: transaction ID, 2: transaction amount, 3: remaining amount.
+							'Payment has been partially captured: Transaction: %s. Amount: %s. Remaining amount: %s',
 							$transaction_id,
 							$transaction['amount'] / 100,
 							$remaining_amount
