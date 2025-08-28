@@ -767,7 +767,6 @@ class Swedbank_Pay_Api {
 
 			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
 
-			// FIXME: This is always returning null. Recreate: enable automatic capture, place an order. On redirect to store, fatal error due to $transaction being overwritten with the null value from $result.
 			$result = $response_service->getResponseData();
 
 			// Save transaction.
