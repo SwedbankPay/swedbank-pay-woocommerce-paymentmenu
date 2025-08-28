@@ -591,11 +591,8 @@ class Swedbank_Pay_Api {
 
 				break;
 			case 'on-hold':
-				// FIXME: Why do we need to reduce stock if it is on-hold?
 				// Set on-hold.
 				if ( ! $order->has_status( 'on-hold' ) ) {
-					// Reduce stock.
-					wc_maybe_reduce_stock_levels( $order_id );
 					$order->update_status( 'on-hold', $message );
 				} elseif ( $message ) {
 					$order->add_order_note( $message );
