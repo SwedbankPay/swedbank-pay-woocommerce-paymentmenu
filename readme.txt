@@ -87,7 +87,16 @@ You are now done with configuring our plugin.
 = Minimum Requirements =
 * PHP 7.0 or greater is recommended
 * WooCommerce 5 or greater is recommended
-
 == Upgrade Notice ==
 = 1.2.0 =
 Please update to version 1.2.0.
+
+== Changelog ==
+= 2025.08.28    - version 4.0.0 =
+* Feature       - Added support for the WooCommerce Action Scheduler.
+* Feature       - Added setting to exclude order lines from the payment request to improve compatibility gift cards.
+* Feature       - Improved tracing and logging of errors for easier troubleshooting.
+* Feature       - Added an entry in the system report for encountered errors, and the plugin settings.
+* Feature       - Added PHP scoping for prevent dependencies conflict with other plugins or themes.
+* Fix           - Addressed various PHP warnings.
+* Fix           - Addressed warning related to referencing text domain before loaded.
