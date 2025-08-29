@@ -93,9 +93,6 @@ class Swedbank_Pay_Plugin {
 	 * @SuppressWarnings(PHPMD.UnusedLocalVariable)
 	 */
 	public function includes() {
-		// FIXME: The autoloader is initialized in the child class too, so we have two places where this is happening.
-		$vendors_dir = __DIR__ . '/../vendor';
-		require_once $vendors_dir . '/autoload.php';
 		require_once __DIR__ . '/functions.php';
 		require_once __DIR__ . '/interface-swedbank-pay-order-item.php';
 		require_once __DIR__ . '/class-swedbank-pay-transactions.php';
