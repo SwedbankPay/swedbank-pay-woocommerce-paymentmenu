@@ -4,6 +4,8 @@ Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank,
 Requires at least: 5.3
 Tested up to: 6.6.2
 Requires PHP: 7.4
+WC requires at least: 5.5.1
+WC tested up to: 9.3.1
 Stable tag: 3.6.6
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
