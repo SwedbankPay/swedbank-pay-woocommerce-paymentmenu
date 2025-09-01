@@ -18,7 +18,6 @@ output.log
 
 *.DS_Store
 
-vendor
 scoper.custom.php
 node_modules
 
