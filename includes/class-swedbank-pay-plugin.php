@@ -8,6 +8,7 @@ use WC_Order;
 use Automattic\Jetpack\Constants;
 use Exception;
 use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
+use KrokedilSwedbankPayDeps\Ramsey\Uuid\Uuid;
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
@@ -92,20 +93,21 @@ class Swedbank_Pay_Plugin {
 	 * @SuppressWarnings(PHPMD.UnusedLocalVariable)
 	 */
 	public function includes() {
-		$vendors_dir = dirname( __FILE__ ) . '/../vendor';
+		$vendors_dir = __DIR__ . '/../vendor';
 		require_once $vendors_dir . '/autoload.php';
-		require_once( dirname( __FILE__ ) . '/functions.php' );
-		require_once( dirname( __FILE__ ) . '/interface-swedbank-pay-order-item.php' );
-		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-transactions.php' );
-		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-api.php' );
-		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-instant-capture.php' );
-		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-payment-actions.php' );
-		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-admin.php' );
-		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-thankyou.php' );
-		require_once( dirname( __FILE__ ) . '/class-swedbank-pay-intl-tel.php' );
+		require_once __DIR__ . '/functions.php';
+		require_once __DIR__ . '/interface-swedbank-pay-order-item.php';
+		require_once __DIR__ . '/class-swedbank-pay-transactions.php';
+		require_once __DIR__ . '/class-swedbank-pay-api.php';
+		require_once __DIR__ . '/class-swedbank-pay-instant-capture.php';
+		require_once __DIR__ . '/class-swedbank-pay-payment-actions.php';
+		require_once __DIR__ . '/class-swedbank-pay-admin.php';
+		require_once __DIR__ . '/class-swedbank-pay-thankyou.php';
+		require_once __DIR__ . '/class-swedbank-pay-intl-tel.php';
+		require_once __DIR__ . '/class-swedbank-pay-scheduler.php';
 
 		if ( class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
-			require_once( dirname( __FILE__ ) . '/class-swedbank-pay-blocks-support.php' );
+			require_once __DIR__ . '/class-swedbank-pay-blocks-support.php';
 		}
 	}
 
@@ -113,10 +115,10 @@ class Swedbank_Pay_Plugin {
 	 * Install
 	 */
 	public function install() {
-		// Install Schema
+		// Install Schema.
 		Swedbank_Pay_Transactions::instance()->install_schema();
 
-		// Set Version
+		// Set Version.
 		if ( ! get_option( self::DB_VERSION_SLUG ) ) {
 			add_option( self::DB_VERSION_SLUG, self::DB_VERSION );
 		}
@@ -145,18 +147,12 @@ class Swedbank_Pay_Plugin {
 	}
 
 	/**
-	 * Init localisations and files
-	 */
-	public function init() {
-		// Functions
-	}
-
-	/**
 	 * WooCommerce Init
 	 */
 	public function woocommerce_init() {
-		include_once( dirname( __FILE__ ) . '/class-swedbank-pay-background-queue.php' );
+		include_once __DIR__ . '/class-swedbank-pay-background-queue.php';
 		self::$background_process = new Swedbank_Pay_Background_Queue();
+		Swedbank_Pay_Scheduler::get_instance();
 	}
 
 	/**
@@ -173,7 +169,7 @@ class Swedbank_Pay_Plugin {
 
 		if ( ! isset( $px_gateways[ $class_name ] ) ) {
 			// Initialize instance
-			$gateway = new $class_name;
+			$gateway = new $class_name();
 
 			if ( $gateway ) {
 				$px_gateways[] = $class_name;
@@ -199,13 +195,13 @@ class Swedbank_Pay_Plugin {
 	 * @return string
 	 */
 	public function generate_uuid( $node ) {
-		return \Ramsey\Uuid\Uuid::uuid5( \Ramsey\Uuid\Uuid::NAMESPACE_OID, $node )->toString();
+		return Uuid::uuid5( Uuid::NAMESPACE_OID, $node )->toString();
 	}
 
 	/**
 	 * Billing phone.
 	 *
-	 * @param string $billing_phone
+	 * @param string   $billing_phone
 	 * @param WC_Order $order
 	 *
 	 * @return string
@@ -301,6 +297,7 @@ class Swedbank_Pay_Plugin {
 
 	/**
 	 * Support Page
+	 *
 	 * @SuppressWarnings(PHPMD.Superglobals)
 	 */
 	public static function support_page() {
@@ -313,7 +310,7 @@ class Swedbank_Pay_Plugin {
 				'message'  => isset( $_GET['message'] ) ? sanitize_text_field( wp_unslash( $_GET['message'] ) ) : null, // WPCS: input var ok, CSRF ok.
 			),
 			'',
-			dirname( __FILE__ ) . '/../templates/'
+			__DIR__ . '/../templates/'
 		);
 	}
 
@@ -326,7 +323,7 @@ class Swedbank_Pay_Plugin {
 		}
 
 		// Run Database Update
-		include_once( dirname( __FILE__ ) . '/class-swedbank-pay-update.php' );
+		include_once __DIR__ . '/class-swedbank-pay-update.php';
 		Swedbank_Pay_Update::update();
 
 		echo esc_html__( 'Upgrade finished.', 'swedbank-pay-woocommerce-checkout' );
@@ -459,6 +456,7 @@ class Swedbank_Pay_Plugin {
 
 	/**
 	 * Send support message
+	 *
 	 * @SuppressWarnings(PHPMD.Superglobals)
 	 * @SuppressWarnings(PHPMD.ErrorControlOperator)
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
@@ -586,6 +584,7 @@ class Swedbank_Pay_Plugin {
 
 	/**
 	 * Handle a custom '_payex_paymentorder_id' query var to get orders with the '_payex_paymentorder_id' meta.
+	 *
 	 * @see https://github.com/woocommerce/woocommerce/wiki/wc_get_orders-and-WC_Order_Query
 	 * @param array $query - Args for WP_Query.
 	 * @param array $query_vars - Query vars from WC_Order_Query.
@@ -593,10 +592,10 @@ class Swedbank_Pay_Plugin {
 	 */
 	public function handle_custom_query_var( $query, $query_vars ) {
 		if ( ! empty( $query_vars['_payex_paymentorder_id'] ) ) {
-			$query['meta_query'][] = [
-				'key' => '_payex_paymentorder_id',
+			$query['meta_query'][] = array(
+				'key'   => '_payex_paymentorder_id',
 				'value' => esc_attr( $query_vars['_payex_paymentorder_id'] ),
-			];
+			);
 		}
 
 		return $query;
@@ -609,12 +608,12 @@ class Swedbank_Pay_Plugin {
 	 */
 	public function woocommerce_blocks_support() {
 		if ( class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
-			require_once( dirname( __FILE__ ) . '/class-swedbank-pay-blocks-support.php' );
+			require_once __DIR__ . '/class-swedbank-pay-blocks-support.php';
 
 			add_action(
 				'woocommerce_blocks_payment_method_type_registration',
-				function( PaymentMethodRegistry $payment_method_registry ) {
-					$payment_method_registry->register( new Swedbank_Pay_Blocks_Support );
+				function ( PaymentMethodRegistry $payment_method_registry ) {
+					$payment_method_registry->register( new Swedbank_Pay_Blocks_Support() );
 				}
 			);
 		}

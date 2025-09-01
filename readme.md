@@ -32,7 +32,7 @@ Swedbank Pay Payments Gateway for WooCommerce. Payment gateway allows to accept 
 
 ### Minimum Requirements
 
-* PHP 7.0 or greater is recommended
-* WooCommerce 5 or greater is recommended
+* PHP 7.4 or greater is recommended
+* WooCommerce 5.5.1 or greater is recommended
 
 [opengraph-image]: https://repository-images.githubusercontent.com/211837771/f4583f00-53ed-11ea-907a-6d8016202c25

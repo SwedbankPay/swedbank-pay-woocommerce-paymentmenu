@@ -1,3 +1,12 @@
+Version 4.0.0
+* Feature Added support for the WooCommerce Action Scheduler.
+* Feature Added setting to exclude order lines from the payment request to improve compatibility gift cards.
+* Feature Improved tracing and logging of errors for easier troubleshooting.
+* Feature Added an entry in the system report for encountered errors, and the plugin settings.
+* Feature Added PHP scoping for prevent dependencies conflict with other plugins or themes.
+* Fix Addressed various PHP warnings.
+* Fix Addressed warning related to referencing text domain before loaded.
+
 Version 3.6.6
 * Added `swedbank_pay_dispatch_queue_at_shutdown` wp filter
 

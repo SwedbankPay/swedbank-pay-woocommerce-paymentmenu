@@ -73,6 +73,7 @@ function swedbank_pay_get_post_id_by_meta( $key, $value ) {
 
 /**
  * Get Order by Payment Order ID.
+ *
  * @uses woocommerce_order_data_store_cpt_get_orders_query hook
  * @param string $paymentOrderId
  *
@@ -81,11 +82,11 @@ function swedbank_pay_get_post_id_by_meta( $key, $value ) {
 function swedbank_pay_get_order( $paymentOrderId ) {
 	$orders = wc_get_orders(
 		array(
-			'_payex_paymentorder_id' => $paymentOrderId
+			'_payex_paymentorder_id' => $paymentOrderId,
 		)
 	);
 
-	foreach ($orders as $order) {
+	foreach ( $orders as $order ) {
 		return $order;
 	}
 
@@ -136,8 +137,8 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 			$image = wc_placeholder_img_src( 'full' );
 		}
 
-		if ( null === parse_url( $image, PHP_URL_SCHEME ) &&
-			 mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
+		if ( null === wp_parse_url( $image, PHP_URL_SCHEME ) &&
+			mb_substr( $image, 0, mb_strlen( WP_CONTENT_URL ), 'UTF-8' ) === WP_CONTENT_URL
 		) {
 			$image = wp_guess_url() . $image;
 		}
@@ -172,7 +173,7 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 			Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $order_item->get_product()->get_permalink(),
 			Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image,
 			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $order_item->get_name(),
-			Swedbank_Pay_Order_Item::FIELD_QTY          => $qty,
+			Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
 			Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
 			Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
 			Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
@@ -280,16 +281,16 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 				$discount          = round( -1 * ( $amount / ( 1 + (float) $rate_aux ) ), 2 );
 
 				$items[] = array(
-					Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'gift_card_' . esc_html( $code ),
-					Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Gift card: ' . esc_html( $code ), 'yith-woocommerce-gift-cards' ),
-					Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
-					Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
-					Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
-					Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
-					Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( 100 * $discount_with_tax ),
+					Swedbank_Pay_Order_Item::FIELD_REFERENCE => 'gift_card_' . esc_html( $code ),
+					Swedbank_Pay_Order_Item::FIELD_NAME   => __( 'Gift card: ' . esc_html( $code ), 'yith-woocommerce-gift-cards' ),
+					Swedbank_Pay_Order_Item::FIELD_TYPE   => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
+					Swedbank_Pay_Order_Item::FIELD_CLASS  => 'ProductGroup1',
+					Swedbank_Pay_Order_Item::FIELD_QTY    => 1,
+					Swedbank_Pay_Order_Item::FIELD_QTY_UNIT => 'pcs',
+					Swedbank_Pay_Order_Item::FIELD_UNITPRICE => round( 100 * $discount_with_tax ),
 					Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => 100 * round( 100 * $rate_aux ),
-					Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( 100 * $discount_with_tax ),
-					Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => 100 * round( $discount_with_tax - $discount )
+					Swedbank_Pay_Order_Item::FIELD_AMOUNT => round( 100 * $discount_with_tax ),
+					Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT => 100 * round( $discount_with_tax - $discount ),
 				);
 			}
 		}
@@ -308,7 +309,7 @@ function swedbank_pay_get_available_line_items_for_refund( WC_Order $order ) {
 	$refunded = empty( $refunded ) ? array() : (array) $refunded;
 
 	// Order lines
-	$lines = array();
+	$lines      = array();
 	$line_items = $order->get_items( array( 'line_item', 'shipping', 'fee' ) );
 	foreach ( $captured as $captured_item ) {
 		foreach ( $line_items as $item_id => $item ) {
@@ -347,13 +348,13 @@ function swedbank_pay_get_available_line_items_for_refund( WC_Order $order ) {
 			$row_price_with_tax = $order->get_line_total( $item, true, false );
 			$row_tax            = $row_price_with_tax - $row_price;
 
-			if ( $reference === $captured_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
-				$qty = $captured_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+			if ( $reference === $captured_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ) {
+				$qty = $captured_item[ Swedbank_Pay_Order_Item::FIELD_QTY ];
 
 				// Exclude refunded items
 				foreach ( $refunded as $refunded_item ) {
-					if ( $reference === $refunded_item[Swedbank_Pay_Order_Item::FIELD_REFERENCE] ) {
-						$qty -= $refunded_item[Swedbank_Pay_Order_Item::FIELD_QTY];
+					if ( $reference === $refunded_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ) {
+						$qty -= $refunded_item[ Swedbank_Pay_Order_Item::FIELD_QTY ];
 
 						break;
 					}
@@ -383,13 +384,13 @@ function swedbank_pay_get_available_line_items_for_refund( WC_Order $order ) {
 
 /**
  * @param WC_Order $order
- * @param float $amount
+ * @param float    $amount
  *
  * @return WC_Order_Refund|null
  */
 function swedbank_pay_get_last_refund( WC_Order $order, $amount ) {
 	$refunds = $order->get_refunds();
-	foreach ($refunds as $refund) {
+	foreach ( $refunds as $refund ) {
 		/** @var WC_Order_Refund $refund */
 		if ( round( $amount, 2 ) == round( $refund->get_amount(), 2 ) ) {
 			// Check the creation time
@@ -398,7 +399,7 @@ function swedbank_pay_get_last_refund( WC_Order $order, $amount ) {
 				return $refund;
 			}
 
-			if ( $created_at > ( new \WC_DateTime( '-10 minutes' ) ) && $created_at < ( new \WC_DateTime('now') ) ) {
+			if ( $created_at > ( new \WC_DateTime( '-10 minutes' ) ) && $created_at < ( new \WC_DateTime( 'now' ) ) ) {
 				return $refund;
 			}
 		}
@@ -416,7 +417,7 @@ function swedbank_pay_get_last_refund( WC_Order $order, $amount ) {
  */
 function swedbank_pay_generate_payee_reference( $order_id ) {
 	$arr = range( 'a', 'z' );
-	shuffle($arr);
+	shuffle( $arr );
 	$reference = $order_id . 'x' . substr( implode( '', $arr ), 0, 5 );
 
 	return apply_filters( 'swedbank_pay_payee_reference', $reference, $order_id );

@@ -2,8 +2,10 @@
 Contributors: swedbankpay
 Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
-Tested up to: 6.6.2
-Requires PHP: 7.0
+Tested up to: 6.8.2
+Requires PHP: 7.4
+WC requires at least: 5.5.1
+WC tested up to: 10.1.2
 Stable tag: 3.6.6
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
@@ -87,7 +89,16 @@ You are now done with configuring our plugin.
 = Minimum Requirements =
 * PHP 7.0 or greater is recommended
 * WooCommerce 5 or greater is recommended
-
 == Upgrade Notice ==
 = 1.2.0 =
 Please update to version 1.2.0.
+
+== Changelog ==
+= 2025.09.01    - version 4.0.0 =
+* Feature       - Added support for the WooCommerce Action Scheduler.
+* Feature       - Added setting to exclude order lines from the payment request to improve compatibility gift cards.
+* Feature       - Improved tracing and logging of errors for easier troubleshooting.
+* Feature       - Added an entry in the system report for encountered errors, and the plugin settings.
+* Feature       - Added PHP scoping for prevent dependencies conflict with other plugins or themes.
+* Fix           - Addressed various PHP warnings.
+* Fix           - Addressed warning related to referencing text domain before loaded.
