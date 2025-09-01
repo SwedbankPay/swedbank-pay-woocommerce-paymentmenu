@@ -15,7 +15,7 @@ jobs:
           php-version: '7.4'
           extensions: intl, mbstring, json, bcmath
           coverage: xdebug
-          tools: composer:v1
+          tools: composer:v2
 
       # Build the plugin with dev dependencies to scope the dependency packages.
       - name: Composer Install (Dev)
