@@ -11,7 +11,7 @@ on:
 jobs:
   test:
     name: Run code inspection
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: |
       (github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]') ||
       (github.event_name != 'pull_request_target' && github.actor != 'dependabot[bot]')
@@ -40,4 +40,3 @@ jobs:
         run: |
           composer global require "phpmd/phpmd"
           #phpmd ./ text cleancode,codesize,controversial,design,naming,unusedcode --exclude .github
-
