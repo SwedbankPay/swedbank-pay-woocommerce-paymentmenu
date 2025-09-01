@@ -7,15 +7,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        uses: shivammathur/setup-php@master
-        with:
-          php-version: '7.4'
-          extensions: intl, mbstring, json, bcmath
-          coverage: xdebug
-          tools: composer:v2
+      - name: Checkout code
+        uses: actions/checkout@master
 
       # Build the plugin with dev dependencies to scope the dependency packages.
       - name: Composer Install (Dev)
