@@ -12,7 +12,7 @@
  * Domain Path: /languages
  *
  * WC requires at least: 5.5.1
- * WC tested up to: 9.3.1
+ * WC tested up to: 10.1.2
  * Requires Plugins: woocommerce
  *
  * @package SwedbankPay
