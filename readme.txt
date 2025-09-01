@@ -94,7 +94,7 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
-= 2025.08.28    - version 4.0.0 =
+= 2025.09.01    - version 4.0.0 =
 * Feature       - Added support for the WooCommerce Action Scheduler.
 * Feature       - Added setting to exclude order lines from the payment request to improve compatibility gift cards.
 * Feature       - Improved tracing and logging of errors for easier troubleshooting.
