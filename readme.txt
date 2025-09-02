@@ -6,7 +6,7 @@ Tested up to: 6.8.2
 Requires PHP: 7.4
 WC requires at least: 5.5.1
 WC tested up to: 10.1.2
-Stable tag: 4.0.0
+Stable tag: 4.0.1
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -94,6 +94,9 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2025.09.02    - version 4.0.1 =
+* Fix           - Update files included in the release.
+
 = 2025.09.01    - version 4.0.0 =
 * Feature       - Added support for the WooCommerce Action Scheduler.
 * Feature       - Added setting to exclude order lines from the payment request to improve compatibility gift cards.
