@@ -32,11 +32,6 @@ README.md
 
 tests
 
-composer.lock
-composer.json
-composer-dependencies.lock
-composer-dependencies.json
-
 package.json
 package-lock.json
 
