@@ -1,3 +1,6 @@
+Version 4.0.1
+* Fix Update files included in the release.
+
 Version 4.0.0
 * Feature Added support for the WooCommerce Action Scheduler.
 * Feature Added setting to exclude order lines from the payment request to improve compatibility gift cards.
