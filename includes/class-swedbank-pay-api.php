@@ -760,18 +760,21 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = ( new TransactionCaptureV3( $transaction ) )
+		$request_service = ( new TransactionCaptureV3( $transaction ) )
 			->setClient( Order::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
-			$response_service = $requestService->send();
+			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
-			// FIXME: This is always returning null. Recreate: enable automatic capture, place an order. On redirect to store, fatal error due to $transaction being overwritten with the null value from $result.
-			$result = $response_service->getResponseData();
+			// FIXME: This is always returning null. Recreate: enable automatic capture, place an order, and pay with card. On redirect to store, fatal error due to $transaction being overwritten with the null value from $result.
+			$result = $response_service->getResponseResource()->__toArray();
+			if ( null === $result ) {
+				throw new \Exception( 'capture', 'Capture failed. No response from the API.' );
+			}
 
 			// Save transaction.
 			$transaction = $result['capture']['transaction'];
@@ -782,7 +785,7 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
 			Swedbank_Pay()->logger()->debug(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
@@ -790,7 +793,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'capture',
-				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
+				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
