@@ -65,7 +65,7 @@ class Swedbank_Pay_Subscription {
 		add_filter( 'swedbank_pay_payment_order', array( $this, 'maybe_generate_unscheduled_token' ), 10, 2 );
 
 		// Retrieve and save the unscheduled token when the customer is redirected back to the order received page.
-		add_action( 'template_redirect', array( $this, 'order_received' ), 10 );
+		add_action( 'template_redirect', array( $this, 'on_redirect_to_thankyou_page' ), 10 );
 
 		// Saves the subscription token, if missing, when the webhook is received.
 		add_action( 'swedbank_pay_scheduler_run_after', array( $this, 'callback_received' ), 10, 2 );
@@ -197,7 +197,7 @@ class Swedbank_Pay_Subscription {
 	}
 
 	/**
-	 * Retrieves from Swedbank, and saves the unscheduled token to the order.
+	 * Retrieves from Swedbank, and saves the unscheduled token to the order. Existing token will be overwritten.
 	 *
 	 * @see https://developer.swedbankpay.com/checkout-v3/get-started/recurring#post-purchase--post-verify.
 	 *
@@ -210,15 +210,38 @@ class Swedbank_Pay_Subscription {
 		$response         = $gateway->api->request( 'GET', "{$payment_order_id}/paid" );
 
 		if ( ! is_wp_error( $response ) ) {
-			$paid = $response['paid'];
+			$paid              = $response['paid'];
+			$unscheduled_token = false;
 			foreach ( $paid['tokens'] as $token ) {
+				// From the collection of tokens, retrieve the 'unscheduled' token. There cannot be more than one unscheduled token at any time.
 				if ( 'unscheduled' === $token['type'] ) {
-					$order->update_meta_data( self::UNSCHEDULED_TOKEN, $token['token'] );
-					$order->save_meta_data();
+					$unscheduled_token = $token['token'];
+
+					$subscriptions = wcs_get_subscriptions_for_order( $order, array( 'order_type' => 'any' ) );
+					foreach ( $subscriptions as $subscription ) {
+						$subscription->update_meta_data( self::UNSCHEDULED_TOKEN, $unscheduled_token );
+						$subscription->save_meta_data();
+					}
+
+					// translators: 1: Unscheduled token.
+					$order->add_order_note( sprintf( __( 'Recurring token: %s', 'swedbank-pay-woocommerce-checkout' ), $unscheduled_token ) );
+
+					$order->update_meta_data( self::UNSCHEDULED_TOKEN, $unscheduled_token );
+					$order->save();
 
 					break;
 				}
 			}
+
+			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Retrieved unscheduled token for order #{$order->get_order_number()}. Token: {$unscheduled_token}" );
+		} else {
+			Swedbank_Pay()->logger()->error(
+				"[SUBSCRIPTIONS]: Failed to retrieve unscheduled token for order #{$order->get_order_number()}. Error: {$response->get_error_message()}",
+				array(
+					'payment_order_id' => $payment_order_id,
+					'order_id'         => $order->get_id(),
+				)
+			);
 		}
 	}
 
@@ -227,16 +250,15 @@ class Swedbank_Pay_Subscription {
 	 *
 	 * @return void
 	 */
-	public function order_received() {
-		if ( ! is_wc_endpoint_url( 'order-received' ) ) {
+	public function on_redirect_to_thankyou_page() {
+		$order_id = absint( get_query_var( 'order-received', 0 ) );
+		$order    = wc_get_order( $order_id );
+		if ( empty( $order ) ) {
 			return;
 		}
 
-		$order_id  = absint( get_query_var( 'order-received', 0 ) );
 		$order_key = filter_input( INPUT_GET, 'key', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
-
-		$order = wc_get_order( $order_id );
-		if ( ! ( $order && hash_equals( $order->get_order_key(), $order_key ) ) ) {
+		if ( empty( $order_key ) || ! hash_equals( $order->get_order_key(), $order_key ) ) {
 			return;
 		}
 
@@ -290,7 +312,7 @@ class Swedbank_Pay_Subscription {
 			return $payment_order;
 		}
 
-		return $payment_order->setGenerateUnscheduledToken( true );
+		return $this->generate_unscheduled_token( $payment_order, $order );
 	}
 
 	/**
