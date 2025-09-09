@@ -233,10 +233,10 @@ class Swedbank_Pay_Subscription {
 				}
 			}
 
-			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Retrieved unscheduled token for order #{$order->get_order_number()}. Token: {$unscheduled_token}" );
+			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Retrieved unscheduled token for order #{$order->get_id()}. Token: {$unscheduled_token}" );
 		} else {
 			Swedbank_Pay()->logger()->error(
-				"[SUBSCRIPTIONS]: Failed to retrieve unscheduled token for order #{$order->get_order_number()}. Error: {$response->get_error_message()}",
+				"[SUBSCRIPTIONS]: Failed to retrieve unscheduled token for order #{$order->get_id()}. Error: {$response->get_error_message()}",
 				array(
 					'payment_order_id' => $payment_order_id,
 					'order_id'         => $order->get_id(),
