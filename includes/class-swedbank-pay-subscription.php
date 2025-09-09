@@ -90,36 +90,32 @@ class Swedbank_Pay_Subscription {
 
 		$response = self::charge_customer( $renewal_order, $token );
 		if ( is_wp_error( $response ) ) {
-			$renewal_order->add_order_note(
-				sprintf(
-				/* translators: %s: error message */
-					__( 'Failed to process subscription renewal. Error: %s', 'swedbank-pay-woocommerce-checkout' ),
-					$response->get_error_message()
-				)
-			);
+			// translators: Error message.
+			$message = sprintf( __( 'Failed to process subscription renewal. Reason: %s', 'swedbank-pay-woocommerce-checkout' ), $response->get_error_message() );
 
+			foreach ( $subscriptions as $subscription ) {
+				$subscription->add_order_note( $message );
+				$subscription->payment_failed();
+			}
+
+			$renewal_order->add_order_note( $message );
 			return;
 		}
 
-		$success_message = sprintf(
+		$message = sprintf(
 			/* translators: %s: subscription id */
 			__( 'Subscription renewal was made successfully via Swedbank Pay. Payment token: %s', 'swedbank-pay-woocommerce-checkout' ),
 			$token
 		);
-		$renewal_order->add_order_note( $success_message );
+		$renewal_order->add_order_note( $message );
+		$transaction_id = $renewal_order->get_transaction_id();
 
-		// TODO: Iterate through every subscription, and mark them as complete.
 		foreach ( $subscriptions as $subscription ) {
-			if ( isset( $swedbank_order_id ) ) {
-				$subscription->payment_complete( $swedbank_order_id );
-				$subscription->add_order_note( $success_message );
-				$subscription->save();
-			} else {
-				$subscription->payment_failed();
-			}
+			$subscription->payment_complete( $transaction_id );
+			$subscription->add_order_note( $message );
 
-			// Save to the subscription.
 			$subscription->update_meta_data( self::UNSCHEDULED_TOKEN, $token );
+			$subscription->save_meta_data();
 		}
 	}
 
@@ -154,12 +150,27 @@ class Swedbank_Pay_Subscription {
 		} catch ( ClientException $e ) {
 
 			Swedbank_Pay()->logger()->error( $purchase_request->getClient()->getDebugInfo() );
-			Swedbank_Pay()->logger()->error( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
+			Swedbank_Pay()->logger()->error(
+				sprintf( '[SUBSCRIPTION RENEWAL] %s: API Exception: %s', __METHOD__, $e->getMessage() ),
+				array(
+					'order_id' => $order->get_id(),
+					'token'    => $token,
+				)
+			);
+
+			$error_body = json_decode( $purchase_request->getClient()->getResponseBody(), true );
+
+			$errors   = array();
+			$problems = $error_body['problems'] ?? array();
+			foreach ( $problems as $problem ) {
+				$errors[] = "{$problem['name']}: {$problem['description']}";
+			}
 
 			return Swedbank_Pay()->system_report()->request(
 				new WP_Error(
-					400,
-					wp_json_encode( array( $purchase_request->getClient()->getResponseBody(), $e->getMessage() ) )
+					$error_body['status'],
+					join( $errors ),
+					$error_body
 				)
 			);
 		}
