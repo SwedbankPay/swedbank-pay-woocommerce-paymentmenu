@@ -459,7 +459,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		$this->api->log( WC_Log_Levels::INFO, __METHOD__, array( $order_id ) );
-		$is_finalized     = $order->get_meta( '_payex_finalized' );
+		$is_finalized     = $order->get_meta( '_payex_finalized' ); // Checks if the order has already been processed.
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $is_finalized ) && $payment_order_id ) {
 			$this->api->finalize_payment( $order, null );

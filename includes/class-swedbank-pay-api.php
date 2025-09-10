@@ -378,7 +378,9 @@ class Swedbank_Pay_Api {
 		// Don't update order status if transaction ID was applied before.
 		$transactions = $order->get_meta( '_swedbank_pay_transactions' );
 		$transactions = empty( $transactions ) ? array() : (array) $transactions;
-		if ( in_array( $transaction_id, $transactions, true ) ) {
+
+		// For free trial subscriptions orders, the list of transactions will always be empty. To allow still processing the transaction, we need to allow an empty list to continue.
+		if ( ! empty( $transactions ) && in_array( $transaction_id, $transactions, true ) ) {
 			$this->log(
 				WC_Log_Levels::INFO,
 				sprintf( 'Skip transaction processing #%s. Order ID: %s', $transaction_id, $order->get_id() )
@@ -403,11 +405,14 @@ class Swedbank_Pay_Api {
 		// Apply action
 		switch ( $transaction['type'] ) {
 			case self::TYPE_VERIFICATION:
+				// This is always the case for free trial subscription orders.
+				$order->payment_complete( $transaction_id );
+				$order->add_order_note( __( "Payment has been verified. Transaction: {$transaction_id}", 'swedbank-pay-woocommerce-payment-menu' ) );
 				break;
 			case self::TYPE_AUTHORIZATION:
 				$message = sprintf( 'Payment has been authorized. Transaction: %s', $transaction_id );
 
-				// Don't change the order status if it was captured before
+				// Don't change the order status if it was captured before.
 				if ( $order->has_status( array( 'processing', 'completed', 'active' ) ) ) {
 					$order->add_order_note( $message );
 				} else {
