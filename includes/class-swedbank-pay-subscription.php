@@ -64,7 +64,7 @@ class Swedbank_Pay_Subscription {
 		add_filter( 'swedbank_pay_payment_order', array( $this, 'maybe_generate_unscheduled_token' ), 10, 2 );
 
 		// Retrieve and save the unscheduled token when the customer is redirected back to the order received page.
-		add_action( 'template_redirect', array( $this, 'on_redirect_to_thankyou_page' ), 10 );
+		add_action( 'template_redirect', array( $this, 'on_redirect_to_thankyou_page' ) );
 
 		// Saves the subscription token, if missing, when the webhook is received.
 		add_action( 'swedbank_pay_scheduler_run_after', array( $this, 'callback_received' ), 10, 2 );
@@ -247,8 +247,9 @@ class Swedbank_Pay_Subscription {
 	 * @return WP_Error|array The API response or WP_Error on failure.
 	 */
 	private function save_subscription_token( $order, $gateway ) {
-		$action_urls   = $gateway->api->request( 'GET', $order->get_meta( '_payex_paymentorder_id' ) );
-		$paid_response = ! is_wp_error( $action_urls ) ? $gateway->api->request( 'GET', $action_urls['paymentOrder']['paid']['id'] ) : $action_urls;
+		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
+		$action_urls      = $gateway->api->request( 'GET', $payment_order_id );
+		$paid_response    = ! is_wp_error( $action_urls ) ? $gateway->api->request( 'GET', $action_urls['paymentOrder']['paid']['id'] ) : $action_urls;
 
 		if ( ! is_wp_error( $paid_response ) ) {
 			$paid              = $paid_response['paid'];
@@ -277,7 +278,7 @@ class Swedbank_Pay_Subscription {
 			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Retrieved unscheduled token for order #{$order->get_id()}. Token: {$unscheduled_token}" );
 		} else {
 			Swedbank_Pay()->logger()->error(
-				"[SUBSCRIPTIONS]: Failed to retrieve unscheduled token for order #{$order->get_id()}. Error: {$response->get_error_message()}",
+				"[SUBSCRIPTIONS]: Failed to retrieve unscheduled token for order #{$order->get_id()}. Error: {$paid_response->get_error_message()}",
 				array(
 					'payment_order_id' => $payment_order_id,
 					'order_id'         => $order->get_id(),
@@ -286,7 +287,7 @@ class Swedbank_Pay_Subscription {
 
 		}
 
-		return $response;
+		return $paid_response;
 	}
 
 	/**
