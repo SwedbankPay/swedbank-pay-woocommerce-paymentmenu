@@ -110,15 +110,20 @@ class Swedbank_Pay_Subscription {
 
 		$parent_order   = self::get_parent_order( $renewal_order, 'renewal' );
 		$transaction_id = empty( $parent_order ) ? '' : $parent_order->get_transaction_id();
+		$payment_order  = $response->getResponseData()['payment_order'];
 
 		foreach ( $subscriptions as $subscription ) {
 			// Save the transaction ID to the renewal order.
-			$subscription->payment_complete( $transaction_id );
+			$subscription->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
+			$subscription->update_meta_data( self::UNSCHEDULED_TOKEN, $token );
 			$subscription->add_order_note( $message );
 
-			$subscription->update_meta_data( self::UNSCHEDULED_TOKEN, $token );
 			$subscription->save_meta_data();
 		}
+
+		$renewal_order->payment_complete( $transaction_id );
+		$renewal_order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
+		$renewal_order->save_meta_data();
 	}
 
 	/**
