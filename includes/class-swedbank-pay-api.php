@@ -790,9 +790,9 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -843,9 +843,9 @@ class Swedbank_Pay_Api {
 
 			return $result;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -902,9 +902,9 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -964,9 +964,9 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
