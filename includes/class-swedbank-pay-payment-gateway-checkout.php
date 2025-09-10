@@ -7,6 +7,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Transactions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Instant_Capture;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Payment_Actions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Scheduler;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription as Subscription;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -516,6 +517,24 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public function process_payment( $order_id ) {
 		$order = wc_get_order( $order_id );
 
+		if ( Subscription::is_change_payment_method() || ( Subscription::order_has_subscription( $order ) && floatval( $order->get_total() ) < 0.01 ) ) {
+			$result = Subscription::approve_for_renewal( $order );
+			if ( is_wp_error( $result ) ) {
+				throw new Exception(
+					// translators: %s: order number.
+					sprintf( __( 'The payment change could not be initiated. Please contact store, and provide them the order number %s for more information.', 'swedbank-pay-woocommerce-checkout' ), $order->get_order_number() ),
+					esc_html( $result->get_error_code() )
+				);
+			} else {
+				$order->update_meta_data( 'swedbank_pay_id', $result->getResponseData()['payment_order']['id'] );
+				$order->save_meta_data();
+				return array(
+					'result'   => 'success',
+					'redirect' => $result->getOperationByRel( 'redirect-checkout', 'href' ),
+				);
+			}
+		}
+
 		if ( (float) $order->get_total() < 0.01 ) {
 			throw new Exception( 'Zero order is not supported.' );
 		}
@@ -530,6 +549,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		$redirect_url = $result->getOperationByRel( 'redirect-checkout', 'href' );
+		$order->update_meta_data( 'swedbank_pay_id', $result->getResponseData()['payment_order']['id'] );
 
 		// Save payment ID.
 		$order->update_meta_data( '_payex_paymentorder_id', $result['response_resource']['payment_order']['id'] );

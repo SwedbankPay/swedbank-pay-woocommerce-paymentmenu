@@ -22,6 +22,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
  */
 class Order {
 	public const OPERATION_PURCHASE    = 'Purchase';
+	public const OPERATION_VERIFY      = 'Verify';
 	public const OPERATION_UNSCHEDULED = 'UnscheduledPurchase';
 
 	/**
@@ -255,33 +256,13 @@ class Order {
 	 * implementation type, URLs, payee information, metadata, and payer information.
 	 *
 	 * @hook swedbank_pay_payment_order
+	 * @param bool $verify Optional. If true, the operation will be set to 'Verify' and amount and VAT amount will not be set. Default is false.
 	 * @return Paymentorder
 	 */
-	public function get_payment_order() {
-		$items = $this->get_formatted_items_from_order();
-
+	public function get_payment_order( $verify = false ) {
 		$payment_order = ( new Paymentorder() )
-			->setOperation( self::OPERATION_PURCHASE )
+			->setOperation( $verify ? self::OPERATION_VERIFY : self::OPERATION_PURCHASE )
 			->setCurrency( $this->order->get_currency() )
-			->setAmount(
-				(int) bcmul(
-					100,
-					apply_filters(
-						'swedbank_pay_order_amount',
-						$this->order->get_total(),
-						$items,
-						$this->order
-					)
-				)
-			)
-			->setVatAmount(
-				apply_filters(
-					'swedbank_pay_order_vat',
-					$this->calculate_vat_amount( $items ),
-					$items,
-					$this->order
-				)
-			)
 			->setDescription(
 				apply_filters(
 					'swedbank_pay_payment_description',
@@ -302,12 +283,36 @@ class Order {
 			->setPayeeInfo( $this->get_payee_info() )
 			->setMetadata( $this->get_metadata() );
 
-		if ( ! $this->gateway->exclude_order_lines ) {
-			$payment_order->setOrderItems( $this->get_order_items() );
+		// The Verify operation does not support amount and vatAmount.
+		if ( ! $verify ) {
+			$items = $this->get_formatted_items_from_order();
+
+			$payment_order->setAmount(
+				(int) bcmul(
+					100,
+					apply_filters(
+						'swedbank_pay_order_amount',
+						$this->order->get_total(),
+						$items,
+						$this->order
+					)
+				)
+			)
+			->setVatAmount(
+				apply_filters(
+					'swedbank_pay_order_vat',
+					$this->calculate_vat_amount( $items ),
+					$items,
+					$this->order
+				)
+			);
+
+			if ( ! $this->gateway->exclude_order_lines ) {
+				$payment_order->setOrderItems( $this->get_order_items() );
+			}
 		}
 
 		$payment_order->setPayer( $this->get_payer() );
-
 		return apply_filters( 'swedbank_pay_payment_order', $payment_order, $this );
 	}
 
