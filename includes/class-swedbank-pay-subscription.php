@@ -8,8 +8,8 @@
 namespace SwedbankPay\Checkout\WooCommerce;
 
 use Exception;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Creditcard\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\UnscheduledPurchase;
 
 use WP_Error;
 use WC_Order;
@@ -108,9 +108,12 @@ class Swedbank_Pay_Subscription {
 			$token
 		);
 		$renewal_order->add_order_note( $message );
-		$transaction_id = $renewal_order->get_transaction_id();
+
+		$parent_order   = self::get_parent_order( $renewal_order, 'renewal' );
+		$transaction_id = empty( $parent_order ) ? '' : $parent_order->get_transaction_id();
 
 		foreach ( $subscriptions as $subscription ) {
+			// Save the transaction ID to the renewal order.
 			$subscription->payment_complete( $transaction_id );
 			$subscription->add_order_note( $message );
 
@@ -132,13 +135,12 @@ class Swedbank_Pay_Subscription {
 		$helper = new Order( $order );
 
 		$payment_order = $helper->get_payment_order()
-		->setOperation( Order::OPERATION_UNSCHEDULED )
 		->setUnscheduledToken( $token );
 
 		$payment_order_object = new PaymentorderObject();
 		$payment_order_object->setPaymentorder( $payment_order );
 
-		$purchase_request = new Purchase( $payment_order_object );
+		$purchase_request = new UnscheduledPurchase( $payment_order_object );
 		$purchase_request->setClient( Order::get_client() );
 
 		try {
