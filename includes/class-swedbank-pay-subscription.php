@@ -104,7 +104,7 @@ class Swedbank_Pay_Subscription {
 
 		$message = sprintf(
 			/* translators: %s: subscription id */
-			__( 'Subscription renewal was made successfully via Swedbank Pay. Payment token: %s', 'swedbank-pay-woocommerce-checkout' ),
+			__( 'Subscription renewal was made successfully via Swedbank Pay. Recurring token: %s', 'swedbank-pay-woocommerce-checkout' ),
 			$token
 		);
 		$renewal_order->add_order_note( $message );
@@ -164,6 +164,11 @@ class Swedbank_Pay_Subscription {
 			$problems = $error_body['problems'] ?? array();
 			foreach ( $problems as $problem ) {
 				$errors[] = "{$problem['name']}: {$problem['description']}";
+			}
+
+			if ( empty( $errors ) ) {
+				// translators: %s: Unscheduled token.
+				$errors[] = sprintf( __( 'something went wrong. Check the plugin log for more information related to %s.', 'swedbank-pay-woocommerce-checkout' ), $token );
 			}
 
 			return Swedbank_Pay()->system_report()->request(
