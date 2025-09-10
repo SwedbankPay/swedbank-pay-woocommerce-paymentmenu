@@ -7,7 +7,6 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
-use Exception;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\UnscheduledPurchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Verify;
@@ -248,7 +247,7 @@ class Swedbank_Pay_Subscription {
 	 * @return WP_Error|array The API response or WP_Error on failure.
 	 */
 	private function save_subscription_token( $order, $gateway ) {
-		$action_urls   = $gateway->api->request( 'GET', $order->get_meta( 'swedbank_pay_id' ) );
+		$action_urls   = $gateway->api->request( 'GET', $order->get_meta( '_payex_paymentorder_id' ) );
 		$paid_response = ! is_wp_error( $action_urls ) ? $gateway->api->request( 'GET', $action_urls['paymentOrder']['paid']['id'] ) : $action_urls;
 
 		if ( ! is_wp_error( $paid_response ) ) {

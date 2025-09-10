@@ -526,7 +526,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					esc_html( $result->get_error_code() )
 				);
 			} else {
-				$order->update_meta_data( 'swedbank_pay_id', $result->getResponseData()['payment_order']['id'] );
+				$payment_order = $result->getResponseData()['payment_order'];
+				$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
 				$order->save_meta_data();
 				return array(
 					'result'   => 'success',
@@ -548,11 +549,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			);
 		}
 
-		$redirect_url = $result->getOperationByRel( 'redirect-checkout', 'href' );
-		$order->update_meta_data( 'swedbank_pay_id', $result->getResponseData()['payment_order']['id'] );
+		$redirect_url  = $result->getOperationByRel( 'redirect-checkout', 'href' );
+		$payment_order = $result->getResponseData()['payment_order'];
 
 		// Save payment ID.
-		$order->update_meta_data( '_payex_paymentorder_id', $result['response_resource']['payment_order']['id'] );
+		$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
 		$order->save_meta_data();
 
 		return array(
