@@ -188,7 +188,7 @@ class Swedbank_Pay_Subscription {
 			return $token;
 		}
 
-		$parent_order = self::get_parent_order( $order->get_id() );
+		$parent_order = self::get_parent_order( $order );
 		if ( ! empty( $parent_order ) ) {
 			$token = $parent_order->get_meta( self::UNSCHEDULED_TOKEN );
 			if ( ! empty( $token ) ) {
@@ -495,14 +495,17 @@ class Swedbank_Pay_Subscription {
 	/**
 	 * Get a subscription's parent order.
 	 *
-	 * @param int $order_id The WooCommerce order id.
+	 * @param WC_Order $order The WooCommerce order id.
+	 * @param string   $order_type The order type to check for. Default is 'any'. Other options are 'renewal', 'switch', 'resubscribe' and 'parent'.
 	 * @return WC_Order|false The parent order or false if none is found.
 	 */
-	public static function get_parent_order( $order_id ) {
-		$subscriptions = wcs_get_subscriptions_for_renewal_order( $order_id );
+	public static function get_parent_order( $order, $order_type = 'any' ) {
+		$subscriptions = wcs_get_subscriptions_for_order( $order, array( 'order_type' => $order_type ) );
 		foreach ( $subscriptions as $subscription ) {
 			$parent_order = $subscription->get_parent();
-			return $parent_order;
+			if ( ! empty( $parent_order ) ) {
+				return $parent_order;
+			}
 		}
 
 		return false;
