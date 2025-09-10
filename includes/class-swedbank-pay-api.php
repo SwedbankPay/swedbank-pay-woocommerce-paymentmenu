@@ -110,7 +110,7 @@ class Swedbank_Pay_Api {
 
 		$payment_order        = $helper->get_payment_order();
 		$payment_order_object = new PaymentorderObject();
-		$payment_order_object->setPaymentorder( apply_filters( 'swedbank_pay_payment_order', $payment_order, $order ) );
+		$payment_order_object->setPaymentorder( $payment_order );
 
 		$purchase_request = new Purchase( $payment_order_object );
 		$purchase_request->setClient( Order::get_client() );
@@ -341,12 +341,12 @@ class Swedbank_Pay_Api {
 				'id'             => $payment_order_id . '/financialtransactions/' . uniqid( 'fake' ),
 				'created'        => date( 'Y-m-d H:i:s' ),
 				'updated'        => date( 'Y-m-d H:i:s' ),
-				'type'           => $data['paid']['transactionType'],
+				'type'           => $data['paid']['transactionType'] ?? '',
 				'number'         => $transaction_number,
-				'amount'         => $data['paid']['amount'],
+				'amount'         => $data['paid']['amount'] ?? 0,
 				'vatAmount'      => 0,
 				'description'    => $data['paid']['id'],
-				'payeeReference' => $data['paid']['payeeReference'],
+				'payeeReference' => $data['paid']['payeeReference'] ?? '',
 			);
 
 			return $this->process_transaction( $order, $transaction );
