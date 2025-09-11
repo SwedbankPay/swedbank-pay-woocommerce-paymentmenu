@@ -381,8 +381,7 @@ class Swedbank_Pay_Api {
 
 		// For free trial subscriptions orders, the list of transactions will always be empty. To allow still processing the transaction, we need to allow an empty list to continue.
 		if ( ! empty( $transactions ) && in_array( $transaction_id, $transactions, true ) ) {
-			$this->log(
-				WC_Log_Levels::INFO,
+			Swedbank_Pay()->logger()->debug(
 				sprintf( 'Skip transaction processing #%s. Order ID: %s', $transaction_id, $order->get_id() )
 			);
 
@@ -393,7 +392,7 @@ class Swedbank_Pay_Api {
 			sprintf( 'Process transaction: %s', wp_json_encode( $transaction ) )
 		);
 
-		// Fetch payment info
+		// Fetch payment info.
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 'missing_payment_id', 'Payment order ID is unknown.' );

@@ -19,6 +19,7 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderUrl;
+use WC_Subscriptions_Manager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -29,9 +30,11 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class for handling subscriptions.
  */
 class Swedbank_Pay_Subscription {
-	public const GATEWAY_ID        = 'payex_checkout';
-	public const RECURRENCE_TOKEN  = '_' . self::GATEWAY_ID . '_recurrence_token';
-	public const UNSCHEDULED_TOKEN = '_' . self::GATEWAY_ID . '_unscheduled_token';
+	public const GATEWAY_ID                 = 'payex_checkout';
+	public const RECURRENCE_TOKEN           = '_' . self::GATEWAY_ID . '_recurrence_token';
+	public const UNSCHEDULED_TOKEN          = '_' . self::GATEWAY_ID . '_unscheduled_token';
+	public const RENEWAL_SUBSCRIPTION_ORDER = '_' . self::GATEWAY_ID . '_renewal_subscription_order';
+	public const FREE_TRIAL_ORDER           = '_' . self::GATEWAY_ID . '_free_trial_order';
 
 	/**
 	 * Register hooks.
@@ -108,10 +111,7 @@ class Swedbank_Pay_Subscription {
 		);
 		$renewal_order->add_order_note( $message );
 
-		$parent_order   = self::get_parent_order( $renewal_order, 'renewal' );
-		$transaction_id = empty( $parent_order ) ? '' : $parent_order->get_transaction_id();
-		$payment_order  = $response->getResponseData()['payment_order'];
-
+		$payment_order = $response->getResponseData()['payment_order'];
 		foreach ( $subscriptions as $subscription ) {
 			// Save the transaction ID to the renewal order.
 			$subscription->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
@@ -121,9 +121,17 @@ class Swedbank_Pay_Subscription {
 			$subscription->save_meta_data();
 		}
 
-		$renewal_order->payment_complete( $transaction_id );
+		// While not necessary for the renewal order(s), we'll save the transaction ID to the related order for reference.
+		$parent_order   = self::get_parent_order( $renewal_order, 'renewal' );
+		$transaction_id = empty( $parent_order ) ? '' : $parent_order->get_transaction_id();
 		$renewal_order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
+
+		// Since charging is handled here, and cancellation is not supported, we'll use this flag in OM to prevent processing the order again.
+		$renewal_order->update_meta_data( self::RENEWAL_SUBSCRIPTION_ORDER, $payment_order['created'] );
 		$renewal_order->save_meta_data();
+
+		// Complete the payment AFTER saving the metadata.
+		$renewal_order->payment_complete( $transaction_id );
 	}
 
 	/**
@@ -326,7 +334,15 @@ class Swedbank_Pay_Subscription {
 		return false;
 	}
 
-
+	/**
+	 * Whether to skip order management for the order due to subscriptions.
+	 *
+	 * @param WC_Order $order The WooCommerce order.
+	 * @return bool
+	 */
+	public static function should_skip_management( $order ) {
+		return ! empty( $order->get_meta( self::FREE_TRIAL_ORDER ) ) || ! empty( $order->get_meta( self::RENEWAL_SUBSCRIPTION_ORDER ) );
+	}
 
 	/**
 	 * Perform post-purchase subscriptions actions.
