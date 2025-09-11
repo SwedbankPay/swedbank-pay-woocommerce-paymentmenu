@@ -7,12 +7,12 @@
  * Author URI: https://profiles.wordpress.org/swedbankpay/
  * License: Apache License 2.0
  * License URI: http://www.apache.org/licenses/LICENSE-2.0
- * Version: 3.6.6
+ * Version: 4.0.1
  * Text Domain: swedbank-pay-woocommerce-checkout
  * Domain Path: /languages
  *
  * WC requires at least: 5.5.1
- * WC tested up to: 9.3.1
+ * WC tested up to: 10.1.2
  * Requires Plugins: woocommerce
  *
  * @package SwedbankPay
@@ -24,7 +24,7 @@ use KrokedilSwedbankPayDeps\Krokedil\Support\SystemReport;
 
 
 defined( 'ABSPATH' ) || exit;
-define( 'SWEDBANK_PAY_VERSION', '3.6.6' );
+define( 'SWEDBANK_PAY_VERSION', '4.0.1' );
 define( 'SWEDBANK_PAY_MAIN_FILE', __FILE__ );
 define( 'SWEDBANK_PAY_PLUGIN_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
 define( 'SWEDBANK_PAY_PLUGIN_URL', untrailingslashit( plugin_dir_url( __FILE__ ) ) );

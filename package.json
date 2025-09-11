@@ -21,6 +21,9 @@
     "type": "git",
     "url": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-paymentmenu"
   },
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  },
   "author": "Swedbank Pay",
   "license": "Apache-2.0",
   "homepage": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-paymentmenu"

@@ -20,6 +20,14 @@ class Swedbank_Pay_Scheduler {
 	public const ACTION_ID = 'swedbank_pay_scheduler_run';
 
 	/**
+	 * Logger instance.
+	 *
+	 * @var WC_Logger
+	 */
+	private $logger;
+
+
+	/**
 	 * Singleton instance of the class.
 	 *
 	 * @var Swedbank_Pay_Scheduler
@@ -38,13 +46,6 @@ class Swedbank_Pay_Scheduler {
 
 		return self::$instance;
 	}
-
-	/**
-	 * Logger instance.
-	 *
-	 * @var WC_Logger
-	 */
-	private $logger;
 
 	/**
 	 * Class constructor.
@@ -75,20 +76,20 @@ class Swedbank_Pay_Scheduler {
 	 * @return false|null
 	 */
 	public function run( $payment_method_id, $webhook_data ) {
-		$this->log( sprintf( 'Start task: %s', wp_json_encode( array( $payment_method_id, $webhook_data ) ) ) );
+		$this->log( sprintf( '[SCHEDULER]: Start task: %s', wp_json_encode( array( $payment_method_id, $webhook_data ) ) ) );
 
 		try {
 			$data = json_decode( $webhook_data, true );
 			if ( empty( $data ) ) {
-				throw new \Exception( 'Invalid webhook data' );
+				throw new \WP_Exception( 'Invalid webhook data' );
 			}
 
 			if ( ! isset( $data['paymentOrder']['id'] ) ) {
-				throw new \Exception( 'Error: Invalid paymentOrder value' );
+				throw new \WP_Exception( 'Error: Invalid paymentOrder value' );
 			}
 
 			if ( ! isset( $data['transaction']['number'] ) ) {
-				throw new \Exception( 'Error: Invalid transaction number' );
+				throw new \WP_Exception( 'Error: Invalid transaction number' );
 			}
 
 			$transaction_number = $data['transaction']['number'];
@@ -98,7 +99,7 @@ class Swedbank_Pay_Scheduler {
 			if ( isset( $data['orderReference'] ) ) {
 				$order = wc_get_order( $data['orderReference'] );
 				if ( ! $order ) {
-					throw new \Exception( 'Failed to find order: ' . $data['orderReference'] );
+					throw new \WP_Exception( "Failed to find order: {$data['orderReference']}" );
 				}
 
 				$this->log( "[SCHEDULER]: Found order #{$order->get_id()} by order reference {$data['orderReference']}." );
@@ -106,7 +107,7 @@ class Swedbank_Pay_Scheduler {
 				// Get Order by Payment Order Id.
 				$order = swedbank_pay_get_order( $payment_order_id );
 				if ( ! $order ) {
-					throw new \Exception( "Failed to find order: $payment_order_id" );
+					throw new \WP_Exception( "Failed to find order: $payment_order_id" );
 				}
 
 				$this->log( "[SCHEDULER]: Found order {$order->get_id()} by payment Order ID $payment_method_id." );
@@ -114,7 +115,7 @@ class Swedbank_Pay_Scheduler {
 
 			$gateway = swedbank_pay_get_payment_method( $order );
 			if ( ! $gateway ) {
-				throw new \Exception( "Cannot retrieve payment gateway instance: $payment_method_id" );
+				throw new \WP_Exception( "Cannot retrieve payment gateway instance: $payment_method_id" );
 			}
 
 			if ( ! property_exists( $gateway, 'api' ) ||
@@ -129,7 +130,7 @@ class Swedbank_Pay_Scheduler {
 				$this->log( "[SCHEDULER]: Transaction $transaction_number was processed before." );
 				return false;
 			}
-		} catch ( \Exception $e ) {
+		} catch ( \WP_Exception $e ) {
 			$this->log( "[ERROR]: Validation error: {$e->getMessage()}" );
 			return false;
 		}
