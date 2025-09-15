@@ -487,7 +487,7 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
-		if ( Subscription::should_skip_management( $order ) ) {
+		if ( Subscription::should_skip_order_management( $order ) ) {
 			return;
 		}
 

@@ -415,3 +415,16 @@ function swedbank_pay_generate_payee_reference( $order_id ) {
 
 	return apply_filters( 'swedbank_pay_payee_reference', $reference, $order_id );
 }
+
+
+/**
+ * Check if if an numeric value is can be considered zero.
+ *
+ * @requires PHP 7.2
+ * @param float|integer $value The numeric value to check for.
+ *
+ * @return bool
+ */
+function swedbank_pay_is_zero( $value ) {
+	return 0 === $value || abs( $value ) < PHP_FLOAT_EPSILON;
+}

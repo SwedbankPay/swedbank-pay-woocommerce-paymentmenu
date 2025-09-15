@@ -30,11 +30,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class for handling subscriptions.
  */
 class Swedbank_Pay_Subscription {
-	public const GATEWAY_ID                 = 'payex_checkout';
-	public const RECURRENCE_TOKEN           = '_' . self::GATEWAY_ID . '_recurrence_token';
-	public const UNSCHEDULED_TOKEN          = '_' . self::GATEWAY_ID . '_unscheduled_token';
-	public const RENEWAL_SUBSCRIPTION_ORDER = '_' . self::GATEWAY_ID . '_renewal_subscription_order';
-	public const FREE_TRIAL_ORDER           = '_' . self::GATEWAY_ID . '_free_trial_order';
+	public const GATEWAY_ID        = 'payex_checkout';
+	public const UNSCHEDULED_TOKEN = '_' . self::GATEWAY_ID . '_unscheduled_token';
+	public const SKIP_OM           = '_' . self::GATEWAY_ID . '_skip_om';
 
 	/**
 	 * Register hooks.
@@ -127,11 +125,22 @@ class Swedbank_Pay_Subscription {
 		$renewal_order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
 
 		// Since charging is handled here, and cancellation is not supported, we'll use this flag in OM to prevent processing the order again.
-		$renewal_order->update_meta_data( self::RENEWAL_SUBSCRIPTION_ORDER, $payment_order['created'] );
-		$renewal_order->save_meta_data();
+		self::set_skip_om( $renewal_order, $payment_order['created'] );
 
 		// Complete the payment AFTER saving the metadata.
 		$renewal_order->payment_complete( $transaction_id );
+	}
+
+	/**
+	 * Mark the order to skip order management due to subscriptions.
+	 *
+	 * @param \WC_Order $order The WooCommerce order.
+	 * @param string    $created_at The created at timestamp provided by Swedbank.
+	 * @return void
+	 */
+	public static function set_skip_om( $order, $created_at ) {
+		$order->update_meta_data( self::SKIP_OM, $created_at );
+		$order->save_meta_data();
 	}
 
 	/**
@@ -340,8 +349,8 @@ class Swedbank_Pay_Subscription {
 	 * @param WC_Order $order The WooCommerce order.
 	 * @return bool
 	 */
-	public static function should_skip_management( $order ) {
-		return ! empty( $order->get_meta( self::FREE_TRIAL_ORDER ) ) || ! empty( $order->get_meta( self::RENEWAL_SUBSCRIPTION_ORDER ) );
+	public static function should_skip_order_management( $order ) {
+		return ! empty( $order->get_meta( self::SKIP_OM ) );
 	}
 
 	/**
@@ -430,15 +439,6 @@ class Swedbank_Pay_Subscription {
 		// Allow free orders when changing subscription payment method.
 		if ( self::is_change_payment_method() ) {
 			return true;
-		}
-
-		// Mixed checkout not allowed.
-		if ( class_exists( 'WC_Subscriptions_Product' ) ) {
-			foreach ( WC()->cart->cart_contents as $key => $item ) {
-				if ( ! \WC_Subscriptions_Product::is_subscription( $item['data'] ) ) {
-					return false;
-				}
-			}
 		}
 
 		return true;

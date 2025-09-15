@@ -517,7 +517,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public function process_payment( $order_id ) {
 		$order = wc_get_order( $order_id );
 
-		if ( Subscription::is_change_payment_method() || Subscription::order_has_subscription( $order ) ) {
+		$has_subscription = Subscription::order_has_subscription( $order );
+		if ( $has_subscription || ( Subscription::is_change_payment_method() && $has_subscription ) ) {
 			$result = Subscription::approve_for_renewal( $order );
 			if ( is_wp_error( $result ) ) {
 				throw new Exception(
@@ -528,9 +529,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			}
 
 			$payment_order = $result->getResponseData()['payment_order'];
-			if ( Subscription::cart_has_only_free_trial() ) {
-				$order->add_order_note( __( 'Free trial-only order successfully processed.', 'swedbank-pay-woocommerce-checkout' ) );
-				$order->update_meta_data( Subscription::FREE_TRIAL_ORDER, $payment_order['created'] );
+			if ( swedbank_pay_is_zero( $order->get_total() ) ) {
+				$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-woocommerce-checkout' ) );
+				Subscription::set_skip_om( $order, $payment_order['created'] );
 			}
 
 			$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
