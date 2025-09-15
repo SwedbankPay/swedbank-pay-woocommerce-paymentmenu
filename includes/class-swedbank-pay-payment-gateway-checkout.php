@@ -519,7 +519,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		$has_subscription = Subscription::order_has_subscription( $order );
 		if ( $has_subscription || ( Subscription::is_change_payment_method() && $has_subscription ) ) {
-			$result = Subscription::approve_for_renewal( $order );
+			$result = swedbank_pay_is_zero( $order->get_total() ) ? Subscription::approve_for_renewal( $order ) : $this->api->initiate_purchase( $order );
 			if ( is_wp_error( $result ) ) {
 				throw new Exception(
 					// translators: %s: order number.
@@ -532,6 +532,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			if ( swedbank_pay_is_zero( $order->get_total() ) ) {
 				$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-woocommerce-checkout' ) );
 				Subscription::set_skip_om( $order, $payment_order['created'] );
+			} else {
+				$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-woocommerce-checkout' ) );
 			}
 
 			$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
@@ -543,7 +545,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			);
 		}
 
-		if ( (float) $order->get_total() < 0.01 ) {
+		if ( swedbank_pay_is_zero( $order->get_total() ) ) {
 			throw new Exception( 'Zero order is not supported.' );
 		}
 
