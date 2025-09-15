@@ -104,7 +104,7 @@ class Swedbank_Pay_Subscription {
 
 		$message = sprintf(
 			/* translators: %s: subscription id */
-			__( 'Subscription renewal was made successfully via Swedbank Pay. Recurring token: %s', 'swedbank-pay-woocommerce-checkout' ),
+			__( 'Subscription renewal was made successfully via Swedbank Pay. Subscription token: %s', 'swedbank-pay-woocommerce-checkout' ),
 			$token
 		);
 		$renewal_order->add_order_note( $message );
@@ -156,6 +156,7 @@ class Swedbank_Pay_Subscription {
 		$helper = new Order( $order );
 
 		$payment_order = $helper->get_payment_order()
+		->setOperation( 'UnscheduledPurchase' )
 		->setUnscheduledToken( $token );
 
 		$payment_order_object = new PaymentorderObject();
