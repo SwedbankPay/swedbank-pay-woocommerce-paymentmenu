@@ -156,7 +156,7 @@ class Order {
 			array(
 				'orderReference' => apply_filters(
 					'swedbank_pay_order_reference',
-					$this->order->get_id()
+					$this->order->get_order_number()
 				),
 				'payeeReference' => apply_filters(
 					'swedbank_pay_payee_reference',
