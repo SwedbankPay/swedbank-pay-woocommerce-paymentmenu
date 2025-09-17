@@ -163,7 +163,7 @@ class Swedbank_Pay_Subscription {
 		$payment_order_object->setPaymentorder( $payment_order );
 
 		$purchase_request = new UnscheduledPurchase( $payment_order_object );
-		$purchase_request->setClient( Order::get_client() );
+		$purchase_request->setClient( Swedbank_Pay_Api::get_client() );
 
 		try {
 			$response_service = $purchase_request->send();
@@ -220,7 +220,7 @@ class Swedbank_Pay_Subscription {
 		$payment_order_object->setPaymentorder( $helper->get_payment_order( true ) );
 
 		$verify_request = new Verify( $payment_order_object );
-		$verify_request->setClient( Order::get_client() );
+		$verify_request->setClient( Swedbank_Pay_Api::get_client() );
 
 		try {
 			$response_service = $verify_request->send();

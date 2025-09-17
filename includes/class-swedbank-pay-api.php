@@ -20,6 +20,7 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Res
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -119,6 +120,32 @@ class Swedbank_Pay_Api {
 		return array_values( array_unique( $result ) );
 	}
 
+		/**
+		 * Get the Swedbank Pay client.
+		 *
+		 * This method creates a new Client instance, sets the access token, payee ID, mode (test or production),
+		 * and user agent. It also applies a filter to allow modification of the client.
+		 *
+		 * @hook swedbank_pay_client
+		 * @return Client
+		 */
+	public static function get_client() {
+		$client = new Client();
+
+		$user_agent = "{$client->getUserAgent()} swedbank-pay-payment-menu/" . SWEDBANK_PAY_VERSION;
+		if ( isset( $_SERVER['HTTP_USER_AGENT'] ) ) {
+			$user_agent .= ' ' . sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) );
+		}
+
+		$settings = get_option( 'woocommerce_payex_checkout_settings' );
+		$client->setAccessToken( $settings['access_token'] ?? '' )
+				->setPayeeId( $settings['payee_id'] ?? '' )
+				->setMode( wc_string_to_bool( $settings['testmode'] ?? 'no' ) ? Client::MODE_TEST : Client::MODE_PRODUCTION )
+				->setUserAgent( $user_agent );
+
+		return apply_filters( 'swedbank_pay_client', $client );
+	}
+
 	/**
 	 * Create a Client for payment.
 	 *
@@ -133,7 +160,7 @@ class Swedbank_Pay_Api {
 		$payment_order_object->setPaymentorder( $payment_order );
 
 		$purchase_request = new Purchase( $payment_order_object );
-		$purchase_request->setClient( Order::get_client() );
+		$purchase_request->setClient( self::get_client() );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
@@ -202,7 +229,7 @@ class Swedbank_Pay_Api {
 
 		try {
 			/** @var \SwedbankPay\Api\Response $response */
-			$client = Order::get_client()->request( $method, $url, $params );
+			$client = self::get_client()->request( $method, $url, $params );
 
 			// $codeClass = (int)($this->client->getResponseCode() / 100);
 			$response_body = $client->getResponseBody();
@@ -214,18 +241,18 @@ class Swedbank_Pay_Api {
 
 			return $result;
 		} catch ( \KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception $exception ) {
-			$httpCode = (int) Order::get_client()->getResponseCode();
+			$httpCode = (int) self::get_client()->getResponseCode();
 			$time     = microtime( true ) - $start;
 			Swedbank_Pay()->logger()->debug(
 				sprintf(
 					'[%.4F] Client Exception. Check debug info: %s',
 					$time,
-					Order::get_client()->getDebugInfo()
+					self::get_client()->getDebugInfo()
 				)
 			);
 
 			// https://tools.ietf.org/html/rfc7807
-			$data = json_decode( Order::get_client()->getResponseBody(), true );
+			$data = json_decode( self::get_client()->getResponseBody(), true );
 			if ( json_last_error() === JSON_ERROR_NONE &&
 				isset( $data['title'] ) &&
 				isset( $data['detail'] )
@@ -785,7 +812,7 @@ class Swedbank_Pay_Api {
 		$transaction->setTransaction( $transaction_data );
 
 		$request_service = ( new TransactionCaptureV3( $transaction ) )
-			->setClient( Order::get_client() )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
@@ -841,7 +868,7 @@ class Swedbank_Pay_Api {
 		$transaction->setTransaction( $transaction_data );
 
 		$requestService = ( new TransactionCancelV3( $transaction ) )
-			->setClient( Order::get_client() )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
@@ -900,7 +927,7 @@ class Swedbank_Pay_Api {
 		$transaction->setTransaction( $transaction_data );
 
 		$requestService = ( new TransactionReversalV3( $transaction ) )
-			->setClient( Order::get_client() )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
@@ -962,7 +989,7 @@ class Swedbank_Pay_Api {
 		$transaction->setTransaction( $transaction_data );
 
 		$requestService = ( new TransactionReversalV3( $transaction ) )
-			->setClient( Order::get_client() )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {

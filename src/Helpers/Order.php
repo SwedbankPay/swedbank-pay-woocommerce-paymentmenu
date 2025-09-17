@@ -373,32 +373,6 @@ class Order {
 	}
 
 	/**
-	 * Get the Swedbank Pay client.
-	 *
-	 * This method creates a new Client instance, sets the access token, payee ID, mode (test or production),
-	 * and user agent. It also applies a filter to allow modification of the client.
-	 *
-	 * @hook swedbank_pay_client
-	 * @return Client
-	 */
-	public static function get_client() {
-		$client = new Client();
-
-		$user_agent = "{$client->getUserAgent()} swedbank-pay-payment-menu/" . SWEDBANK_PAY_VERSION;
-		if ( isset( $_SERVER['HTTP_USER_AGENT'] ) ) {
-			$user_agent .= ' ' . sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) );
-		}
-
-		$settings = get_option( 'woocommerce_payex_checkout_settings' );
-		$client->setAccessToken( $settings['access_token'] ?? '' )
-				->setPayeeId( $settings['payee_id'] ?? '' )
-				->setMode( wc_string_to_bool( $settings['testmode'] ?? 'no' ) ? Client::MODE_TEST : Client::MODE_PRODUCTION )
-				->setUserAgent( $user_agent );
-
-		return apply_filters( 'swedbank_pay_client', $client );
-	}
-
-	/**
 	 * Retrieves the total amount from the order items.
 	 *
 	 * @see Order::get_formatted_items_from_order
