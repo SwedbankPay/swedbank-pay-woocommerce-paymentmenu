@@ -426,5 +426,5 @@ function swedbank_pay_generate_payee_reference( $order_id ) {
  * @return bool
  */
 function swedbank_pay_is_zero( $value ) {
-	return 0 === $value || abs( $value ) < PHP_FLOAT_EPSILON;
+	return 0 === $value || 0.0 === round( floatval( $value ), wc_get_price_decimals() );
 }

@@ -10,7 +10,6 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Reques
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayeeInfo;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderUrl;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayer;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 
