@@ -1,6 +1,6 @@
 <?php
 
-namespace SwedbankPay\Checkout\WooCommerce\Helpers;
+namespace Krokedil\Swedbank\Pay\Helpers;
 
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\Transaction as TransactionData;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\OrderItemsCollection;

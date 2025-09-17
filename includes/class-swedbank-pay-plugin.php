@@ -95,7 +95,7 @@ class Swedbank_Pay_Plugin {
 	public function includes() {
 		// FIXME: The autoloader is initialized in the child class too, so we have two places where this is happening.
 		$vendors_dir = __DIR__ . '/../vendor';
-		require_once $vendors_dir . '/autoload.php';
+		require_once "$vendors_dir/autoload.php";
 		require_once __DIR__ . '/functions.php';
 		require_once __DIR__ . '/interface-swedbank-pay-order-item.php';
 		require_once __DIR__ . '/class-swedbank-pay-transactions.php';
@@ -107,8 +107,6 @@ class Swedbank_Pay_Plugin {
 		require_once __DIR__ . '/class-swedbank-pay-intl-tel.php';
 		require_once __DIR__ . '/class-swedbank-pay-scheduler.php';
 		require_once __DIR__ . '/class-swedbank-pay-subscription.php';
-
-		require_once SWEDBANK_PAY_PLUGIN_PATH . '/classes/helpers/order.php';
 
 		if ( class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
 			require_once __DIR__ . '/class-swedbank-pay-blocks-support.php';
