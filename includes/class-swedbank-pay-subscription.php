@@ -15,11 +15,10 @@ use WP_Error;
 use WC_Order;
 use Swedbank_Pay_Payment_Gateway_Checkout;
 use Krokedil\Swedbank\Pay\Helpers\Order;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderUrl;
-use WC_Subscriptions_Manager;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -150,7 +149,7 @@ class Swedbank_Pay_Subscription {
 	 *
 	 * @param \WC_Order $order The WooCommerce order containing a subscription.
 	 * @param string    $token The unscheduled token to charge.
-	 * @return ResponseServiceInterface|WP_Error
+	 * @return ResponseInterface|WP_Error
 	 */
 	public static function charge_customer( $order, $token ) {
 		$helper = new Order( $order );
@@ -171,7 +170,7 @@ class Swedbank_Pay_Subscription {
 			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
 
 			return $response_service;
-		} catch ( ClientException $e ) {
+		} catch ( Exception $e ) {
 
 			Swedbank_Pay()->logger()->error( $purchase_request->getClient()->getDebugInfo() );
 			Swedbank_Pay()->logger()->error(
@@ -211,7 +210,7 @@ class Swedbank_Pay_Subscription {
 	 * @see https://developer.swedbankpay.com/checkout-v3/get-started/recurring#post-purchase--post-verify.
 	 *
 	 * @param \WC_Order $order The WooCommerce order containing a subscription.
-	 * @return ResponseServiceInterface|WP_Error
+	 * @return ResponseInterface|WP_Error
 	 */
 	public static function approve_for_renewal( $order ) {
 		$helper = new Order( $order );
@@ -227,7 +226,7 @@ class Swedbank_Pay_Subscription {
 			Swedbank_Pay()->logger()->debug( $verify_request->getClient()->getDebugInfo() );
 
 			return $response_service;
-		} catch ( ClientException $e ) {
+		} catch ( Exception $e ) {
 
 			Swedbank_Pay()->logger()->error( $verify_request->getClient()->getDebugInfo() );
 			Swedbank_Pay()->logger()->error(

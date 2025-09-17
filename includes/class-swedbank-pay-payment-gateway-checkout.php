@@ -7,7 +7,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Transactions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Instant_Capture;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Payment_Actions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Scheduler;
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription as Subscription;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -517,9 +517,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public function process_payment( $order_id ) {
 		$order = wc_get_order( $order_id );
 
-		$has_subscription = Subscription::order_has_subscription( $order );
-		if ( $has_subscription || ( Subscription::is_change_payment_method() && $has_subscription ) ) {
-			$result = swedbank_pay_is_zero( $order->get_total() ) ? Subscription::approve_for_renewal( $order ) : $this->api->initiate_purchase( $order );
+		$has_subscription = Swedbank_Pay_Subscription::order_has_subscription( $order );
+		if ( $has_subscription || ( Swedbank_Pay_Subscription::is_change_payment_method() && $has_subscription ) ) {
+			$result = swedbank_pay_is_zero( $order->get_total() ) ? Swedbank_Pay_Subscription::approve_for_renewal( $order ) : $this->api->initiate_purchase( $order );
 			if ( is_wp_error( $result ) ) {
 				throw new Exception(
 					// translators: %s: order number.
@@ -531,7 +531,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$payment_order = $result->getResponseData()['payment_order'];
 			if ( swedbank_pay_is_zero( $order->get_total() ) ) {
 				$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-woocommerce-checkout' ) );
-				Subscription::set_skip_om( $order, $payment_order['created'] );
+				Swedbank_Pay_Subscription::set_skip_om( $order, $payment_order['created'] );
 			} else {
 				$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-woocommerce-checkout' ) );
 			}

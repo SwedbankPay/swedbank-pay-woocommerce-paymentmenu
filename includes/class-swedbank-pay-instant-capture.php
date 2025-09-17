@@ -2,7 +2,7 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription as Subscription;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -99,7 +99,7 @@ class Swedbank_Pay_Instant_Capture {
 		$items = $this->get_instant_capture_items( $order );
 		$this->gateway->api->log( WC_Log_Levels::INFO, __METHOD__, array( $items ) );
 		if ( count( $items ) > 0 ) {
-			if ( ! Subscription::should_skip_order_management( $order ) ) {
+			if ( ! Swedbank_Pay_Subscription::should_skip_order_management( $order ) ) {
 
 				$result = $this->gateway->api->capture_checkout( $order, $items );
 				if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {

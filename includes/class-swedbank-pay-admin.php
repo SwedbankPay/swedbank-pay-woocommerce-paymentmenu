@@ -7,7 +7,7 @@ defined( 'ABSPATH' ) || exit;
 use WC_Order;
 use WC_Log_Levels;
 use Exception;
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription as Subscription;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -477,17 +477,17 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
-		// Allow to change status from `processing` to `completed`
+		// Allow to change status from `processing` to `completed`.
 		if ( 'processing' === $old_status && 'completed' === $new_status ) {
 			return;
 		}
 
-		// Allow to change status from `pending` to `cancelled`
+		// Allow to change status from `pending` to `cancelled`.
 		if ( 'pending' === $old_status && 'cancelled' === $new_status ) {
 			return;
 		}
 
-		if ( Subscription::should_skip_order_management( $order ) ) {
+		if ( Swedbank_Pay_Subscription::should_skip_order_management( $order ) ) {
 			return;
 		}
 
