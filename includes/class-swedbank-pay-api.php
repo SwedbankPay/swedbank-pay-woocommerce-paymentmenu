@@ -100,6 +100,26 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Extracts host URLs from an array of URLs.
+	 *
+	 * This method filters out invalid URLs and returns a unique list of host URLs.
+	 *
+	 * @param array $urls An array of URLs to extract host URLs from.
+	 * @return array An array of unique host URLs.
+	 */
+	public static function get_host_urls( $urls ) {
+		$result = array();
+		foreach ( $urls as $url ) {
+			if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
+				$parsed   = wp_parse_url( $url );
+				$result[] = sprintf( '%s://%s', $parsed['scheme'], $parsed['host'] );
+			}
+		}
+
+		return array_values( array_unique( $result ) );
+	}
+
+	/**
 	 * Create a Client for payment.
 	 *
 	 * @param WC_Order $order WC Order.
