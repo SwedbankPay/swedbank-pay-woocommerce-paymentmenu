@@ -139,7 +139,7 @@ class Swedbank_Pay_Subscription {
 		$response = self::charge_customer( $renewal_order, $token );
 		if ( is_wp_error( $response ) ) {
 			// translators: Error message.
-			$message = sprintf( __( 'Failed to process subscription renewal. Reason: %s', 'swedbank-pay-woocommerce-checkout' ), $response->get_error_message() );
+			$message = sprintf( __( 'Failed to renew subscription. Reason: %s', 'swedbank-pay-woocommerce-checkout' ), $response->get_error_message() );
 
 			foreach ( $subscriptions as $subscription ) {
 				$subscription->add_order_note( $message );
@@ -335,7 +335,7 @@ class Swedbank_Pay_Subscription {
 
 			$subscription->add_order_note(
 				// translators: 1: Unscheduled token.
-				sprintf( __( 'Cancelled unscheduled token: %s', 'swedbank-pay-woocommerce-checkout' ), $token ) . ( $reason ? ". Reason: {$reason}" : '' )
+				sprintf( __( 'Cancelled subscription token: %s', 'swedbank-pay-woocommerce-checkout' ), $token ) . ( $reason ? ". Reason: {$reason}" : '' )
 			);
 
 		} else {
@@ -350,7 +350,7 @@ class Swedbank_Pay_Subscription {
 
 			$subscription->add_order_note(
 				// translators: 1: Error message, 2: Unscheduled token.
-				sprintf( __( 'Failed to cancel unscheduled token. Reason: %1$s. Token: %2$s', 'swedbank-pay-woocommerce-checkout' ), $response->get_error_message(), $token )
+				sprintf( __( 'Failed to cancel subscription token. Reason: %1$s. Token: %2$s', 'swedbank-pay-woocommerce-checkout' ), $response->get_error_message(), $token )
 			);
 		}
 
@@ -758,8 +758,8 @@ class Swedbank_Pay_Subscription {
 				$order->update_meta_data( self::UNSCHEDULED_TOKEN, $payment_token );
 				$order->add_order_note(
 					sprintf(
-					// translators: 1: User name, 2: Existing token, 3: New token.
-						__( '%1$s updated the subscription payment token from "%2$s" to "%3$s".', 'swedbank-pay-woocommerce-checkout' ),
+					// translators: 1: User's name, 2: Existing token, 3: New token.
+						__( '%1$s updated the subscription token from "%2$s" to "%3$s". Note: the previous token must be manually canceled if you do not intend to reuse it.', 'swedbank-pay-woocommerce-checkout' ),
 						ucfirst( wp_get_current_user()->display_name ),
 						$existing_token,
 						$payment_token
