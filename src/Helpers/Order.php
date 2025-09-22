@@ -1,6 +1,6 @@
 <?php
 
-namespace SwedbankPay\Checkout\WooCommerce\Helpers;
+namespace Krokedil\Swedbank\Pay\Helpers;
 
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\Transaction as TransactionData;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\OrderItemsCollection;
@@ -10,8 +10,8 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Reques
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayeeInfo;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderUrl;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayer;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 
 /**
  * Class Order
@@ -22,6 +22,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
  */
 class Order {
 	public const OPERATION_PURCHASE    = 'Purchase';
+	public const OPERATION_VERIFY      = 'Verify';
 	public const OPERATION_UNSCHEDULED = 'UnscheduledPurchase';
 
 	/**
@@ -155,7 +156,7 @@ class Order {
 			array(
 				'orderReference' => apply_filters(
 					'swedbank_pay_order_reference',
-					$this->order->get_id()
+					$this->order->get_order_number()
 				),
 				'payeeReference' => apply_filters(
 					'swedbank_pay_payee_reference',
@@ -195,7 +196,7 @@ class Order {
 
 		$url_data = ( new PaymentorderUrl() )
 			->setHostUrls(
-				$this->get_host_urls(
+				Swedbank_Pay_Api::get_host_urls(
 					array(
 						$complete_url,
 						$cancel_url,
@@ -255,33 +256,13 @@ class Order {
 	 * implementation type, URLs, payee information, metadata, and payer information.
 	 *
 	 * @hook swedbank_pay_payment_order
+	 * @param bool $verify Optional. If true, the operation will be set to 'Verify' and amount and VAT amount will not be set. Default is false.
 	 * @return Paymentorder
 	 */
-	public function get_payment_order() {
-		$items = $this->get_formatted_items_from_order();
-
+	public function get_payment_order( $verify = false ) {
 		$payment_order = ( new Paymentorder() )
-			->setOperation( self::OPERATION_PURCHASE )
+			->setOperation( $verify ? self::OPERATION_VERIFY : self::OPERATION_PURCHASE )
 			->setCurrency( $this->order->get_currency() )
-			->setAmount(
-				(int) bcmul(
-					100,
-					apply_filters(
-						'swedbank_pay_order_amount',
-						$this->order->get_total(),
-						$items,
-						$this->order
-					)
-				)
-			)
-			->setVatAmount(
-				apply_filters(
-					'swedbank_pay_order_vat',
-					$this->calculate_vat_amount( $items ),
-					$items,
-					$this->order
-				)
-			)
 			->setDescription(
 				apply_filters(
 					'swedbank_pay_payment_description',
@@ -302,12 +283,36 @@ class Order {
 			->setPayeeInfo( $this->get_payee_info() )
 			->setMetadata( $this->get_metadata() );
 
-		if ( ! $this->gateway->exclude_order_lines ) {
-			$payment_order->setOrderItems( $this->get_order_items() );
+		// The Verify operation does not support amount and vatAmount.
+		if ( ! $verify ) {
+			$items = $this->get_formatted_items_from_order();
+
+			$payment_order->setAmount(
+				(int) bcmul(
+					100,
+					apply_filters(
+						'swedbank_pay_order_amount',
+						$this->order->get_total(),
+						$items,
+						$this->order
+					)
+				)
+			)
+			->setVatAmount(
+				apply_filters(
+					'swedbank_pay_order_vat',
+					$this->calculate_vat_amount( $items ),
+					$items,
+					$this->order
+				)
+			);
+
+			if ( ! $this->gateway->exclude_order_lines ) {
+				$payment_order->setOrderItems( $this->get_order_items() );
+			}
 		}
 
 		$payment_order->setPayer( $this->get_payer() );
-
 		return apply_filters( 'swedbank_pay_payment_order', $payment_order, $this );
 	}
 
@@ -343,26 +348,6 @@ class Order {
 	}
 
 	/**
-	 * Extracts host URLs from an array of URLs.
-	 *
-	 * This method filters out invalid URLs and returns a unique list of host URLs.
-	 *
-	 * @param array $urls An array of URLs to extract host URLs from.
-	 * @return array An array of unique host URLs.
-	 */
-	public function get_host_urls( $urls ) {
-		$result = array();
-		foreach ( $urls as $url ) {
-			if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
-				$parsed   = wp_parse_url( $url );
-				$result[] = sprintf( '%s://%s', $parsed['scheme'], $parsed['host'] );
-			}
-		}
-
-		return array_values( array_unique( $result ) );
-	}
-
-	/**
 	 * Generates a unique customer UUID.
 	 *
 	 * If the user is logged in, it retrieves the UUID from user meta.
@@ -384,32 +369,6 @@ class Order {
 		}
 
 		return apply_filters( 'swedbank_pay_generate_uuid', $payer_reference, $user_id );
-	}
-
-	/**
-	 * Get the Swedbank Pay client.
-	 *
-	 * This method creates a new Client instance, sets the access token, payee ID, mode (test or production),
-	 * and user agent. It also applies a filter to allow modification of the client.
-	 *
-	 * @hook swedbank_pay_client
-	 * @return Client
-	 */
-	public static function get_client() {
-		$client = new Client();
-
-		$user_agent = "{$client->getUserAgent()} swedbank-pay-payment-menu/" . SWEDBANK_PAY_VERSION;
-		if ( isset( $_SERVER['HTTP_USER_AGENT'] ) ) {
-			$user_agent .= ' ' . sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) );
-		}
-
-		$settings = get_option( 'woocommerce_payex_checkout_settings' );
-		$client->setAccessToken( $settings['access_token'] ?? '' )
-				->setPayeeId( $settings['payee_id'] ?? '' )
-				->setMode( wc_string_to_bool( $settings['testmode'] ?? 'no' ) ? Client::MODE_TEST : Client::MODE_PRODUCTION )
-				->setUserAgent( $user_agent );
-
-		return apply_filters( 'swedbank_pay_client', $client );
 	}
 
 	/**

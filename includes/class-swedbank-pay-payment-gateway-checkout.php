@@ -7,6 +7,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Transactions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Instant_Capture;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Payment_Actions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Scheduler;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -95,9 +96,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public $autocomplete = 'no';
 
 	/**
-	 * @var string
+	 * @var bool
 	 */
-	public $exclude_order_lines = 'no';
+	public $exclude_order_lines = false;
 
 	/**
 	 * Swedbank Pay ip addresses
@@ -170,7 +171,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->instant_capture     = $this->settings['instant_capture'] ?? $this->instant_capture;
 		$this->terms_url           = $this->settings['terms_url'] ?? get_site_url();
 		$this->autocomplete        = $this->settings['autocomplete'] ?? 'no';
-		$this->exclude_order_lines = wc_string_to_bool( $this->settings['exclude_order_lines'] ?? 'no' );
+		$this->exclude_order_lines = wc_string_to_bool( $this->settings['exclude_order_lines'] ?? false );
 
 		// TermsOfServiceUrl contains unsupported scheme value http in Only https supported.
 		if ( ! filter_var( $this->terms_url, FILTER_VALIDATE_URL ) ) {
@@ -458,7 +459,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		$this->api->log( WC_Log_Levels::INFO, __METHOD__, array( $order_id ) );
-		$is_finalized     = $order->get_meta( '_payex_finalized' );
+		$is_finalized     = $order->get_meta( '_payex_finalized' ); // Checks if the order has already been processed.
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $is_finalized ) && $payment_order_id ) {
 			$this->api->finalize_payment( $order, null );
@@ -507,7 +508,35 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public function process_payment( $order_id ) {
 		$order = wc_get_order( $order_id );
 
-		if ( (float) $order->get_total() < 0.01 ) {
+		$has_subscription = Swedbank_Pay_Subscription::order_has_subscription( $order );
+		if ( $has_subscription || ( Swedbank_Pay_Subscription::is_change_payment_method() && $has_subscription ) ) {
+			$result = swedbank_pay_is_zero( $order->get_total() ) ? Swedbank_Pay_Subscription::approve_for_renewal( $order ) : $this->api->initiate_purchase( $order );
+			if ( is_wp_error( $result ) ) {
+				throw new Exception(
+					// translators: %s: order number.
+					sprintf( __( 'The payment change could not be initiated. Please contact store, and provide them the order number %s for more information.', 'swedbank-pay-woocommerce-checkout' ), $order->get_order_number() ),
+					esc_html( $result->get_error_code() )
+				);
+			}
+
+			$payment_order = $result->getResponseData()['payment_order'];
+			if ( swedbank_pay_is_zero( $order->get_total() ) ) {
+				$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-woocommerce-checkout' ) );
+				Swedbank_Pay_Subscription::set_skip_om( $order, $payment_order['created'] );
+			} else {
+				$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-woocommerce-checkout' ) );
+			}
+
+			$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
+			$order->save_meta_data();
+
+			return array(
+				'result'   => 'success',
+				'redirect' => $result->getOperationByRel( 'redirect-checkout', 'href' ),
+			);
+		}
+
+		if ( swedbank_pay_is_zero( $order->get_total() ) ) {
 			throw new Exception( 'Zero order is not supported.' );
 		}
 
@@ -520,10 +549,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			);
 		}
 
-		$redirect_url = $result->getOperationByRel( 'redirect-checkout', 'href' );
+		$redirect_url  = $result->getOperationByRel( 'redirect-checkout', 'href' );
+		$payment_order = $result->getResponseData()['payment_order'];
 
 		// Save payment ID.
-		$order->update_meta_data( '_payex_paymentorder_id', $result['response_resource']['payment_order']['id'] );
+		$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
 		$order->save_meta_data();
 
 		return array(

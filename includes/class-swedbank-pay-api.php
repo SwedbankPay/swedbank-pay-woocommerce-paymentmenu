@@ -9,7 +9,7 @@ use WC_Log_Levels;
 use WC_Order;
 use WC_Payment_Gateway;
 use Swedbank_Pay_Payment_Gateway_Checkout;
-use SwedbankPay\Checkout\WooCommerce\Helpers\Order;
+use Krokedil\Swedbank\Pay\Helpers\Order;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Response;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
@@ -20,6 +20,7 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Res
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -100,6 +101,52 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Extracts host URLs from an array of URLs.
+	 *
+	 * This method filters out invalid URLs and returns a unique list of host URLs.
+	 *
+	 * @param array $urls An array of URLs to extract host URLs from.
+	 * @return array An array of unique host URLs.
+	 */
+	public static function get_host_urls( $urls ) {
+		$result = array();
+		foreach ( $urls as $url ) {
+			if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
+				$parsed   = wp_parse_url( $url );
+				$result[] = sprintf( '%s://%s', $parsed['scheme'], $parsed['host'] );
+			}
+		}
+
+		return array_values( array_unique( $result ) );
+	}
+
+		/**
+		 * Get the Swedbank Pay client.
+		 *
+		 * This method creates a new Client instance, sets the access token, payee ID, mode (test or production),
+		 * and user agent. It also applies a filter to allow modification of the client.
+		 *
+		 * @hook swedbank_pay_client
+		 * @return Client
+		 */
+	public static function get_client() {
+		$client = new Client();
+
+		$user_agent = "{$client->getUserAgent()} swedbank-pay-payment-menu/" . SWEDBANK_PAY_VERSION;
+		if ( isset( $_SERVER['HTTP_USER_AGENT'] ) ) {
+			$user_agent .= ' ' . sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) );
+		}
+
+		$settings = get_option( 'woocommerce_payex_checkout_settings' );
+		$client->setAccessToken( $settings['access_token'] ?? '' )
+				->setPayeeId( $settings['payee_id'] ?? '' )
+				->setMode( wc_string_to_bool( $settings['testmode'] ?? 'no' ) ? Client::MODE_TEST : Client::MODE_PRODUCTION )
+				->setUserAgent( $user_agent );
+
+		return apply_filters( 'swedbank_pay_client', $client );
+	}
+
+	/**
 	 * Create a Client for payment.
 	 *
 	 * @param WC_Order $order WC Order.
@@ -110,10 +157,10 @@ class Swedbank_Pay_Api {
 
 		$payment_order        = $helper->get_payment_order();
 		$payment_order_object = new PaymentorderObject();
-		$payment_order_object->setPaymentorder( apply_filters( 'swedbank_pay_payment_order', $payment_order, $order ) );
+		$payment_order_object->setPaymentorder( $payment_order );
 
 		$purchase_request = new Purchase( $payment_order_object );
-		$purchase_request->setClient( Order::get_client() );
+		$purchase_request->setClient( self::get_client() );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
@@ -182,7 +229,7 @@ class Swedbank_Pay_Api {
 
 		try {
 			/** @var \SwedbankPay\Api\Response $response */
-			$client = Order::get_client()->request( $method, $url, $params );
+			$client = self::get_client()->request( $method, $url, $params );
 
 			// $codeClass = (int)($this->client->getResponseCode() / 100);
 			$response_body = $client->getResponseBody();
@@ -194,18 +241,18 @@ class Swedbank_Pay_Api {
 
 			return $result;
 		} catch ( \KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception $exception ) {
-			$httpCode = (int) Order::get_client()->getResponseCode();
+			$httpCode = (int) self::get_client()->getResponseCode();
 			$time     = microtime( true ) - $start;
 			Swedbank_Pay()->logger()->debug(
 				sprintf(
 					'[%.4F] Client Exception. Check debug info: %s',
 					$time,
-					Order::get_client()->getDebugInfo()
+					self::get_client()->getDebugInfo()
 				)
 			);
 
 			// https://tools.ietf.org/html/rfc7807
-			$data = json_decode( Order::get_client()->getResponseBody(), true );
+			$data = json_decode( self::get_client()->getResponseBody(), true );
 			if ( json_last_error() === JSON_ERROR_NONE &&
 				isset( $data['title'] ) &&
 				isset( $data['detail'] )
@@ -341,12 +388,12 @@ class Swedbank_Pay_Api {
 				'id'             => $payment_order_id . '/financialtransactions/' . uniqid( 'fake' ),
 				'created'        => date( 'Y-m-d H:i:s' ),
 				'updated'        => date( 'Y-m-d H:i:s' ),
-				'type'           => $data['paid']['transactionType'],
+				'type'           => $data['paid']['transactionType'] ?? '',
 				'number'         => $transaction_number,
-				'amount'         => $data['paid']['amount'],
+				'amount'         => $data['paid']['amount'] ?? 0,
 				'vatAmount'      => 0,
 				'description'    => $data['paid']['id'],
-				'payeeReference' => $data['paid']['payeeReference'],
+				'payeeReference' => $data['paid']['payeeReference'] ?? '',
 			);
 
 			return $this->process_transaction( $order, $transaction );
@@ -378,9 +425,10 @@ class Swedbank_Pay_Api {
 		// Don't update order status if transaction ID was applied before.
 		$transactions = $order->get_meta( '_swedbank_pay_transactions' );
 		$transactions = empty( $transactions ) ? array() : (array) $transactions;
-		if ( in_array( $transaction_id, $transactions, true ) ) {
-			$this->log(
-				WC_Log_Levels::INFO,
+
+		// For free trial subscriptions orders, the list of transactions will always be empty. To allow still processing the transaction, we need to allow an empty list to continue.
+		if ( ! empty( $transactions ) && in_array( $transaction_id, $transactions, true ) ) {
+			Swedbank_Pay()->logger()->debug(
 				sprintf( 'Skip transaction processing #%s. Order ID: %s', $transaction_id, $order->get_id() )
 			);
 
@@ -391,7 +439,7 @@ class Swedbank_Pay_Api {
 			sprintf( 'Process transaction: %s', wp_json_encode( $transaction ) )
 		);
 
-		// Fetch payment info
+		// Fetch payment info.
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 'missing_payment_id', 'Payment order ID is unknown.' );
@@ -403,6 +451,9 @@ class Swedbank_Pay_Api {
 		// Apply action
 		switch ( $transaction['type'] ) {
 			case self::TYPE_VERIFICATION:
+				// This is always the case for free trial subscription orders.
+				$order->payment_complete( $transaction_id );
+				$order->add_order_note( __( "Payment has been verified. Transaction: {$transaction_id}", 'swedbank-pay-woocommerce-payment-menu' ) );
 				break;
 			case self::TYPE_AUTHORIZATION:
 				// translators: 1: transaction ID.
@@ -757,17 +808,20 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = ( new TransactionCaptureV3( $transaction ) )
-			->setClient( Order::get_client() )
+		$request_service = ( new TransactionCaptureV3( $transaction ) )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
-			$response_service = $requestService->send();
+			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
-			$result = $response_service->getResponseData();
+			$result = $response_service->getResponseResource()->__toArray();
+			if ( null === $result ) {
+				throw new \Exception( 'capture', 'Capture failed. No response from the API.' );
+			}
 
 			// Save transaction.
 			$transaction = $result['capture']['transaction'];
@@ -778,15 +832,15 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
 			return new \WP_Error(
 				'capture',
-				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
+				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -810,7 +864,7 @@ class Swedbank_Pay_Api {
 		$transaction->setTransaction( $transaction_data );
 
 		$requestService = ( new TransactionCancelV3( $transaction ) )
-			->setClient( Order::get_client() )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
@@ -831,9 +885,9 @@ class Swedbank_Pay_Api {
 
 			return $result;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -869,7 +923,7 @@ class Swedbank_Pay_Api {
 		$transaction->setTransaction( $transaction_data );
 
 		$requestService = ( new TransactionReversalV3( $transaction ) )
-			->setClient( Order::get_client() )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
@@ -890,9 +944,9 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -931,7 +985,7 @@ class Swedbank_Pay_Api {
 		$transaction->setTransaction( $transaction_data );
 
 		$requestService = ( new TransactionReversalV3( $transaction ) )
-			->setClient( Order::get_client() )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
@@ -952,9 +1006,9 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
