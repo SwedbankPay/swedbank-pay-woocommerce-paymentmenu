@@ -158,6 +158,7 @@ class Swedbank_Pay_Subscription {
 		$renewal_order->add_order_note( $message );
 
 		$payment_order = $response->getResponseData()['payment_order'];
+		$paid          = $payment_order['paid'];
 		foreach ( $subscriptions as $subscription ) {
 			// Save the transaction ID to the renewal order.
 			$subscription->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
@@ -168,14 +169,10 @@ class Swedbank_Pay_Subscription {
 		}
 
 		// While not necessary for the renewal order(s), we'll save the transaction ID to the related order for reference.
-		$parent_order   = self::get_parent_order( $renewal_order, 'renewal' );
-		$transaction_id = empty( $parent_order ) ? '' : $parent_order->get_transaction_id();
 		$renewal_order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
 
-		// Since charging is handled here, and cancellation is not supported, we'll use this flag in OM to prevent processing the order again.
-		self::set_skip_om( $renewal_order, $payment_order['created'] );
-
 		// Complete the payment AFTER saving the metadata.
+		$transaction_id = $paid['number'];
 		$renewal_order->payment_complete( $transaction_id );
 	}
 
@@ -212,10 +209,10 @@ class Swedbank_Pay_Subscription {
 
 		$purchase_request = new UnscheduledPurchase( $payment_order_object );
 		$purchase_request->setClient( Swedbank_Pay_Api::get_client() );
+		$purchase_request->setExpands( array( 'paid' ) );
 
 		try {
 			$response_service = $purchase_request->send();
-
 			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
 
 			return $response_service;
