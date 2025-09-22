@@ -29,9 +29,10 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class for handling subscriptions.
  */
 class Swedbank_Pay_Subscription {
-	public const GATEWAY_ID        = 'payex_checkout';
-	public const UNSCHEDULED_TOKEN = '_' . self::GATEWAY_ID . '_unscheduled_token';
-	public const SKIP_OM           = '_' . self::GATEWAY_ID . '_skip_om';
+	public const GATEWAY_ID             = 'payex_checkout';
+	public const UNSCHEDULED_TOKEN      = '_' . self::GATEWAY_ID . '_unscheduled_token';
+	public const SKIP_OM                = '_' . self::GATEWAY_ID . '_skip_om';
+	public const CANCELED_TOKEN_HISTORY = '_' . self::GATEWAY_ID . '_canceled_token_history';
 
 	/**
 	 * Register hooks.
@@ -68,6 +69,54 @@ class Swedbank_Pay_Subscription {
 
 		// Saves the subscription token, if missing, when the webhook is received.
 		add_action( 'swedbank_pay_scheduler_run_after', array( $this, 'callback_received' ), 10, 2 );
+
+		// "Neither customers nor store managers can reactivate cancelled subscriptions."
+		// See https://woocommerce.com/document/subscriptions/statuses/#cancelled-subscription-status
+		add_action( 'woocommerce_subscription_status_cancelled', array( $this, 'on_subscription_canceled' ) );
+
+		// "You cannot reactivate subscriptions with the Expired status. Customers must manually create a new subscription or repurchase the subscription product to regain access."
+		// See https://woocommerce.com/document/subscriptions/statuses/#expired-subscription-status
+		add_action( 'woocommerce_subscription_status_expired', array( $this, 'on_subscription_expired' ) );
+	}
+
+	/**
+	 * Handle actions when a subscription is canceled.
+	 *
+	 * @param \WC_Subscription $subscription The WooCommerce subscription object.
+	 * @return void
+	 */
+	public function on_subscription_canceled( $subscription ) {
+		$gateway = swedbank_pay_get_payment_method( $subscription );
+		if ( ! $gateway ) {
+			return;
+		}
+
+		$token = self::get_token( $subscription );
+		if ( ! $token ) {
+			return;
+		}
+
+		self::cancel_unscheduled_token( $token, $subscription, $gateway, __( 'The subscription was cancelled.', 'swedbank-pay-woocommerce-checkout' ) );
+	}
+
+	/**
+	 * Handle actions when a subscription is expired.
+	 *
+	 * @param \WC_Subscription $subscription The WooCommerce subscription object.
+	 * @return void
+	 */
+	public function on_subscription_expired( $subscription ) {
+		$gateway = swedbank_pay_get_payment_method( $subscription );
+		if ( ! $gateway ) {
+			return;
+		}
+
+		$token = self::get_token( $subscription );
+		if ( ! $token ) {
+			return;
+		}
+
+		self::cancel_unscheduled_token( $token, $subscription, $gateway, __( 'The subscription has expired.', 'swedbank-pay-woocommerce-checkout' ) );
 	}
 
 	/**
@@ -85,7 +134,7 @@ class Swedbank_Pay_Subscription {
 		}
 
 		$subscriptions = wcs_get_subscriptions_for_renewal_order( $renewal_order );
-		$token         = self::get_token_from_order( $renewal_order );
+		$token         = self::get_token( $renewal_order );
 
 		$response = self::charge_customer( $renewal_order, $token );
 		if ( is_wp_error( $response ) ) {
@@ -260,21 +309,77 @@ class Swedbank_Pay_Subscription {
 	}
 
 	/**
+	 * Cancel an unscheduled token associated with a subscription.
+	 *
+	 * @note Always calls save().
+	 * @see https://developer.swedbankpay.com/checkout-v3/features/optional/delete-token
+	 *
+	 * @param string                                $token The unscheduled token to cancel.
+	 * @param \WC_Subscription                      $subscription The WooCommerce subscription order.
+	 * @param Swedbank_Pay_Payment_Gateway_Checkout $gateway The Swedbank Pay payment gateway instance.
+	 * @param string|null                           $reason Optional reason for cancelling the token. Empty string not allowed.
+	 * @return WP_Error|ResponseInterface
+	 */
+	public static function cancel_unscheduled_token( $token, $subscription, $gateway, $reason = null ) {
+		$response = $gateway->api->request(
+			'PATCH',
+			"/psp/paymentorders/unscheduledTokens/{$token}",
+			array(
+				'state'   => 'Deleted',
+				'comment' => $reason ?? __( 'The subscription may have been cancelled or changed payment method.', 'swedbank-pay-woocommerce-checkout' ),
+			)
+		);
+
+		if ( ! is_wp_error( $response ) ) {
+			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Cancelled unscheduled token: {$token} in subscription: {$subscription->get_order_number()}" );
+			$history           = (array) $subscription->get_meta( self::CANCELED_TOKEN_HISTORY );
+			$history[ $token ] = gmdate( 'Y-m-d H:i:s' );
+			$subscription->update_meta_data( self::CANCELED_TOKEN_HISTORY, $history );
+
+			$subscription->add_order_note(
+				// translators: 1: Unscheduled token.
+				sprintf( __( 'Cancelled unscheduled token: %s', 'swedbank-pay-woocommerce-checkout' ), $token ) . ( $reason ? ". Reason: {$reason}" : '' )
+			);
+
+		} else {
+			Swedbank_Pay()->logger()->error(
+				sprintf( '[CANCEL TOKEN] %s: API Exception: %s', __METHOD__, $response->get_error_message() ),
+				array(
+					'subscription' => $subscription->get_order_number(),
+					'token'        => $token,
+					'reason'       => $reason,
+				)
+			);
+
+			$subscription->add_order_note(
+				// translators: 1: Error message, 2: Unscheduled token.
+				sprintf( __( 'Failed to cancel unscheduled token. Reason: %1$s. Token: %2$s', 'swedbank-pay-woocommerce-checkout' ), $response->get_error_message(), $token )
+			);
+		}
+
+		$subscription->save();
+		return $response;
+	}
+
+	/**
 	 * Retrieves from Swedbank, and saves the unscheduled token to the order. Existing token will be overwritten.
 	 *
 	 * @see https://developer.swedbankpay.com/checkout-v3/get-started/recurring#post-purchase--post-verify.
 	 *
-	 * @param  \WC_Order                              $order The WC order containing a subscription.
+	 * @param  \WC_Order                              $order The WC order.
 	 * @param  \Swedbank_Pay_Payment_Gateway_Checkout $gateway The Swedbank Pay payment gateway instance.
+	 * @param  bool                                   $overwrite_existing Whether to cancel the existing token before saving the new token.
+	 * @param  string|null                            $reason Optional reason for cancelling the existing token. Empty string not allowed.
 	 * @return WP_Error|array The API response or WP_Error on failure.
 	 */
-	private function save_subscription_token( $order, $gateway ) {
+	private function save_subscription_token( $order, $gateway, $overwrite_existing = false, $reason = null ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		$action_urls      = $gateway->api->request( 'GET', $payment_order_id );
 		$paid_response    = ! is_wp_error( $action_urls ) ? $gateway->api->request( 'GET', $action_urls['paymentOrder']['paid']['id'] ) : $action_urls;
 
 		if ( ! is_wp_error( $paid_response ) ) {
 			$paid              = $paid_response['paid'];
+			$existing_token    = $order->get_meta( self::UNSCHEDULED_TOKEN );
 			$unscheduled_token = false;
 			foreach ( $paid['tokens'] as $token ) {
 				// From the collection of tokens, retrieve the 'unscheduled' token. There cannot be more than one unscheduled token at any time.
@@ -287,15 +392,18 @@ class Swedbank_Pay_Subscription {
 						$subscription->save_meta_data();
 					}
 
-					// translators: 1: Unscheduled token.
-					$order->add_order_note( sprintf( __( 'Recurring token: %s', 'swedbank-pay-woocommerce-checkout' ), $unscheduled_token ) );
-
-					$order->update_meta_data( self::UNSCHEDULED_TOKEN, $unscheduled_token );
-					$order->save();
-
 					break;
 				}
 			}
+
+			if ( $overwrite_existing && ( ! empty( $unscheduled_token ) && $existing_token !== $unscheduled_token ) ) {
+				self::cancel_unscheduled_token( $existing_token, $order, $gateway, $reason );
+			}
+			// translators: 1: Unscheduled token.
+			$order->add_order_note( sprintf( __( 'Recurring token: %s', 'swedbank-pay-woocommerce-checkout' ), $unscheduled_token ) );
+
+			$order->update_meta_data( self::UNSCHEDULED_TOKEN, $unscheduled_token );
+			$order->save();
 
 			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Retrieved unscheduled token for order #{$order->get_id()}. Token: {$unscheduled_token}" );
 		} else {
@@ -313,12 +421,12 @@ class Swedbank_Pay_Subscription {
 	}
 
 	/**
-	 * Retrieve the unscheduled token from the order, its parent order, or any subscriptions associated with the order.
+	 * Retrieve the unscheduled token from the subscription (first) or order, and thereafter its parent order, or any subscriptions associated with the renewal order.
 	 *
-	 * @param \WC_Order $order The WooCommerce order.
+	 * @param \WC_Order|\WC_Subscription $order The WC order or subscription.
 	 * @return string|false The unscheduled token if found, false otherwise.
 	 */
-	public static function get_token_from_order( $order ) {
+	public static function get_token( $order ) {
 		$token = $order->get_meta( self::UNSCHEDULED_TOKEN );
 		if ( ! empty( $token ) ) {
 			return $token;
@@ -502,7 +610,8 @@ class Swedbank_Pay_Subscription {
 			return;
 		}
 
-		$result = $this->save_subscription_token( $subscription, $gateway );
+		$reason = __( 'The payment method was changed by the customer.', 'swedbank-pay-woocommerce-checkout' );
+		$result = $this->save_subscription_token( $subscription, $gateway, true, $reason );
 		if ( is_wp_error( $result ) && function_exists( 'wc_print_notice' ) ) {
 			// translators: Error message.
 			wc_print_notice( sprintf( __( 'Failed to update payment method. Reason: %s', 'swedbank-pay-woocommerce-checkout' ), $result->get_error_message() ), 'error' );
