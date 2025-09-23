@@ -454,25 +454,40 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return;
 		}
 
-		if ( $order->get_payment_method() !== $this->id ) {
+		$gateway = swedbank_pay_get_payment_method( $order );
+		if ( empty( $gateway ) ) {
 			return;
 		}
 
 		$this->api->log( WC_Log_Levels::INFO, __METHOD__, array( $order_id ) );
-		$is_finalized     = $order->get_meta( '_payex_finalized' ); // Checks if the order has already been processed.
-		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		if ( empty( $is_finalized ) && $payment_order_id ) {
-			$this->api->finalize_payment( $order, null );
+		$is_finalized = $order->get_meta( '_payex_finalized' ); // Checks if the order has already been processed.
+		if ( ! empty( $is_finalized ) ) {
+			return;
+		}
 
-			$order = wc_get_order( $order_id ); // reload order.
+		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
+		if ( $payment_order_id ) {
 			$order->update_meta_data( '_payex_finalized', 1 );
 			$order->save_meta_data();
 		}
 
 		// WC will always capture an order that doesn't need processing. Therefore, we only have to set it is as completed if it needs it.
-		if ( wc_string_to_bool( $this->autocomplete ) && $order->needs_processing() ) {
-			$order->update_status( 'completed', __( 'Order automatically captured after payment.', 'swedbank-pay-woocommerce-checkout' ) );
-			$order->save();
+		if ( wc_string_to_bool( $this->autocomplete ) ) {
+			if ( $order->needs_processing() ) {
+				$this->api->finalize_payment( $order, null );
+				$order->update_status( 'completed', __( 'Order automatically captured after payment.', 'swedbank-pay-woocommerce-checkout' ) );
+				$order->save();
+
+			}
+		} else {
+			$response = $gateway->api->request( 'GET', "$payment_order_id/paid" );
+			if ( ! is_wp_error( $response ) ) {
+				$order->payment_complete( $response['paid']['number'] );
+				$order->add_order_note( __( 'Payment completed successfully.', 'swedbank-pay-woocommerce-checkout' ) );
+			} else {
+				$order->payment_complete();
+				$order->add_order_note( __( 'Payment completed successfully. Transaction number will soon be updated through callback.', 'swedbank-pay-woocommerce-checkout' ) );
+			}
 		}
 	}
 

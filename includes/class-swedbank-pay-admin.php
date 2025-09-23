@@ -499,7 +499,6 @@ class Swedbank_Pay_Admin {
 
 		try {
 			switch ( $new_status ) {
-				case 'processing':
 				case 'completed':
 					$gateway->api->log( WC_Log_Levels::INFO, 'Try to capture...' );
 					$result = $gateway->payment_actions_handler->capture_payment( $order );
