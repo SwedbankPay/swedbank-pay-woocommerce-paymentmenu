@@ -455,7 +455,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		$gateway = swedbank_pay_get_payment_method( $order );
-		if ( empty( $gateway ) ) {
+		if ( empty( $gateway ) || $gateway->id !== $this->id ) {
 			return;
 		}
 
