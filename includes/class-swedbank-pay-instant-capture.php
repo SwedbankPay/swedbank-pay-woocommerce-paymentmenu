@@ -2,6 +2,8 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
+
 defined( 'ABSPATH' ) || exit;
 
 use WC_Log_Levels;
@@ -61,12 +63,12 @@ class Swedbank_Pay_Instant_Capture {
 			return;
 		}
 
-		// Disable this feature if "Autocomplete" is active
+		// Disable this feature if "Autocomplete" is active.
 		if ( 'yes' === $this->gateway->autocomplete ) {
 			return;
 		}
 
-		// Capture if possible
+		// Capture if possible.
 		if ( ! $this->gateway->api->is_captured( $payment_order_id ) ) {
 			try {
 				$this->instant_capture( $order );
@@ -97,13 +99,16 @@ class Swedbank_Pay_Instant_Capture {
 		$items = $this->get_instant_capture_items( $order );
 		$this->gateway->api->log( WC_Log_Levels::INFO, __METHOD__, array( $items ) );
 		if ( count( $items ) > 0 ) {
-			$result = $this->gateway->api->capture_checkout( $order, $items );
-			if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-				/** @var \WP_Error $result */
-				throw new \Exception( $result->get_error_message() );
+			if ( ! Swedbank_Pay_Subscription::should_skip_order_management( $order ) ) {
+
+				$result = $this->gateway->api->capture_checkout( $order, $items );
+				if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+					/** @var \WP_Error $result */
+					throw new \Exception( $result->get_error_message() );
+				}
 			}
 
-			// Save captured order lines
+			// Save captured order lines.
 			$captured = array();
 			foreach ( $items as $item ) {
 				$captured[] = array(

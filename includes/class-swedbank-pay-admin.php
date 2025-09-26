@@ -7,6 +7,7 @@ defined( 'ABSPATH' ) || exit;
 use WC_Order;
 use WC_Log_Levels;
 use Exception;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -63,7 +64,7 @@ class Swedbank_Pay_Admin {
 	}
 
 	public function prevent_online_refund( $order_id, $refund_id ) {
-		$order = wc_get_order( $order_id );
+		$order          = wc_get_order( $order_id );
 		$payment_method = $order->get_payment_method();
 		if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
 			// Prevent online refund when order status changed to "refunded"
@@ -78,7 +79,7 @@ class Swedbank_Pay_Admin {
 	/**
 	 * Allow processing/completed statuses for capture
 	 *
-	 * @param array $statuses
+	 * @param array    $statuses
 	 * @param WC_Order $order
 	 *
 	 * @return array
@@ -100,6 +101,7 @@ class Swedbank_Pay_Admin {
 
 	/**
 	 * Add meta boxes in admin
+	 *
 	 * @param $screen_id
 	 * @param WC_Order|\WP_Post $order
 	 * @return void
@@ -129,6 +131,7 @@ class Swedbank_Pay_Admin {
 
 	/**
 	 * MetaBox for Payment Actions
+	 *
 	 * @param WC_Order|\WP_Post $order
 	 * @return void
 	 */
@@ -161,12 +164,12 @@ class Swedbank_Pay_Admin {
 		wc_get_template(
 			'admin/payment-actions.php',
 			array(
-				'gateway'  => $gateway,
-				'order'    => $order,
-				'info'     => $result,
+				'gateway' => $gateway,
+				'order'   => $order,
+				'info'    => $result,
 			),
 			'',
-			dirname( __FILE__ ) . '/../templates/'
+			__DIR__ . '/../templates/'
 		);
 	}
 
@@ -198,7 +201,7 @@ class Swedbank_Pay_Admin {
 					'order'   => $order,
 				),
 				'',
-				dirname( __FILE__ ) . '/../templates/'
+				__DIR__ . '/../templates/'
 			);
 		}
 	}
@@ -228,7 +231,7 @@ class Swedbank_Pay_Admin {
 				'ajax_url'  => admin_url( 'admin-ajax.php' ),
 				'text_wait' => __( 'Please wait...', 'swedbank-pay-woocommerce-checkout' ),
 				'nonce'     => wp_create_nonce( 'swedbank_pay' ),
-				'order_id'  => $theorder ? $theorder->get_id() : (int) $post_id
+				'order_id'  => $theorder ? $theorder->get_id() : (int) $post_id,
 			);
 			wp_localize_script( 'swedbank-pay-admin-js', 'SwedbankPay_Admin', $translation_array );
 
@@ -239,6 +242,7 @@ class Swedbank_Pay_Admin {
 
 	/**
 	 * Action for Capture
+	 *
 	 * @SuppressWarnings(PHPMD.Superglobals)
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
@@ -259,9 +263,9 @@ class Swedbank_Pay_Admin {
 
 		// Get Payment Gateway
 		$gateway = swedbank_pay_get_payment_method( $order );
-		$result = $gateway->payment_actions_handler->capture_payment( $order );
+		$result  = $gateway->payment_actions_handler->capture_payment( $order );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-			wp_send_json_error( join('; ', $result->get_error_messages() ) );
+			wp_send_json_error( join( '; ', $result->get_error_messages() ) );
 			return;
 		}
 
@@ -291,9 +295,9 @@ class Swedbank_Pay_Admin {
 
 		// Get Payment Gateway
 		$gateway = swedbank_pay_get_payment_method( $order );
-		$result = $gateway->payment_actions_handler->cancel_payment( $order );
+		$result  = $gateway->payment_actions_handler->cancel_payment( $order );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-			wp_send_json_error( join('; ', $result->get_error_messages() ) );
+			wp_send_json_error( join( '; ', $result->get_error_messages() ) );
 			return;
 		}
 
@@ -322,7 +326,7 @@ class Swedbank_Pay_Admin {
 		$order    = wc_get_order( $order_id );
 		$gateway  = swedbank_pay_get_payment_method( $order );
 		if ( ! $gateway ) {
-			throw new Exception( 'Payment gateway is not available');
+			throw new Exception( 'Payment gateway is not available' );
 		}
 
 		// Do refund
@@ -334,7 +338,7 @@ class Swedbank_Pay_Admin {
 		);
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			/** @var \WP_Error $result */
-			wp_send_json_error( join('; ', $result->get_error_messages() ) );
+			wp_send_json_error( join( '; ', $result->get_error_messages() ) );
 
 			return;
 		}
@@ -366,7 +370,7 @@ class Swedbank_Pay_Admin {
 		if ( ! $order_id ) {
 			wp_send_json_success(
 				array(
-					'mode' => 'default'
+					'mode' => 'default',
 				)
 			);
 
@@ -377,7 +381,7 @@ class Swedbank_Pay_Admin {
 		if ( ! $order ) {
 			wp_send_json_success(
 				array(
-					'mode' => 'default'
+					'mode' => 'default',
 				)
 			);
 
@@ -388,7 +392,7 @@ class Swedbank_Pay_Admin {
 		if ( ! $gateway ) {
 			wp_send_json_success(
 				array(
-					'mode' => 'default'
+					'mode' => 'default',
 				)
 			);
 
@@ -397,7 +401,7 @@ class Swedbank_Pay_Admin {
 
 		// If have YITH WooCommerce Gift Cards in Order, amount mode only
 		if ( function_exists( 'YITH_YWGC' ) ) {
-			$gift_amount = 0;
+			$gift_amount      = 0;
 			$order_gift_cards = $order->get_meta( '_ywgc_applied_gift_cards' );
 			if ( empty( $order_gift_cards ) ) {
 				$order_gift_cards = array();
@@ -421,7 +425,7 @@ class Swedbank_Pay_Admin {
 			if ( $gift_amount > 0 ) {
 				wp_send_json_success(
 					array(
-						'mode' => 'amount'
+						'mode' => 'amount',
 					)
 				);
 
@@ -434,7 +438,7 @@ class Swedbank_Pay_Admin {
 		if ( wc_tax_enabled() ) {
 			wp_send_json_success(
 				array(
-					'mode' => 'items'
+					'mode' => 'items',
 				)
 			);
 
@@ -445,7 +449,7 @@ class Swedbank_Pay_Admin {
 		if ( empty( $mode ) ) {
 			wp_send_json_success(
 				array(
-					'mode' => 'default'
+					'mode' => 'default',
 				)
 			);
 
@@ -454,7 +458,7 @@ class Swedbank_Pay_Admin {
 
 		wp_send_json_success(
 			array(
-				'mode' => $mode
+				'mode' => $mode,
 			)
 		);
 	}
@@ -473,20 +477,23 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
-		// Allow to change status from `processing` to `completed`
+		// Allow to change status from `processing` to `completed`.
 		if ( 'processing' === $old_status && 'completed' === $new_status ) {
 			return;
 		}
 
-		// Allow to change status from `pending` to `cancelled`
+		// Allow to change status from `pending` to `cancelled`.
 		if ( 'pending' === $old_status && 'cancelled' === $new_status ) {
+			return;
+		}
+
+		if ( Swedbank_Pay_Subscription::should_skip_order_management( $order ) ) {
 			return;
 		}
 
 		$gateway = swedbank_pay_get_payment_method( $order );
 
-		$gateway->api->log(
-			WC_Log_Levels::INFO,
+		Swedbank_Pay()->logger()->log(
 			'Order status change trigger: ' . $new_status . ' OrderID: ' . $order_id
 		);
 
@@ -528,7 +535,7 @@ class Swedbank_Pay_Admin {
 					}
 
 					$gateway->api->log( WC_Log_Levels::INFO, 'Try to refund...' );
-					$lines = swedbank_pay_get_available_line_items_for_refund( $order );
+					$lines  = swedbank_pay_get_available_line_items_for_refund( $order );
 					$result = $gateway->payment_actions_handler->refund_payment(
 						$order,
 						$lines,
@@ -614,8 +621,8 @@ class Swedbank_Pay_Admin {
 	/**
 	 * Controls native Refund button.
 	 *
-	 * @param bool $should_render
-	 * @param mixed $order_id
+	 * @param bool     $should_render
+	 * @param mixed    $order_id
 	 * @param WC_Order $order
 	 *
 	 * @return bool

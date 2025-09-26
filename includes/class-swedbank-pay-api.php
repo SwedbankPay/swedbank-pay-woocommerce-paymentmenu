@@ -9,7 +9,7 @@ use WC_Log_Levels;
 use WC_Order;
 use WC_Payment_Gateway;
 use Swedbank_Pay_Payment_Gateway_Checkout;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
+use Krokedil\Swedbank\Pay\Helpers\Order;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Response;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
@@ -19,14 +19,8 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Req
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\Transaction as TransactionData;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\Item\OrderItem;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\OrderItemsCollection;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderMetadata;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayeeInfo;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayer;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderUrl;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -107,133 +101,66 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Extracts host URLs from an array of URLs.
+	 *
+	 * This method filters out invalid URLs and returns a unique list of host URLs.
+	 *
+	 * @param array $urls An array of URLs to extract host URLs from.
+	 * @return array An array of unique host URLs.
+	 */
+	public static function get_host_urls( $urls ) {
+		$result = array();
+		foreach ( $urls as $url ) {
+			if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
+				$parsed   = wp_parse_url( $url );
+				$result[] = sprintf( '%s://%s', $parsed['scheme'], $parsed['host'] );
+			}
+		}
+
+		return array_values( array_unique( $result ) );
+	}
+
+		/**
+		 * Get the Swedbank Pay client.
+		 *
+		 * This method creates a new Client instance, sets the access token, payee ID, mode (test or production),
+		 * and user agent. It also applies a filter to allow modification of the client.
+		 *
+		 * @hook swedbank_pay_client
+		 * @return Client
+		 */
+	public static function get_client() {
+		$client = new Client();
+
+		$user_agent = "{$client->getUserAgent()} swedbank-pay-payment-menu/" . SWEDBANK_PAY_VERSION;
+		if ( isset( $_SERVER['HTTP_USER_AGENT'] ) ) {
+			$user_agent .= ' ' . sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) );
+		}
+
+		$settings = get_option( 'woocommerce_payex_checkout_settings' );
+		$client->setAccessToken( $settings['access_token'] ?? '' )
+				->setPayeeId( $settings['payee_id'] ?? '' )
+				->setMode( wc_string_to_bool( $settings['testmode'] ?? 'no' ) ? Client::MODE_TEST : Client::MODE_PRODUCTION )
+				->setUserAgent( $user_agent );
+
+		return apply_filters( 'swedbank_pay_client', $client );
+	}
+
+	/**
 	 * Create a Client for payment.
 	 *
 	 * @param WC_Order $order WC Order.
 	 * @return WP_Error|ResponseServiceInterface
 	 */
 	public function initiate_purchase( WC_Order $order ) {
-		$gateway = swedbank_pay_get_payment_method( $order );
+		$helper = new Order( $order );
 
-		$callback_url = add_query_arg(
-			array(
-				'order_id' => $order->get_id(),
-				'key'      => $order->get_order_key(),
-			),
-			WC()->api_request_url( get_class( $gateway ) )
-		);
-
-		$complete_url = $gateway->get_return_url( $order );
-		$cancel_url   = $order->get_cancel_order_url_raw();
-
-		$user_agent = $order->get_customer_user_agent();
-		if ( empty( $user_agent ) ) {
-			$user_agent = 'WooCommerce/' . WC()->version;
-		}
-
-		$url_data = new PaymentorderUrl();
-		$url_data
-			->setHostUrls(
-				$this->get_host_urls(
-					array(
-						$complete_url,
-						$cancel_url,
-						$callback_url,
-						$gateway->terms_url,
-						$gateway->logo_url,
-					)
-				)
-			)
-			->setCompleteUrl( $complete_url )
-			->setCancelUrl( $cancel_url )
-			->setCallbackUrl( $callback_url )
-			->setTermsOfService( $gateway->terms_url )
-			->setLogoUrl( $gateway->logo_url );
-
-		$payee_info = $this->get_payee_info( $order );
-
-		// Add metadata.
-		$metadata = new PaymentorderMetadata();
-		$metadata->setData( 'order_id', $order->get_id() );
-
-		// Build items collection.
-		$items = swedbank_pay_get_order_lines( $order );
-
-		$payment_order = new Paymentorder();
-		$payment_order
-			->setOperation( self::OPERATION_PURCHASE )
-			->setCurrency( $order->get_currency() )
-			->setAmount(
-				(int) bcmul(
-					100,
-					apply_filters(
-						'swedbank_pay_order_amount',
-						$order->get_total(),
-						$items,
-						$order
-					)
-				)
-			)
-			->setVatAmount(
-				apply_filters(
-					'swedbank_pay_order_vat',
-					$this->calculate_vat_amount( $items ),
-					$items,
-					$order
-				)
-			)
-			->setDescription(
-				apply_filters(
-					'swedbank_pay_payment_description',
-					sprintf(
-						/* translators: 1: order id */
-						__( 'Order #%1$s', 'swedbank-pay-woocommerce-payments' ),
-						$order->get_order_number()
-					),
-					$order
-				)
-			)
-			->setUserAgent( $user_agent )
-			->setLanguage( $gateway->culture )
-			->setProductName( 'Checkout3' )
-			->setImplementation( 'PaymentsOnly' )
-			->setDisablePaymentMenu( false )
-			->setUrls( $url_data )
-			->setPayeeInfo( $payee_info )
-			->setMetadata( $metadata );
-
-		if ( ! $gateway->exclude_order_lines ) {
-			$order_items = new OrderItemsCollection();
-			foreach ( $items as $item ) {
-				$order_item = new OrderItem();
-				$order_item
-				->setReference( $item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] )
-				->setName( $item[ Swedbank_Pay_Order_Item::FIELD_NAME ] )
-				->setType( $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] )
-				->setItemClass( $item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] )
-				->setItemUrl( $item[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ] )
-				->setImageUrl( $item[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] )
-				->setDescription( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] )
-				->setQuantity( $item[ Swedbank_Pay_Order_Item::FIELD_QTY ] )
-				->setUnitPrice( $item[ Swedbank_Pay_Order_Item::FIELD_UNITPRICE ] )
-				->setQuantityUnit( $item[ Swedbank_Pay_Order_Item::FIELD_QTY_UNIT ] )
-				->setVatPercent( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT ] )
-				->setAmount( $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] )
-				->setVatAmount( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ] );
-
-				$order_items->addItem( $order_item );
-			}
-
-			$payment_order->setOrderItems( $order_items );
-		}
-
-		$payment_order->setPayer( $this->get_payer( $order ) );
-
+		$payment_order        = $helper->get_payment_order();
 		$payment_order_object = new PaymentorderObject();
 		$payment_order_object->setPaymentorder( $payment_order );
 
 		$purchase_request = new Purchase( $payment_order_object );
-		$purchase_request->setClient( $this->get_client() );
+		$purchase_request->setClient( self::get_client() );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
@@ -244,12 +171,14 @@ class Swedbank_Pay_Api {
 			return $response_service;
 		} catch ( ClientException $e ) {
 
-			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
-			Swedbank_Pay()->logger()->debug( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
+			Swedbank_Pay()->logger()->error( $purchase_request->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
 
-			return new WP_Error(
-				400,
-				$this->format_error_message( $purchase_request->getClient()->getResponseBody(), $e->getMessage() )
+			return Swedbank_Pay()->system_report()->request(
+				new WP_Error(
+					400,
+					$this->format_error_message( $purchase_request->getClient()->getResponseBody(), $e->getMessage() )
+				)
 			);
 		}
 	}
@@ -300,7 +229,7 @@ class Swedbank_Pay_Api {
 
 		try {
 			/** @var \SwedbankPay\Api\Response $response */
-			$client = $this->get_client()->request( $method, $url, $params );
+			$client = self::get_client()->request( $method, $url, $params );
 
 			// $codeClass = (int)($this->client->getResponseCode() / 100);
 			$response_body = $client->getResponseBody();
@@ -312,18 +241,18 @@ class Swedbank_Pay_Api {
 
 			return $result;
 		} catch ( \KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception $exception ) {
-			$httpCode = (int) $this->get_client()->getResponseCode();
+			$httpCode = (int) self::get_client()->getResponseCode();
 			$time     = microtime( true ) - $start;
 			Swedbank_Pay()->logger()->debug(
 				sprintf(
 					'[%.4F] Client Exception. Check debug info: %s',
 					$time,
-					$this->get_client()->getDebugInfo()
+					self::get_client()->getDebugInfo()
 				)
 			);
 
 			// https://tools.ietf.org/html/rfc7807
-			$data = json_decode( $this->get_client()->getResponseBody(), true );
+			$data = json_decode( self::get_client()->getResponseBody(), true );
 			if ( json_last_error() === JSON_ERROR_NONE &&
 				isset( $data['title'] ) &&
 				isset( $data['detail'] )
@@ -459,12 +388,12 @@ class Swedbank_Pay_Api {
 				'id'             => $payment_order_id . '/financialtransactions/' . uniqid( 'fake' ),
 				'created'        => date( 'Y-m-d H:i:s' ),
 				'updated'        => date( 'Y-m-d H:i:s' ),
-				'type'           => $data['paid']['transactionType'],
+				'type'           => $data['paid']['transactionType'] ?? '',
 				'number'         => $transaction_number,
-				'amount'         => $data['paid']['amount'],
+				'amount'         => $data['paid']['amount'] ?? 0,
 				'vatAmount'      => 0,
 				'description'    => $data['paid']['id'],
-				'payeeReference' => $data['paid']['payeeReference'],
+				'payeeReference' => $data['paid']['payeeReference'] ?? '',
 			);
 
 			return $this->process_transaction( $order, $transaction );
@@ -487,18 +416,19 @@ class Swedbank_Pay_Api {
 	 *
 	 * @return true|WP_Error
 	 */
-public function process_transaction( WC_Order $order, array $transaction ) {
+	public function process_transaction( WC_Order $order, array $transaction ) {
 		$transaction_id = $transaction['number'];
 
-		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts
+		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts.
 		$order->read_meta_data();
 
-		// Don't update order status if transaction ID was applied before
+		// Don't update order status if transaction ID was applied before.
 		$transactions = $order->get_meta( '_swedbank_pay_transactions' );
 		$transactions = empty( $transactions ) ? array() : (array) $transactions;
-		if ( in_array( $transaction_id, $transactions ) ) {
-			$this->log(
-				WC_Log_Levels::INFO,
+
+		// For free trial subscriptions orders, the list of transactions will always be empty. To allow still processing the transaction, we need to allow an empty list to continue.
+		if ( ! empty( $transactions ) && in_array( $transaction_id, $transactions, true ) ) {
+			Swedbank_Pay()->logger()->debug(
 				sprintf( 'Skip transaction processing #%s. Order ID: %s', $transaction_id, $order->get_id() )
 			);
 
@@ -506,10 +436,10 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 		}
 
 		Swedbank_Pay()->logger()->debug(
-			sprintf( 'Process transaction: %s', var_export( $transaction, true ) )
+			sprintf( 'Process transaction: %s', wp_json_encode( $transaction ) )
 		);
 
-		// Fetch payment info
+		// Fetch payment info.
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 'missing_payment_id', 'Payment order ID is unknown.' );
@@ -521,11 +451,14 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 		// Apply action
 		switch ( $transaction['type'] ) {
 			case self::TYPE_VERIFICATION:
+				// This is always the case for free trial subscription orders.
+				$order->payment_complete( $transaction_id );
+				$order->add_order_note( __( "Payment has been verified. Transaction: {$transaction_id}", 'swedbank-pay-woocommerce-payment-menu' ) );
 				break;
 			case self::TYPE_AUTHORIZATION:
 				$message = sprintf( 'Payment has been authorized. Transaction: %s', $transaction_id );
 
-				// Don't change the order status if it was captured before
+				// Don't change the order status if it was captured before.
 				if ( $order->has_status( array( 'processing', 'completed', 'active' ) ) ) {
 					$order->add_order_note( $message );
 				} else {
@@ -853,23 +786,6 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 	}
 
 	/**
-	 * Get urls where hosts
-	 *
-	 * @return array
-	 */
-	private function get_host_urls( $urls ) {
-		$result = array();
-		foreach ( $urls as $url ) {
-			if ( filter_var( $url, FILTER_VALIDATE_URL ) ) {
-				$parsed   = wp_parse_url( $url );
-				$result[] = sprintf( '%s://%s', $parsed['scheme'], $parsed['host'] );
-			}
-		}
-
-		return array_values( array_unique( $result ) );
-	}
-
-	/**
 	 * Capture Checkout.
 	 *
 	 * @param WC_Order $order
@@ -889,68 +805,29 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
 		}
 
-		if ( count( $items ) === 0 ) {
-			$items = swedbank_pay_get_order_lines( $order );
-		}
-
-		// Build items collection
-		$order_items = new OrderItemsCollection();
-
-		// Recalculate amount and VAT amount
-		$amount     = 0;
-		$vat_amount = 0;
-		foreach ( $items as $item ) {
-			$amount     += $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ];
-			$vat_amount += $item[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ];
-
-			$order_item = new OrderItem();
-			$order_item
-				->setReference( $item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] )
-				->setName( $item[ Swedbank_Pay_Order_Item::FIELD_NAME ] )
-				->setType( $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] )
-				->setItemClass( $item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] )
-				->setItemUrl( $item[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ] )
-				->setImageUrl( $item[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] )
-				->setDescription( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] )
-				->setQuantity( $item[ Swedbank_Pay_Order_Item::FIELD_QTY ] )
-				->setUnitPrice( $item[ Swedbank_Pay_Order_Item::FIELD_UNITPRICE ] )
-				->setQuantityUnit( $item[ Swedbank_Pay_Order_Item::FIELD_QTY_UNIT ] )
-				->setVatPercent( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT ] )
-				->setAmount( $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] )
-				->setVatAmount( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ] );
-
-			$order_items->addItem( $order_item );
-		}
-
-		$transaction_data = new TransactionData();
-		$transaction_data
-			->setAmount( $amount )
-			->setVatAmount( $vat_amount )
-			->setDescription( sprintf( 'Capture for Order #%s', $order->get_order_number() ) )
-			->setPayeeReference(
-				apply_filters(
-					'swedbank_pay_payee_reference',
-					swedbank_pay_generate_payee_reference( $order->get_id() )
-				)
-			)
-			->setOrderItems( $order_items );
+		$helper           = new Order( $order, $items );
+		$transaction_data = $helper->get_transaction_data()->setDescription( sprintf( 'Capture for Order #%s', $order->get_order_number() ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = new TransactionCaptureV3( $transaction );
-		$requestService->setClient( $this->get_client() )
+		$request_service = ( new TransactionCaptureV3( $transaction ) )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
-			$response_service = $requestService->send();
+			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
-			$result = $response_service->getResponseData();
+			// FIXME: This is always returning null. Recreate: enable automatic capture, place an order, and pay with card. On redirect to store, fatal error due to $transaction being overwritten with the null value from $result.
+			$result = $response_service->getResponseResource()->__toArray();
+			if ( null === $result ) {
+				throw new \Exception( 'capture', 'Capture failed. No response from the API.' );
+			}
 
-			// Save transaction
+			// Save transaction.
 			$transaction = $result['capture']['transaction'];
 			$gateway     = swedbank_pay_get_payment_method( $order );
 			$gateway->transactions->import( $transaction, $order->get_id() );
@@ -959,15 +836,15 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
 			return new \WP_Error(
 				'capture',
-				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
+				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -978,8 +855,7 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
 		}
 
-		$transaction_data = new TransactionData();
-		$transaction_data
+		$transaction_data = ( new TransactionData() )
 			->setDescription( sprintf( 'Cancellation for Order #%s', $order->get_order_number() ) )
 			->setPayeeReference(
 				apply_filters(
@@ -991,8 +867,8 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = new TransactionCancelV3( $transaction );
-		$requestService->setClient( $this->get_client() )
+		$requestService = ( new TransactionCancelV3( $transaction ) )
+			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
@@ -1013,9 +889,9 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 
 			return $result;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -1041,25 +917,18 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 			return new \WP_Error( 0, 'Unable to get the payment order ID' );
 		}
 
-		$payee_refrence = apply_filters(
-			'swedbank_pay_payee_reference',
-			swedbank_pay_generate_payee_reference( $order->get_id() )
-		);
-
-		$transaction_data = new TransactionData();
-		$transaction_data
+		$helper           = new Order( $order );
+		$transaction_data = $helper->get_transaction_data()
 			->setAmount( round( $amount * 100 ) )
 			->setVatAmount( 0 )
-			->setDescription( sprintf( 'Refund for Order #%s. Amount: %s', $order->get_order_number(), $amount ) ) //phpcs:ignore
-			->setPayeeReference( $payee_refrence )
-			->setReceiptReference( $payee_refrence );
+			->setDescription( sprintf( 'Refund for Order #%s. Amount: %s', $order->get_order_number(), $amount ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = new TransactionReversalV3( $transaction );
-		$requestService->setClient( $this->get_client() )
-						->setPaymentOrderId( $payment_order_id );
+		$requestService = ( new TransactionReversalV3( $transaction ) )
+			->setClient( self::get_client() )
+			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
@@ -1079,9 +948,9 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -1110,60 +979,18 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 0, 'Unable to get the payment order ID' );
 		}
-
-		if ( count( $items ) === 0 ) {
-			$items = swedbank_pay_get_order_lines( $order );
-		}
-
-		// Build items collection
-		$order_items = new OrderItemsCollection();
-
-		// Recalculate amount and VAT amount
-		$amount     = 0;
-		$vat_amount = 0;
-		foreach ( $items as $item ) {
-			$amount     += $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ];
-			$vat_amount += $item[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ];
-
-			$order_item = new OrderItem();
-			$order_item
-				->setReference( $item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] )
-				->setName( $item[ Swedbank_Pay_Order_Item::FIELD_NAME ] )
-				->setType( $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] )
-				->setItemClass( $item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] )
-				->setItemUrl( $item[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ] )
-				->setImageUrl( $item[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] )
-				->setDescription( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] )
-				->setQuantity( $item[ Swedbank_Pay_Order_Item::FIELD_QTY ] )
-				->setUnitPrice( $item[ Swedbank_Pay_Order_Item::FIELD_UNITPRICE ] )
-				->setQuantityUnit( $item[ Swedbank_Pay_Order_Item::FIELD_QTY_UNIT ] )
-				->setVatPercent( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT ] )
-				->setAmount( $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] )
-				->setVatAmount( $item[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ] );
-
-			$order_items->addItem( $order_item );
-		}
-
-		$payee_refrence = apply_filters(
-			'swedbank_pay_payee_reference',
-			swedbank_pay_generate_payee_reference( $order->get_id() )
-		);
-
-		$transaction_data = new TransactionData();
-		$transaction_data
-			->setAmount( $amount )
-			->setVatAmount( $vat_amount )
-			->setDescription( sprintf( 'Refund for Order #%s. Amount: %s', $order->get_order_number(), ( $amount / 100) ) ) //phpcs:ignore
-			->setPayeeReference( $payee_refrence )
-			->setReceiptReference( $payee_refrence )
-			->setOrderItems( $order_items );
+		$helper           = new Order( $order, $items );
+		$transaction_data = $helper->get_transaction_data();
+		$amount           = $transaction_data->getAmount();
+		$transaction_data = $transaction_data
+			->setDescription( sprintf( 'Refund for Order #%s. Amount: %s', $order->get_order_number(), $amount / 100 ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = new TransactionReversalV3( $transaction );
-		$requestService->setClient( $this->get_client() )
-						->setPaymentOrderId( $payment_order_id );
+		$requestService = ( new TransactionReversalV3( $transaction ) )
+			->setClient( self::get_client() )
+			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
@@ -1183,9 +1010,9 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
 
-			Swedbank_Pay()->logger()->debug(
+			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
 			);
 
@@ -1209,7 +1036,7 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 		$logger = wc_get_logger();
 
 		if ( ! is_string( $message ) ) {
-			$message = var_export( $message, true );
+			$message = wp_json_encode( $message );
 		}
 
 		$logger->log(
@@ -1218,7 +1045,7 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 				'[%s] %s [%s]',
 				$level,
 				$message,
-				count( $context ) > 0 ? var_export( $context, true ) : ''
+				count( $context ) > 0 ? wp_json_encode( $context ) : ''
 			),
 			array_merge(
 				$context,
@@ -1228,122 +1055,6 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 				)
 			)
 		);
-	}
-
-	/**
-	 * Get `PaymentorderPayeeInfo`.
-	 *
-	 * @param WC_Order $order
-	 *
-	 * @return PaymentorderPayeeInfo
-	 */
-	private function get_payee_info( WC_Order $order ) {
-		$gateway = swedbank_pay_get_payment_method( $order );
-
-		return new PaymentorderPayeeInfo(
-			array(
-				'orderReference' => apply_filters(
-					'swedbank_pay_order_reference',
-					$order->get_id()
-				),
-				'payeeReference' => apply_filters(
-					'swedbank_pay_payee_reference',
-					swedbank_pay_generate_payee_reference( $order->get_id() )
-				),
-				'payeeId'        => $gateway->payee_id,
-				'payeeName'      => apply_filters(
-					'swedbank_pay_payee_name',
-					get_bloginfo( 'name' ),
-					$gateway->id
-				),
-			)
-		);
-	}
-
-	/**
-	 * Get `PaymentorderPayer`.
-	 *
-	 * @param WC_Order $order
-	 * @return PaymentorderPayer
-	 */
-	private function get_payer( WC_Order $order ) {
-		$payer = new PaymentorderPayer();
-		$payer->setPayerReference( $this->get_customer_uuid( $order ) );
-		$payer->setFirstName( $order->get_billing_first_name() )
-				->setLastName( $order->get_billing_last_name() )
-				->setEmail( $order->get_billing_email() )
-				->setMsisdn( str_replace( ' ', '', $order->get_billing_phone() ) );
-
-		// Does an order need shipping?
-		$needs_shipping = false;
-		foreach ( $order->get_items() as $order_item ) {
-			$product = $order_item->get_product();
-			// Check is product shippable
-			if ( $product && $product->needs_shipping() ) {
-				$needs_shipping = true;
-				break;
-			}
-		}
-
-		if ( ! $needs_shipping ) {
-			$payer->setDigitalProducts( true );
-		}
-
-		return $payer;
-	}
-
-	private function get_customer_uuid( WC_Order $order ) {
-		$user_id = $order->get_user_id();
-
-		if ( $user_id > 0 ) {
-			$payer_reference = get_user_meta( $user_id, '_payex_customer_uuid', true );
-			if ( empty( $payer_reference ) ) {
-				$payer_reference = apply_filters( 'swedbank_pay_generate_uuid', $user_id );
-				update_user_meta( $user_id, '_payex_customer_uuid', $payer_reference );
-			}
-
-			return $payer_reference;
-		}
-
-		return apply_filters( 'swedbank_pay_generate_uuid', uniqid( $order->get_billing_email() ) );
-	}
-
-	/**
-	 * @return Client
-	 * @SuppressWarnings(PHPMD.Superglobals)
-	 */
-	private function get_client() {
-		$client = new Client();
-
-		$user_agent = $client->getUserAgent() . ' ' . $this->get_initiating_system_user_agent();
-		if ( isset( $_SERVER['HTTP_USER_AGENT'] ) ) {
-			$user_agent .= ' ' . $_SERVER['HTTP_USER_AGENT'];
-		}
-
-		$client->setAccessToken( $this->access_token )
-				->setPayeeId( $this->payee_id )
-				->setMode( $this->mode === self::MODE_TEST ? Client::MODE_TEST : Client::MODE_PRODUCTION )
-				->setUserAgent( $user_agent );
-
-		return $client;
-	}
-
-	/**
-	 * Get Initiating System User Agent.
-	 *
-	 * @return string
-	 */
-	private function get_initiating_system_user_agent() {
-		include_once ABSPATH . 'wp-admin/includes/plugin.php';
-
-		$plugins = get_plugins();
-		foreach ( $plugins as $file => $plugin ) {
-			if ( strpos( $file, 'swedbank-pay-payment-menu.php' ) !== false ) {
-				return 'swedbank-pay-payment-menu/' . $plugin['Version'];
-			}
-		}
-
-		return '';
 	}
 
 	/**
@@ -1393,21 +1104,5 @@ public function process_transaction( WC_Order $order, array $transaction ) {
 		}
 
 		return $message;
-	}
-
-	/**
-	 * Calculate VAT amount.
-	 *
-	 * @param array $items
-	 *
-	 * @return int|float
-	 */
-	private function calculate_vat_amount( array $items ) {
-		$vat_amount = 0;
-		foreach ( $items as $item ) {
-			$vat_amount += $item[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ];
-		}
-
-		return $vat_amount;
 	}
 }
