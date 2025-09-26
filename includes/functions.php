@@ -165,7 +165,7 @@ function swedbank_pay_get_order_lines( WC_Order $order ) {
 			Swedbank_Pay_Order_Item::FIELD_CLASS       => $product_class,
 			Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $product->get_permalink(),
 			Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image_url,
-			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $product->get_name(), // limited to 40 characters.
+			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => mb_substr( trim( $product->get_name() ), 0, 40 ), // limited to 40 characters in the API.
 			Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
 			Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
 			Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
