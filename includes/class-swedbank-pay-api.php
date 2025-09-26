@@ -462,7 +462,6 @@ class Swedbank_Pay_Api {
 				if ( empty( $order->get_date_paid() ) ) {
 					$order->payment_complete( $transaction_id );
 					$order->add_order_note( $message );
-					$order->save();
 				}
 
 				break;
