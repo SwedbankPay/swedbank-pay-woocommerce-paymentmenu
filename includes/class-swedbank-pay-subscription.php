@@ -72,7 +72,7 @@ class Swedbank_Pay_Subscription {
 
 		// "Neither customers nor store managers can reactivate cancelled subscriptions."
 		// See https://woocommerce.com/document/subscriptions/statuses/#cancelled-subscription-status
-		add_action( 'woocommerce_subscription_status_cancelled', array( $this, 'on_subscription_canceled' ) );
+		add_action( 'woocommerce_subscription_status_cancelled', array( $this, 'on_subscription_cancelled' ) );
 
 		// "You cannot reactivate subscriptions with the Expired status. Customers must manually create a new subscription or repurchase the subscription product to regain access."
 		// See https://woocommerce.com/document/subscriptions/statuses/#expired-subscription-status
@@ -85,7 +85,7 @@ class Swedbank_Pay_Subscription {
 	 * @param \WC_Subscription $subscription The WooCommerce subscription object.
 	 * @return void
 	 */
-	public function on_subscription_canceled( $subscription ) {
+	public function on_subscription_cancelled( $subscription ) {
 		$gateway = swedbank_pay_get_payment_method( $subscription );
 		if ( ! $gateway ) {
 			return;
