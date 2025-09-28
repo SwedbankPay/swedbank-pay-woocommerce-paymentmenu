@@ -36,13 +36,13 @@ class Swedbank_Pay_Instant_Capture {
 	 * Constructor.
 	 */
 	public function __construct() {
-		add_action( 'woocommerce_order_status_completed', array( $this, 'maybe_capture_instantly' ), 50, 10 );
+		add_action( 'woocommerce_order_status_processing', array( $this, 'maybe_capture_instantly' ), 50, 10 );
 	}
 
 	/**
 	 * Maybe capture instantly.
 	 *
-	 * @param $order_id The WooCommerce order ID.
+	 * @param \WC_Order $order_id The WooCommerce order ID.
 	 *
 	 * @throws \Exception If the capture fails.
 	 */
