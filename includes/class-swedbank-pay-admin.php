@@ -500,6 +500,11 @@ class Swedbank_Pay_Admin {
 		try {
 			switch ( $new_status ) {
 				case 'completed':
+					$payment_id = $order->get_meta( '_payex_paymentorder_id' );
+					if ( $payment_id && $gateway->api->is_captured( $payment_id ) ) {
+						$gateway->api->log( WC_Log_Levels::INFO, "The order {$order->get_order_number()} is already captured." );
+						return;
+					}
 					$gateway->api->log( WC_Log_Levels::INFO, 'Try to capture...' );
 					$result = $gateway->payment_actions_handler->capture_payment( $order );
 					if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {

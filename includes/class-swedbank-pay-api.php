@@ -315,6 +315,8 @@ class Swedbank_Pay_Api {
 
 		// Check if have captured transactions
 		foreach ( $transactionsList as $transaction ) {
+			// TYPE_SALE is a so-called "1-phase" transaction, which means that the amount is captured immediately after the authorization.
+			// Attempting to still capture these will result in an error from the API.
 			if ( in_array( $transaction['type'], array( self::TYPE_CAPTURE, self::TYPE_SALE ) ) ) {
 				// @todo Calculate captured amount
 				return true;
