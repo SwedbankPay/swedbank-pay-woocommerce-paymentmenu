@@ -473,12 +473,10 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		// WC will always capture an order that doesn't need processing. Therefore, we only have to set it is as completed if it needs it.
 		if ( wc_string_to_bool( $this->autocomplete ) ) {
-			if ( $order->needs_processing() ) {
-				$this->api->finalize_payment( $order, null );
-				$order->update_status( 'completed', __( 'Order automatically captured after payment.', 'swedbank-pay-woocommerce-checkout' ) );
-				$order->save();
+			$this->api->finalize_payment( $order, null );
+			$order->update_status( 'completed', __( 'Order automatically captured after payment.', 'swedbank-pay-woocommerce-checkout' ) );
+			$order->save();
 
-			}
 		} else {
 			$response = $gateway->api->request( 'GET', "$payment_order_id/paid" );
 			if ( ! is_wp_error( $response ) ) {
