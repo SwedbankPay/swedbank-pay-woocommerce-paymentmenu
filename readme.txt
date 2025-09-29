@@ -6,7 +6,7 @@ Tested up to: 6.8.2
 Requires PHP: 7.4
 WC requires at least: 5.5.1
 WC tested up to: 10.1.2
-Stable tag: 4.0.1
+Stable tag: 4.1.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -87,13 +87,18 @@ https://developer.swedbankpay.com/resources/test-data
 You are now done with configuring our plugin.
 
 = Minimum Requirements =
-* PHP 7.0 or greater is recommended
+* PHP 7.4 or greater is recommended
 * WooCommerce 5 or greater is recommended
 == Upgrade Notice ==
 = 1.2.0 =
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2025.09.30    - version 4.1.0 =
+* Feature       - Added support for WooCommerce Subscriptions.
+* Tweak         - The order status is now determined directly by WooCommerce. Previously, an authorized order was incorrectly set to "on-hold".
+* Tweak         - A captured order will now be set to "completed" instead of the previous "processing" status.
+
 = 2025.09.02    - version 4.0.1 =
 * Fix           - Update files included in the release.
 
