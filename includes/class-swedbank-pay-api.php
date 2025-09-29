@@ -315,6 +315,8 @@ class Swedbank_Pay_Api {
 
 		// Check if have captured transactions
 		foreach ( $transactionsList as $transaction ) {
+			// TYPE_SALE is a so-called "1-phase" transaction, which means that the amount is captured immediately after the authorization.
+			// Attempting to still capture these will result in an error from the API.
 			if ( in_array( $transaction['type'], array( self::TYPE_CAPTURE, self::TYPE_SALE ) ) ) {
 				// @todo Calculate captured amount
 				return true;
@@ -456,31 +458,26 @@ class Swedbank_Pay_Api {
 				$order->add_order_note( __( "Payment has been verified. Transaction: {$transaction_id}", 'swedbank-pay-woocommerce-payment-menu' ) );
 				break;
 			case self::TYPE_AUTHORIZATION:
-				$message = sprintf( 'Payment has been authorized. Transaction: %s', $transaction_id );
+				// translators: 1: transaction ID.
+				$message = sprintf( __( 'Payment has been authorized. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ), $transaction_id );
 
-				// Don't change the order status if it was captured before.
-				if ( $order->has_status( array( 'processing', 'completed', 'active' ) ) ) {
+				if ( empty( $order->get_date_paid() ) ) {
+					$order->payment_complete( $transaction_id );
 					$order->add_order_note( $message );
-				} else {
-					$this->update_order_status(
-						$order,
-						'on-hold',
-						$transaction_id,
-						sprintf( 'Payment has been authorized. Transaction: %s', $transaction_id )
-					);
 				}
 
 				break;
-			case self::TYPE_CAPTURE:
 			case self::TYPE_SALE:
+			case self::TYPE_CAPTURE:
 				$is_full_capture = false;
 
 				// Check if the payment was captured fully
-				// `remainingCaptureAmount` is missing if the payment was captured fully
+				// `remainingCaptureAmount` is missing if the payment was captured fully.
 				if ( ! isset( $payment_order['remainingCaptureAmount'] ) ) {
 					Swedbank_Pay()->logger()->debug(
+						// translators: 1: payment order ID, 2: transaction ID, 3: transaction amount, 4: order amount.
 						sprintf(
-							'Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingCaptureAmount is missing. Full action?', //phpcs:ignore
+							'Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingCaptureAmount is missing. Full action?',
 							$payment_order_id,
 							$transaction_id,
 							$transaction['amount'] / 100,
@@ -491,11 +488,11 @@ class Swedbank_Pay_Api {
 					$is_full_capture = true;
 				}
 
-				// Update order status
+				// Update order status.
 				if ( $is_full_capture ) {
 					$this->update_order_status(
 						$order,
-						'processing',
+						'completed',
 						$transaction_id,
 						sprintf(
 							'Payment has been captured. Transaction: %s. Amount: %s',
@@ -508,7 +505,8 @@ class Swedbank_Pay_Api {
 
 					$order->add_order_note(
 						sprintf(
-							'Payment has been partially captured: Transaction: %s. Amount: %s. Remaining amount: %s', //phpcs:ignore
+							// translators: 1: transaction ID, 2: transaction amount, 3: remaining amount.
+							'Payment has been partially captured: Transaction: %s. Amount: %s. Remaining amount: %s',
 							$transaction_id,
 							$transaction['amount'] / 100,
 							$remaining_amount
@@ -636,7 +634,7 @@ class Swedbank_Pay_Api {
 		switch ( $status ) {
 			case 'checkout-draft':
 			case 'pending':
-				// Set pending
+				// Set pending.
 				if ( ! $order->has_status( 'pending' ) ) {
 					$order->update_status( 'pending', $message );
 				} elseif ( $message ) {
@@ -645,10 +643,8 @@ class Swedbank_Pay_Api {
 
 				break;
 			case 'on-hold':
-				// Set on-hold
+				// Set on-hold.
 				if ( ! $order->has_status( 'on-hold' ) ) {
-					// Reduce stock
-					wc_maybe_reduce_stock_levels( $order_id );
 					$order->update_status( 'on-hold', $message );
 				} elseif ( $message ) {
 					$order->add_order_note( $message );
@@ -659,7 +655,7 @@ class Swedbank_Pay_Api {
 				break;
 			case 'processing':
 			case 'completed':
-				if ( ! $order->is_paid() ) {
+				if ( empty( $order->get_date_paid() ) ) {
 					$order->payment_complete( $transaction_id );
 					if ( $message ) {
 						$order->add_order_note( $message );
@@ -680,7 +676,7 @@ class Swedbank_Pay_Api {
 
 				break;
 			case 'cancelled':
-				// Set cancelled
+				// Set cancelled.
 				if ( ! $order->has_status( 'cancelled' ) ) {
 					$order->update_status( 'cancelled', $message );
 				} elseif ( $message ) {
@@ -708,6 +704,8 @@ class Swedbank_Pay_Api {
 			default:
 				$order->update_status( $status, $message );
 		}
+
+		$order->save();
 	}
 
 	/**
@@ -821,7 +819,6 @@ class Swedbank_Pay_Api {
 
 			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
-			// FIXME: This is always returning null. Recreate: enable automatic capture, place an order, and pay with card. On redirect to store, fatal error due to $transaction being overwritten with the null value from $result.
 			$result = $response_service->getResponseResource()->__toArray();
 			if ( null === $result ) {
 				throw new \Exception( 'capture', 'Capture failed. No response from the API.' );
