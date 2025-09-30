@@ -820,9 +820,6 @@ class Swedbank_Pay_Api {
 			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseResource()->__toArray();
-			if ( null === $result ) {
-				throw new \Exception( 'capture', 'Capture failed. No response from the API.' );
-			}
 
 			// Save transaction.
 			$transaction = $result['capture']['transaction'];
