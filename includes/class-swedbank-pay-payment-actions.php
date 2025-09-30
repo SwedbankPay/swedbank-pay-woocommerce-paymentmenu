@@ -399,7 +399,7 @@ class Swedbank_Pay_Payment_Actions {
 			), //phpcs:ignore
 				$transaction_id,
 				$result['state'],
-				$reason
+				empty( $reason ) ? '-' : $reason
 			)
 		);
 
