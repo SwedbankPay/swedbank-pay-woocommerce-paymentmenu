@@ -1,3 +1,11 @@
+Version 4.1.1
+* This version include no changes, only modifications to the changelog.
+
+Version 4.1.0
+* Added support for WooCommerce Subscriptions.
+* The order status is now determined directly by WooCommerce. Previously, an authorized order was set to "on-hold".
+* A captured order will now be set to "completed" instead of the previous "processing" status.
+
 Version 4.0.1
 * Fix Update files included in the release.
 
