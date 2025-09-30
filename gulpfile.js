@@ -1,11 +1,11 @@
 'use strict';
 
-let gulp       = require( 'gulp' ),
-	rename     = require( 'gulp-rename' ),
-	sass       = require( 'gulp-sass' )( require( 'node-sass' ) ),
+let gulp        = require( 'gulp' ),
+	rename      = require( 'gulp-rename' ),
+	sass        = require( 'gulp-sass' )( require( 'node-sass' ) ),
 	sourcemaps = require( 'gulp-sourcemaps' ),
-	cssmin     = require( 'gulp-clean-css' ),
-	uglify     = require( 'gulp-uglify-es' ).default;
+	cssmin      = require( 'gulp-clean-css' ),
+	uglify      = require( 'gulp-uglify-es' ).default;
 
 gulp.task(
 	'css:build',
@@ -57,4 +57,11 @@ gulp.task(
 	function () {
 		gulp.watch( './assets/js/*.js', gulp.parallel( 'js:build' ) );
 	}
+);
+
+gulp.task(
+	'default',
+	gulp.series(
+		gulp.parallel( 'css:build', 'js:build' )
+	)
 );

@@ -28,6 +28,8 @@ class Swedbank_Pay_Scheduler {
 
 
 	/**
+	 * Singleton instance of the class.
+	 *
 	 * @var Swedbank_Pay_Scheduler
 	 */
 	private static $instance = null;
@@ -51,7 +53,7 @@ class Swedbank_Pay_Scheduler {
 	public function __construct() {
 		$this->logger = \wc_get_logger();
 
-		add_action( 'swedbank_pay_scheduler_run', array( $this, 'run' ), 10, 2 );
+		add_action( self::ACTION_ID, array( $this, 'run' ), 10, 2 );
 	}
 
 	/**
@@ -139,6 +141,8 @@ class Swedbank_Pay_Scheduler {
 			$this->log( "[ERROR]: {$result->get_error_message()}" );
 			return false;
 		}
+
+		do_action( 'swedbank_pay_scheduler_run_after', $order, $gateway, $webhook_data );
 
 		return false;
 	}

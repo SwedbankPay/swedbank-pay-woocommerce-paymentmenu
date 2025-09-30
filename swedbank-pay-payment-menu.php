@@ -7,7 +7,7 @@
  * Author URI: https://profiles.wordpress.org/swedbankpay/
  * License: Apache License 2.0
  * License URI: http://www.apache.org/licenses/LICENSE-2.0
- * Version: 4.0.1
+ * Version: 4.1.0
  * Text Domain: swedbank-pay-woocommerce-checkout
  * Domain Path: /languages
  *
@@ -24,7 +24,7 @@ use KrokedilSwedbankPayDeps\Krokedil\Support\SystemReport;
 
 
 defined( 'ABSPATH' ) || exit;
-define( 'SWEDBANK_PAY_VERSION', '4.0.1' );
+define( 'SWEDBANK_PAY_VERSION', '4.1.0' );
 define( 'SWEDBANK_PAY_MAIN_FILE', __FILE__ );
 define( 'SWEDBANK_PAY_PLUGIN_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
 define( 'SWEDBANK_PAY_PLUGIN_URL', untrailingslashit( plugin_dir_url( __FILE__ ) ) );
@@ -161,7 +161,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @return void
 	 */
 	public function init() {
-		if ( ! self::init_composer() ) {
+		if ( ! $this->composer_initialized ) {
 			return;
 		}
 
@@ -215,52 +215,6 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 			'swedbank-pay-woocommerce-checkout',
 			false,
 			SWEDBANK_PAY_PLUGIN_PATH . '/languages'
-		);
-	}
-
-
-	/**
-	 * Try to load the autoloader from Composer.
-	 *
-	 * @return bool Whether the autoloader was successfully loaded.
-	 */
-	public function init_composer() {
-		$autoloader              = __DIR__ . '/vendor/autoload.php';
-		$autoloader_dependencies = __DIR__ . '/dependencies/scoper-autoload.php';
-
-		// Check if the autoloaders was read.
-		$autoloader_result              = is_readable( $autoloader ) && require $autoloader;
-		$autoloader_dependencies_result = is_readable( $autoloader_dependencies ) && require $autoloader_dependencies;
-		if ( ! $autoloader_result || ! $autoloader_dependencies_result ) {
-			self::missing_autoloader();
-			return false;
-		}
-
-		return true;
-	}
-
-	/**
-	 * Print error message if the composer autoloader is missing.
-	 *
-	 * @return void
-	 */
-	protected static function missing_autoloader() {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-	        error_log( // phpcs:ignore
-				esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-woocommerce-checkout' )
-			);
-		}
-		add_action(
-			'admin_notices',
-			function () {
-				?>
-			<div class="notice notice-error">
-				<p>
-					<?php echo esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-woocommerce-checkout' ); ?>
-				</p>
-			</div>
-				<?php
-			}
 		);
 	}
 

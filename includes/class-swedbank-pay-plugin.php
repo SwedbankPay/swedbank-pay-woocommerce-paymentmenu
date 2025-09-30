@@ -40,20 +40,27 @@ class Swedbank_Pay_Plugin {
 	public static $background_process;
 
 	/**
+	 * Whether the composer autoloader has been initialized.
+	 *
+	 * @var bool
+	 */
+	protected $composer_initialized = false;
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
-		// Check if the checkout plugin is active
+		// Check if the checkout plugin is active.
 		if ( in_array( 'swedbank-pay-checkout/swedbank-pay-woocommerce-checkout.php', get_option( 'active_plugins' ) ) ) { //phpcs:ignore
 			add_action( 'admin_notices', __CLASS__ . '::check_backward_compatibility', 40 );
 
 			return;
 		}
 
-		// Includes
+		// Includes.
 		$this->includes();
 
-		// Actions
+		// Actions.
 		add_filter(
 			'plugin_action_links_' . constant( __NAMESPACE__ . '\PLUGIN_PATH' ),
 			__CLASS__ . '::plugin_action_links'
@@ -61,17 +68,17 @@ class Swedbank_Pay_Plugin {
 		add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
 		add_action( 'woocommerce_init', array( $this, 'woocommerce_init' ) );
 
-		// Filters
+		// Filters.
 		add_filter( 'swedbank_pay_generate_uuid', array( $this, 'generate_uuid' ), 10, 1 );
 		add_filter( 'swedbank_pay_order_billing_phone', __CLASS__ . '::billing_phone', 10, 2 );
 
-		// Process swedbank queue
+		// Process swedbank queue.
 		if ( ! is_multisite() ) {
 			add_action( 'customize_save_after', array( $this, 'maybe_process_queue' ) );
 			add_action( 'after_switch_theme', array( $this, 'maybe_process_queue' ) );
 		}
 
-		// Add admin menu
+		// Add admin menu.
 		add_action( 'admin_menu', array( $this, 'admin_menu' ), 99 );
 
 		add_action( 'init', __CLASS__ . '::may_add_notice' );
@@ -93,8 +100,8 @@ class Swedbank_Pay_Plugin {
 	 * @SuppressWarnings(PHPMD.UnusedLocalVariable)
 	 */
 	public function includes() {
-		$vendors_dir = __DIR__ . '/../vendor';
-		require_once $vendors_dir . '/autoload.php';
+		$this->init_composer();
+
 		require_once __DIR__ . '/functions.php';
 		require_once __DIR__ . '/interface-swedbank-pay-order-item.php';
 		require_once __DIR__ . '/class-swedbank-pay-transactions.php';
@@ -105,10 +112,58 @@ class Swedbank_Pay_Plugin {
 		require_once __DIR__ . '/class-swedbank-pay-thankyou.php';
 		require_once __DIR__ . '/class-swedbank-pay-intl-tel.php';
 		require_once __DIR__ . '/class-swedbank-pay-scheduler.php';
+		require_once __DIR__ . '/class-swedbank-pay-subscription.php';
 
 		if ( class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
 			require_once __DIR__ . '/class-swedbank-pay-blocks-support.php';
 		}
+	}
+
+	/**
+	 * Try to load the autoloader from Composer.
+	 *
+	 * @return bool Whether the autoloader was successfully loaded.
+	 */
+	protected function init_composer() {
+		$autoloader              = SWEDBANK_PAY_PLUGIN_PATH . '/vendor/autoload.php';
+		$autoloader_dependencies = SWEDBANK_PAY_PLUGIN_PATH . '/dependencies/scoper-autoload.php';
+
+		// Check if the autoloaders was read.
+		$autoloader_result              = is_readable( $autoloader ) && require $autoloader;
+		$autoloader_dependencies_result = is_readable( $autoloader_dependencies ) && require $autoloader_dependencies;
+		if ( ! $autoloader_result || ! $autoloader_dependencies_result ) {
+			self::missing_autoloader();
+			$this->composer_initialized = false;
+		} else {
+			$this->composer_initialized = true;
+		}
+
+		return $this->composer_initialized;
+	}
+
+	/**
+	 * Print error message if the composer autoloader is missing.
+	 *
+	 * @return void
+	 */
+	protected static function missing_autoloader() {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+	        error_log( // phpcs:ignore
+				esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-woocommerce-checkout' )
+			);
+		}
+		add_action(
+			'admin_notices',
+			function () {
+				?>
+			<div class="notice notice-error">
+				<p>
+					<?php echo esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-woocommerce-checkout' ); ?>
+				</p>
+			</div>
+				<?php
+			}
+		);
 	}
 
 	/**
