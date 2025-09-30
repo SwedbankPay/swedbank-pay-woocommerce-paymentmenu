@@ -378,7 +378,9 @@ class Swedbank_Pay_Payment_Actions {
 			0
 		);
 
-		$result = $this->gateway->api->refund_checkout( $order, $items );
+		$refund_order = $order->get_refunds();
+		$refund_order = reset( $refund_order );
+		$result       = $this->gateway->api->refund_checkout( $refund_order );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$order->add_order_note(
 				'Refund has been failed. Error: ' . $result->get_error_message()

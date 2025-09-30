@@ -917,14 +917,14 @@ class Swedbank_Pay_Api {
 	public function refund_amount( WC_Order $order, $amount ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
-			return new \WP_Error( 0, 'Unable to get the payment order ID' );
+			return new WP_Error( 0, 'Unable to get the payment order ID' );
 		}
 
 		$helper           = new Order( $order );
 		$transaction_data = $helper->get_transaction_data()
 			->setAmount( round( $amount * 100 ) )
 			->setVatAmount( 0 )
-			->setDescription( sprintf( 'Refund for Order #%s. Amount: %s', $order->get_order_number(), $amount ) );
+			->setDescription( sprintf( 'Refund Order #%s.', $order->get_order_number(), $amount ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
@@ -969,8 +969,7 @@ class Swedbank_Pay_Api {
 	/**
 	 * Refund Checkout.
 	 *
-	 * @param WC_Order $order
-	 * @param array    $items
+	 * @param \WC_Order_Refund $order
 	 *
 	 * @return \WP_Error|array
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
@@ -979,12 +978,13 @@ class Swedbank_Pay_Api {
 	 * @SuppressWarnings(PHPMD.MissingImport)
 	 * @SuppressWarnings(PHPMD.ElseExpression)
 	 */
-	public function refund_checkout( WC_Order $order, array $items = array() ) {
+	public function refund_checkout( \WC_Order_Refund $refund_order ) {
+		$order            = wc_get_order( $refund_order->get_parent_id() );
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new WP_Error( 0, 'Unable to get the payment order ID' );
 		}
-		$helper           = new Order( $order, $items );
+		$helper           = new Order( $refund_order );
 		$transaction_data = $helper->get_transaction_data();
 		$amount           = $transaction_data->getAmount();
 		$transaction_data = $transaction_data
@@ -1004,6 +1004,7 @@ class Swedbank_Pay_Api {
 			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseData();
+			$result = $response_service->getResponseResource()->__toArray();
 
 			// Save transaction.
 			$transaction = $result['reversal']['transaction'];

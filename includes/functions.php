@@ -114,11 +114,11 @@ function swedbank_pay_get_payment_method( WC_Order $order ) {
 /**
  * Get Order Lines.
  *
- * @param WC_Order $order
+ * @param WC_Order|WC_Order_Refund $order
  *
  * @return array
  */
-function swedbank_pay_get_order_lines( WC_Order $order ) {
+function swedbank_pay_get_order_lines( WC_Order|WC_Order_Refund $order ) {
 	$items = array();
 	foreach ( $order->get_items() as $order_item ) {
 		/** @var \WC_Order_Item_Product $order_item */
