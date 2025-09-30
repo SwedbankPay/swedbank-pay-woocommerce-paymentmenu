@@ -6,7 +6,7 @@ Tested up to: 6.8.2
 Requires PHP: 7.4
 WC requires at least: 5.5.1
 WC tested up to: 10.1.2
-Stable tag: 4.1.0
+Stable tag: 4.1.1
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -94,6 +94,9 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2025.09.30    - version 4.1.1 =
+* Tweak         - This version include no changes, only modifications to the changelog.
+
 = 2025.09.30    - version 4.1.0 =
 * Feature       - Added support for WooCommerce Subscriptions.
 * Tweak         - The order status is now determined directly by WooCommerce. Previously, an authorized order was set to "on-hold".
