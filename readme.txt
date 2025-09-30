@@ -96,7 +96,7 @@ Please update to version 1.2.0.
 == Changelog ==
 = 2025.09.30    - version 4.1.0 =
 * Feature       - Added support for WooCommerce Subscriptions.
-* Tweak         - The order status is now determined directly by WooCommerce. Previously, an authorized order was incorrectly set to "on-hold".
+* Tweak         - The order status is now determined directly by WooCommerce. Previously, an authorized order was set to "on-hold".
 * Tweak         - A captured order will now be set to "completed" instead of the previous "processing" status.
 
 = 2025.09.02    - version 4.0.1 =
