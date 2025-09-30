@@ -929,19 +929,21 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = ( new TransactionReversalV3( $transaction ) )
+		$request_service = ( new TransactionReversalV3( $transaction ) )
 			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
-			$response_service = $requestService->send();
+			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseData();
+			// FIXME: Remove this.
+			$result = $response_service->getResponseResource()->__toArray();
 
-			// Save transaction
+			// Save transaction.
 			$transaction = $result['reversal']['transaction'];
 
 			$gateway = swedbank_pay_get_payment_method( $order );
@@ -951,7 +953,7 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
 
 			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
@@ -959,7 +961,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'refund',
-				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
+				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
