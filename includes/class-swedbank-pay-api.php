@@ -846,14 +846,23 @@ class Swedbank_Pay_Api {
 		}
 	}
 
+	/**
+	 * Cancel the Swedbank payment.
+	 *
+	 * @param \WC_Order $order The order object.
+	 * @return array|WP_Error
+	 */
 	public function cancel_checkout( WC_Order $order ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
 		}
 
-		$transaction_data = ( new TransactionData() )
-			->setDescription( sprintf( 'Cancellation for Order #%s', $order->get_order_number() ) )
+		$helper = new Order( $order );
+
+		$transaction_data =
+		( $helper->get_transaction_data() )
+			->setDescription( sprintf( 'Order #%s', $order->get_order_number() ) )
 			->setPayeeReference(
 				apply_filters(
 					'swedbank_pay_payee_reference',
@@ -864,19 +873,19 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = ( new TransactionCancelV3( $transaction ) )
+		$request_service = ( new TransactionCancelV3( $transaction ) )
 			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
-			$response_service = $requestService->send();
+			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
-			$result = $response_service->getResponseData();
+			$result = $response_service->getResponseResource()->__toArray();
 
-			// Save transaction
+			// Save transaction.
 			$transaction = $result['cancellation']['transaction'];
 
 			$gateway = swedbank_pay_get_payment_method( $order );
@@ -886,7 +895,7 @@ class Swedbank_Pay_Api {
 
 			return $result;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
 
 			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
@@ -894,7 +903,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'cancel',
-				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
+				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
