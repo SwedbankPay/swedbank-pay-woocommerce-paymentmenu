@@ -924,7 +924,7 @@ class Swedbank_Pay_Api {
 		$transaction_data = $helper->get_transaction_data()
 			->setAmount( round( $amount * 100 ) )
 			->setVatAmount( 0 )
-			->setDescription( sprintf( 'Refund Order #%s.', $order->get_order_number(), $amount ) );
+			->setDescription( sprintf( 'Refund Order #%s.', $order->get_order_number() ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
@@ -988,7 +988,7 @@ class Swedbank_Pay_Api {
 		$transaction_data = $helper->get_transaction_data();
 		$amount           = $transaction_data->getAmount();
 		$transaction_data = $transaction_data
-			->setDescription( sprintf( 'Refund Order #%s', $order->get_order_number(), $amount / 100 ) );
+			->setDescription( sprintf( 'Refund Order #%s', $order->get_order_number() ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
