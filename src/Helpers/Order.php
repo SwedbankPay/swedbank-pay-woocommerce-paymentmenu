@@ -65,7 +65,7 @@ class Order {
 	 * @param array|null                 $items Optional. If provided, these items will be used for generating the OrderItemsCollection instead of using the WC order items.
 	 *                                           Set to `null` (or empty) to retrieve from the WC order instead.
 	 */
-	public function __construct( \WC_Order|\WC_Order_Refund $order, ?array $items = null ) {
+	public function __construct( $order, ?array $items = null ) {
 		$this->order           = $order;
 		$this->formatted_items = $items;
 
