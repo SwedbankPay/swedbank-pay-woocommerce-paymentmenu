@@ -664,7 +664,7 @@ class Swedbank_Pay_Api {
 					$order->update_status(
 						apply_filters(
 							'woocommerce_payment_complete_order_status',
-							$order->needs_processing() ? 'processing' : 'completed',
+							$status,
 							$order->get_id(),
 							$order
 						),
