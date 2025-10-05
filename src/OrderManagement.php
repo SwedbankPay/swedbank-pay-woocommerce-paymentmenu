@@ -59,10 +59,11 @@ class OrderManagement {
 		if ( is_wp_error( $result ) ) {
 			throw new \Exception( esc_html( $result->get_error_message() ) );
 		}
+
 		$captured_amount = wc_price( $result['amount'] / 100, array( 'currency' => $order->get_currency() ) );
 
-		// translators: 1: the captured amount + currency symbol.
-		$order->add_order_note( sprintf( __( 'Payment captured successfully. Captured amount %s.', 'swedbank-pay-woocommerce-checkout' ), $captured_amount ) );
+		// Translators: %1$s is the transaction number, %2$s is the captured amount.
+		$order->add_order_note( sprintf( __( 'Payment has been captured. Transaction: %1$s. Amount: %2$s.', 'swedbank-pay-woocommerce-checkout' ), $result['number'], $captured_amount ) );
 	}
 
 	/**
