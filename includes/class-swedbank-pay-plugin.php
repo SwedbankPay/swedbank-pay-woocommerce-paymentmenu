@@ -9,6 +9,7 @@ use Automattic\Jetpack\Constants;
 use Exception;
 use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
 use KrokedilSwedbankPayDeps\Ramsey\Uuid\Uuid;
+use Krokedil\Swedbank\Pay\OrderManagement;
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
@@ -35,6 +36,13 @@ class Swedbank_Pay_Plugin {
 	const ADMIN_UPGRADE_PAGE_SLUG = 'swedbank-pay-menu-upgrade';
 
 	/**
+	 * Order Management.
+	 *
+	 * @var OrderManagement
+	 */
+	private $om;
+
+	/**
 	 * @var Swedbank_Pay_Background_Queue
 	 */
 	public static $background_process;
@@ -45,6 +53,10 @@ class Swedbank_Pay_Plugin {
 	 * @var bool
 	 */
 	protected $composer_initialized = false;
+
+	public function om() {
+		return $this->om;
+	}
 
 	/**
 	 * Constructor
@@ -117,6 +129,8 @@ class Swedbank_Pay_Plugin {
 		if ( class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
 			require_once __DIR__ . '/class-swedbank-pay-blocks-support.php';
 		}
+
+		$this->om = OrderManagement::get_instance();
 	}
 
 	/**
