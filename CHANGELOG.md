@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - CHANGELOG.md for tracking changes.
+- The payment can now be captured by setting the order status to "Completed".
+- The capture note has been updated to include the currency.
  
 ### Changed
 - The "Capture Payment" button in the metabox will now set the order status to "Completed". Previously, it was set to "Processing".
