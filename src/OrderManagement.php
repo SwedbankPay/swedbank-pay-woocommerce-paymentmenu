@@ -8,6 +8,7 @@
 namespace Krokedil\Swedbank\Pay;
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 
 /**
  * Class OrderManagement
@@ -58,6 +59,8 @@ class OrderManagement {
 		$result = $gateway->api->capture_checkout( $order );
 		if ( is_wp_error( $result ) ) {
 			throw new \Exception( esc_html( $result->get_error_message() ) );
+		} else {
+			$this->save_captured_items( $order );
 		}
 
 		$captured_amount = wc_price( $result['amount'] / 100, array( 'currency' => $order->get_currency() ) );
@@ -106,5 +109,53 @@ class OrderManagement {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Saves captured items to order meta.
+	 *
+	 * @param \WC_Order $order The order to save captured items for.
+	 */
+	private function save_captured_items( $order ) {
+		// At time of writing (v4.1.1), the plugin is saving the captured items to order meta '_payex_captured_items'.
+		// This is used in swedbank_pay_get_available_line_items_for_refund() to determine what can be refunded.
+		// This is not desired behavior. Instead, we should retrieve the refund items directly from the WC_Order_Refund object when processing a refund.
+		// Until then, we have to keep this functionality to avoid breaking existing setups.
+
+		$order_lines   = swedbank_pay_get_order_lines( $order );
+		$current_items = $order->get_meta( '_payex_captured_items' );
+		$current_items = empty( $current_items ) ? array() : (array) $current_items;
+
+		foreach ( $order_lines as $captured_line ) {
+			$is_found = false;
+			foreach ( $current_items as &$current_item ) {
+				if ( $current_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] === $captured_line[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ) {
+					$current_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] += $captured_line[ Swedbank_Pay_Order_Item::FIELD_QTY ];
+					$is_found = true;
+
+					break;
+				}
+			}
+
+			if ( ! $is_found ) {
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_NAME ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_TYPE ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_CLASS ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_UNITPRICE ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_QTY_UNIT ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ] );
+
+				$current_items[] = $captured_line;
+			}
+		}
+
+		$order->update_meta_data( '_payex_captured_items', $current_items );
+		$order->save_meta_data();
+		$order_lines = swedbank_pay_get_order_lines( $order );
 	}
 }
