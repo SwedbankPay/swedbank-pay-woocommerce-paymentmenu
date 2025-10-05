@@ -228,7 +228,10 @@ class Swedbank_Pay_Admin {
 			$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 			wp_register_script(
 				'swedbank-pay-admin-js',
-				SWEDBANK_PAY_PLUGIN_PATH . '../assets/js/admin' . $suffix . '.js'
+				plugin_dir_url( __FILE__ ) . '../assets/js/admin' . $suffix . '.js',
+				array( 'jquery' ),
+				SWEDBANK_PAY_VERSION,
+				true
 			);
 
 			// Localize the script.
