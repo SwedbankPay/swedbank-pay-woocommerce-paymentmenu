@@ -10,7 +10,6 @@ function customize_php_scoper_config( array $config ): array {
 	$config['exclude-classes'][] = 'WC_Product';
 	$config['exclude-classes'][] = 'WP_Error';
 	$config['exclude-classes'][] = 'WC_ABSPATH';
-	$config['exclude-classes'][] = 'SWEDBANK_PAY_IP_CHECK';
 	$config['exclude-classes'][] = 'Swedbank_Pay_Plugin';
 
 	$functions = array(
