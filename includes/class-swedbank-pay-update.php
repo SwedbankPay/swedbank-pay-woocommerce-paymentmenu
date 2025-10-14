@@ -25,7 +25,7 @@ class Swedbank_Pay_Update {
 		$current_version = get_option( Swedbank_Pay_Plugin::DB_VERSION_SLUG, '1.0.0' );
 		foreach ( self::$db_updates as $version => $updater ) {
 			if ( version_compare( $current_version, $version, '<' ) ) {
-				include dirname( __FILE__ ) . '/../' . $updater;
+				include __DIR__ . '/../' . $updater;
 				self::update_db_version( $version );
 			}
 		}
