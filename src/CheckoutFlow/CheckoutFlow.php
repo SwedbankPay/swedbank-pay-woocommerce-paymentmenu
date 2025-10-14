@@ -41,7 +41,7 @@ abstract class CheckoutFlow {
 	 * @param int $order_id The WooCommerce order id.
 	 *
 	 * @throws \Exception If there is an error during the payment processing.
-	 * @return array{redirect: array|bool|string, result: string}
+	 * @return array{redirect?: array|bool|string, result: string, messages?: string}
 	 */
 	public static function process_payment( $order_id ) {
 		try {
@@ -125,7 +125,7 @@ abstract class CheckoutFlow {
 	 *
 	 * @param string|null $error_message The error message to return. If null, a default message will be used.
 	 *
-	 * @return array
+	 * @return array{result: string, messages: string}
 	 */
 	public static function error_response( $error_message = null ) {
 		return array(
