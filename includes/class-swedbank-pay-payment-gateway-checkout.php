@@ -1,5 +1,7 @@
 <?php
 
+use Krokedil\Swedbank\Pay\CheckoutFlow\InlineEmbedded;
+
 defined( 'ABSPATH' ) || exit;
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
@@ -464,6 +466,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return;
 		}
 
+		// Clear any potential embedded session data.
+		if ( WC()->session !== null ) {
+			InlineEmbedded::unset_embedded_session_data();
+		}
+
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( $payment_order_id ) {
 			$order->update_meta_data( '_payex_finalized', 1 );
@@ -546,17 +553,24 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		try {
-			// Verify the order key.
-			$order_id  = filter_input( INPUT_GET, 'order_id', FILTER_SANITIZE_NUMBER_INT );
-			$order_key = filter_input( INPUT_GET, 'key', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
+			$type = filter_input( INPUT_GET, 'type', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
 
-			$order = wc_get_order( $order_id );
-			if ( ! $order ) {
-				throw new Exception( 'Unable to load an order.' );
-			}
+			if( 'inline_embedded' === $type ) {
+				$order = $this->get_inline_embedded_callback_order();
+			} else {
+				// Verify the order key.
+				$order_id  = filter_input( INPUT_GET, 'order_id', FILTER_SANITIZE_NUMBER_INT );
+				$order_key = filter_input( INPUT_GET, 'key', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
 
-			if ( ! hash_equals( $order->get_order_key(), $order_key ) ) {
-				throw new Exception( 'A provided order key has been invalid.' );
+				$order = wc_get_order( $order_id );
+
+				if ( ! $order ) {
+					throw new Exception( 'Unable to load an order.' );
+				}
+
+				if ( ! hash_equals( $order->get_order_key(), $order_key ) ) {
+					throw new Exception( 'A provided order key has been invalid.' );
+				}
 			}
 
 			// Validate fields.
@@ -595,6 +609,44 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 			return;
 		}
+	}
+
+	/**
+	 * Get the order for a inline embedded checkout.
+	 *
+	 * @throws Exception
+	 * @return \WC_Order|bool
+	 */
+	public function get_inline_embedded_callback_order() {
+		// Get the payee reference from the input.
+		$payee_reference = filter_input( INPUT_GET, 'payee_reference', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
+
+		// Search for the order with the payee reference saved.
+		$args  = array(
+			'limit'        => 1,
+			'type'         => 'shop_order',
+			'meta_key'     => '_payex_payee_reference',
+			'meta_value'   => $payee_reference,
+			'meta_compare' => '=',
+			'status'       => array_keys( wc_get_order_statuses() ),
+		);
+		$orders = wc_get_orders( $args );
+		if ( empty( $orders ) || ! is_array( $orders ) ) {
+			throw new Exception( 'Unable to load an order.' );
+		}
+
+		$order = $orders[0] ?? false;
+		if ( ! $order ) {
+			throw new Exception( 'Unable to load an order.' );
+		}
+
+		// Ensure the payee reference matches the order.
+		$order_payee_reference = $order->get_meta( '_payex_payee_reference' );
+		if ( ! hash_equals( $order_payee_reference, $payee_reference ) ) {
+			throw new Exception( 'A provided payee reference has been invalid.' );
+		}
+
+		return $order;
 	}
 
 	/**
@@ -742,5 +794,14 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 */
 	public function is_editable( $is_editable, $order ) {
 		return $order->get_payment_method() === $this->id ? false : $is_editable;
+	}
+
+	/**
+	 * Print payment fields...
+	 *
+	 * @return void
+	 */
+	public function payment_fields() {
+		CheckoutFlow::payment_fields();
 	}
 }
