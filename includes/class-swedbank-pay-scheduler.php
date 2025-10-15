@@ -95,22 +95,20 @@ class Swedbank_Pay_Scheduler {
 			$transaction_number = $data['transaction']['number'];
 			$payment_order_id   = $data['paymentOrder']['id'];
 
-			// Get order by `orderReference`.
-			if ( isset( $data['orderReference'] ) ) {
-				$order = wc_get_order( $data['orderReference'] );
-				if ( ! $order ) {
-					throw new \WP_Exception( "Failed to find order: {$data['orderReference']}" );
-				}
-
-				$this->log( "[SCHEDULER]: Found order #{$order->get_id()} by order reference {$data['orderReference']}." );
+			// Get Order by Payment Order Id.
+			$order = swedbank_pay_get_order( $payment_order_id );
+			if ( ! $order ) {
+				throw new \WP_Exception( "Failed to find order: $payment_order_id" );
 			} else {
-				// Get Order by Payment Order Id.
-				$order = swedbank_pay_get_order( $payment_order_id );
-				if ( ! $order ) {
-					throw new \WP_Exception( "Failed to find order: $payment_order_id" );
-				}
-
 				$this->log( "[SCHEDULER]: Found order {$order->get_id()} by payment Order ID $payment_method_id." );
+				// If the orderReference is provided, validate it matches the order ID.
+				if ( isset( $data['orderReference'] ) ) {
+					$order_reference = intval( $data['orderReference'] );
+
+					if ( empty( $order_reference ) || ( $order->get_id() !== $order_reference ) ) {
+						throw new \WP_Exception( "[SCHEDULER]: Order ID mismatch: received {$order_reference}, expected {$order->get_id()}" );
+					}
+				}
 			}
 
 			$gateway = swedbank_pay_get_payment_method( $order );
