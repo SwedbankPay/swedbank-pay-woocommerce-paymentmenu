@@ -26,13 +26,33 @@ abstract class CheckoutFlow {
 	/**
 	 * Class constructor.
 	 *
-	 * @param \WC_Order $order The WooCommerce order to be processed.
+	 * @param \WC_Order|null $order The WooCommerce order to be processed. Can be null if during checkout.
 	 *
 	 * @return void
 	 */
-	public function __construct( $order ) {
-		$this->gateway = swedbank_pay_get_payment_method( $order );
+	public function __construct( $order = null ) {
+		$this->gateway = empty( $order ) ? SettingsUtility::get_gateway_class() : swedbank_pay_get_payment_method( $order );
 		$this->api     = $this->get_api();
+
+		$this->init();
+	}
+
+	/**
+	 * Initialize any actions or filters needed for the checkout flow. Or other setup tasks needed.
+	 *
+	 * @return void
+	 */
+	protected function init() {
+	}
+
+	/**
+	 * Prints the payment fields for the handler if needed.
+	 *
+	 * @return void
+	 */
+	public static function payment_fields() {
+		$handler = self::get_handler();
+		$handler->payment_fields_content();
 	}
 
 	/**
@@ -72,22 +92,17 @@ abstract class CheckoutFlow {
 	/**
 	 * Get the appropriate checkout flow handler based on the settings or context.
 	 *
-	 * @param \WC_Order $order The WooCommerce order.
+	 * @param \WC_Order|null $order The WooCommerce order. Can be null.
 	 * @return CheckoutFlow
 	 */
-	public static function get_handler( $order ) {
+	public static function get_handler( $order = null ) {
 		$flow_setting   = SettingsUtility::get_setting( 'checkout_flow', 'redirect' );
 		$blocks_enabled = BlocksUtility::is_checkout_block_enabled();
 		$order_pay      = is_wc_endpoint_url( 'order-pay' );
 
-		// If we are on the change_payment or order_pay pages, use the redirect flow no matter the setting.
-		if ( SettingsUtility::is_redirect_flow() || $order_pay ) {
+		// If the redirect flow is enabled, we are on the order pay page, or blocks are enabled, always use the Redirect flow.
+		if ( SettingsUtility::is_redirect_flow() || $order_pay || $blocks_enabled ) {
 			return new Redirect( $order );
-		}
-
-		// If the checkout block is enabled, use the embedded block flow no matter the setting.
-		if ( $blocks_enabled ) {
-			return new InlineEmbeddedBlocks( $order );
 		}
 
 		switch ( $flow_setting ) {
@@ -108,6 +123,15 @@ abstract class CheckoutFlow {
 	 * @return array{redirect: array|bool|string, result: string}
 	 */
 	abstract public function process( $order );
+
+	/**
+	 * Output the payment fields content for the handler.
+	 *
+	 * @return void
+	 */
+	protected function payment_fields_content() {
+		// Default implementation does nothing.
+	}
 
 	/**
 	 * Get the order number from the order, with a fallback to N/A.
