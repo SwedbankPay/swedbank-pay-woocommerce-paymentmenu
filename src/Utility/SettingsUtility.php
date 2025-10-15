@@ -92,6 +92,22 @@ class SettingsUtility {
 	}
 
 	/**
+	 * Get the gateway class.
+	 *
+	 * @return Swedbank_Pay_Payment_Gateway_Checkout|null
+	 */
+	public static function get_gateway_class() {
+		// Get Payment Gateway
+		$gateways = WC()->payment_gateways()->payment_gateways();
+		if ( ! isset( $gateways['payex_checkout'] ) ) {
+			return null;
+		}
+
+		/** @var \WC_Payment_Gateway $gateway */
+		return $gateways['payex_checkout'];
+	}
+
+	/**
 	 * Get the default values for the settings.
 	 *
 	 * @return array
@@ -109,21 +125,5 @@ class SettingsUtility {
 		}
 
 		return $defaults;
-	}
-
-	/**
-	 * Get the gateway class.
-	 *
-	 * @return Swedbank_Pay_Payment_Gateway_Checkout|null
-	 */
-	private static function get_gateway_class() {
-		// Get Payment Gateway
-		$gateways = WC()->payment_gateways()->payment_gateways();
-		if ( ! isset( $gateways['payex_checkout'] ) ) {
-			return null;
-		}
-
-		/** @var \WC_Payment_Gateway $gateway */
-		return $gateways['payex_checkout'];
 	}
 }
