@@ -58,13 +58,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public $debug = 'yes';
 
 	/**
-	 * IP Checking
-	 *
-	 * @var string
-	 */
-	public $ip_check = 'yes';
-
-	/**
 	 * Locale
 	 *
 	 * @var string
@@ -99,13 +92,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @var bool
 	 */
 	public $exclude_order_lines = false;
-
-	/**
-	 * Swedbank Pay ip addresses
-	 *
-	 * @var array
-	 */
-	public $gateway_ip_addresses = array( '91.132.170.1' );
 
 	/**
 	 * @var Swedbank_Pay_Api
@@ -165,7 +151,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->access_token        = $this->settings['access_token'] ?? $this->access_token;
 		$this->payee_id            = $this->settings['payee_id'] ?? $this->payee_id;
 		$this->testmode            = $this->settings['testmode'] ?? $this->testmode;
-		$this->ip_check            = defined( 'SWEDBANK_PAY_IP_CHECK' ) ? SWEDBANK_PAY_IP_CHECK : $this->ip_check;
 		$this->culture             = $this->settings['culture'] ?? $this->culture;
 		$this->logo_url            = $this->settings['logo_url'] ?? $this->logo_url;
 		$this->instant_capture     = $this->settings['instant_capture'] ?? $this->instant_capture;
@@ -590,32 +575,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		$this->api->log(
 			WC_Log_Levels::INFO,
-			sprintf(
-				'Incoming Callback: Initialized %s from %s',
-				wp_kses_post( filter_input( INPUT_SERVER, 'REQUEST_URI', FILTER_SANITIZE_URL ) ),
-				wp_kses_post( filter_input( INPUT_SERVER, 'REMOTE_ADDR', FILTER_VALIDATE_IP ) )
-			)
-		);
-		$this->api->log(
-			WC_Log_Levels::INFO,
 			sprintf( 'Incoming Callback. Post data: %s', wp_json_encode( $raw_body ) )
 		);
-
-		// Check IP address of Incoming Callback.
-		if ( wc_string_to_bool( $this->ip_check ) ) {
-			if ( ! in_array(
-				WC_Geolocation::get_ip_address(),
-				apply_filters( 'swedbank_pay_gateway_ip_addresses', $this->gateway_ip_addresses ),
-				true
-			) ) {
-				$this->api->log(
-					WC_Log_Levels::INFO,
-					sprintf( 'Error: Incoming Callback has been rejected. %s', WC_Geolocation::get_ip_address() )
-				);
-
-				throw new Exception( 'Incoming Callback has been rejected' );
-			}
-		}
 
 		// Decode raw body.
 		$data = json_decode( $raw_body, true );
