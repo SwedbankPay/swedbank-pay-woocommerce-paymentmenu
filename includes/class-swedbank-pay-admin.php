@@ -8,6 +8,7 @@ use WC_Order;
 use WC_Log_Levels;
 use Exception;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
+use Krokedil\Swedbank\Pay\Helpers\HPOS;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -216,26 +217,33 @@ class Swedbank_Pay_Admin {
 	public static function admin_enqueue_scripts( $hook ) {
 		$hook_to_check = swedbank_pay_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'post.php';
 		if ( $hook_to_check === $hook ) {
-			global $post_id;
-			global $theorder;
+			$order_id = HPOS::get_the_ID();
+			$order    = wc_get_order( $order_id );
 
-			// Scripts
+			if ( empty( $order ) || 'payex_checkout' !== $order->get_payment_method() ) {
+				return;
+			}
+
+			// Scripts.
 			$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 			wp_register_script(
 				'swedbank-pay-admin-js',
-				plugin_dir_url( __FILE__ ) . '../assets/js/admin' . $suffix . '.js'
+				plugin_dir_url( __FILE__ ) . '../assets/js/admin' . $suffix . '.js',
+				array( 'jquery' ),
+				SWEDBANK_PAY_VERSION,
+				true
 			);
 
-			// Localize the script
+			// Localize the script.
 			$translation_array = array(
 				'ajax_url'  => admin_url( 'admin-ajax.php' ),
 				'text_wait' => __( 'Please wait...', 'swedbank-pay-woocommerce-checkout' ),
 				'nonce'     => wp_create_nonce( 'swedbank_pay' ),
-				'order_id'  => $theorder ? $theorder->get_id() : (int) $post_id,
+				'order_id'  => $order_id,
 			);
 			wp_localize_script( 'swedbank-pay-admin-js', 'SwedbankPay_Admin', $translation_array );
 
-			// Enqueued script with localized data
+			// Enqueued script with localized data.
 			wp_enqueue_script( 'swedbank-pay-admin-js' );
 		}
 	}

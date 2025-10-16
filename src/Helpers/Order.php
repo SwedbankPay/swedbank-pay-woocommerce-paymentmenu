@@ -65,11 +65,14 @@ class Order {
 	 * @param array|null                 $items Optional. If provided, these items will be used for generating the OrderItemsCollection instead of using the WC order items.
 	 *                                           Set to `null` (or empty) to retrieve from the WC order instead.
 	 */
-	public function __construct( \WC_Order|\WC_Order_Refund $order, ?array $items = null ) {
+	public function __construct( $order, ?array $items = null ) {
 		$this->order           = $order;
 		$this->formatted_items = $items;
 
-		$this->gateway = swedbank_pay_get_payment_method( $this->order );
+		if ( $order instanceof \WC_Order_Refund ) {
+			$order = wc_get_order( $order->get_parent_id() );
+		}
+		$this->gateway = swedbank_pay_get_payment_method( $order );
 
 		$this->user_agent = $order->get_customer_user_agent();
 		if ( empty( $this->user_agent ) ) {
@@ -94,7 +97,18 @@ class Order {
 	 * @return array
 	 */
 	public function get_formatted_items_from_order() {
-		return swedbank_pay_get_order_lines( $this->order );
+		$items           = array();
+		$formatted_items = swedbank_pay_get_order_lines( $this->order );
+		foreach ( $formatted_items as $item ) {
+			// Swedbank does not allow negative values in any numeric field which will always be the case for WC_Order_Refund.
+			$items[] = array_map(
+				fn( $value ) => is_numeric( $value ) ? abs( $value ) : $value,
+				$item
+			);
+
+		}
+
+		return $items;
 	}
 
 	/**

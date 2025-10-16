@@ -1,3 +1,10 @@
+Version 4.2.0
+* Refund processing has been optimized for improved speed and reliability.
+* IP address validation has been removed and replaced with a new mechanism that validates callback data, preventing valid callbacks from being incorrectly rejected.
+* API requests no longer fail when the order line's description is too long. The item name is now used and trimmed if it exceeds the allowed length. 
+* Admin scripts now load only on Swedbank Pay orders, preventing read-only fields on other orders.
+* Fixed a critical error when cancelling or refunding an order.
+
 Version 4.1.1
 * This version include no changes, only modifications to the changelog.
 

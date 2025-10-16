@@ -820,9 +820,6 @@ class Swedbank_Pay_Api {
 			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseResource()->__toArray();
-			if ( null === $result ) {
-				throw new \Exception( 'capture', 'Capture failed. No response from the API.' );
-			}
 
 			// Save transaction.
 			$transaction = $result['capture']['transaction'];
@@ -846,14 +843,23 @@ class Swedbank_Pay_Api {
 		}
 	}
 
+	/**
+	 * Cancel the Swedbank payment.
+	 *
+	 * @param \WC_Order $order The order object.
+	 * @return array|WP_Error
+	 */
 	public function cancel_checkout( WC_Order $order ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
 		}
 
-		$transaction_data = ( new TransactionData() )
-			->setDescription( sprintf( 'Cancellation for Order #%s', $order->get_order_number() ) )
+		$helper = new Order( $order );
+
+		$transaction_data =
+		( $helper->get_transaction_data() )
+			->setDescription( sprintf( 'Cancel Order #%s', $order->get_order_number() ) )
 			->setPayeeReference(
 				apply_filters(
 					'swedbank_pay_payee_reference',
@@ -864,19 +870,19 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = ( new TransactionCancelV3( $transaction ) )
+		$request_service = ( new TransactionCancelV3( $transaction ) )
 			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
-			$response_service = $requestService->send();
+			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
-			$result = $response_service->getResponseData();
+			$result = $response_service->getResponseResource()->__toArray();
 
-			// Save transaction
+			// Save transaction.
 			$transaction = $result['cancellation']['transaction'];
 
 			$gateway = swedbank_pay_get_payment_method( $order );
@@ -886,7 +892,7 @@ class Swedbank_Pay_Api {
 
 			return $result;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
 
 			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
@@ -894,7 +900,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'cancel',
-				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
+				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -911,31 +917,33 @@ class Swedbank_Pay_Api {
 	public function refund_amount( WC_Order $order, $amount ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
-			return new \WP_Error( 0, 'Unable to get the payment order ID' );
+			return new WP_Error( 0, 'Unable to get the payment order ID' );
 		}
 
 		$helper           = new Order( $order );
 		$transaction_data = $helper->get_transaction_data()
 			->setAmount( round( $amount * 100 ) )
 			->setVatAmount( 0 )
-			->setDescription( sprintf( 'Refund for Order #%s. Amount: %s', $order->get_order_number(), $amount ) );
+			->setDescription( sprintf( 'Refund Order #%s.', $order->get_order_number() ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = ( new TransactionReversalV3( $transaction ) )
+		$request_service = ( new TransactionReversalV3( $transaction ) )
 			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
-			$response_service = $requestService->send();
+			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseData();
+			// FIXME: Remove this.
+			$result = $response_service->getResponseResource()->__toArray();
 
-			// Save transaction
+			// Save transaction.
 			$transaction = $result['reversal']['transaction'];
 
 			$gateway = swedbank_pay_get_payment_method( $order );
@@ -945,7 +953,7 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
 
 			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
@@ -953,7 +961,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'refund',
-				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
+				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
@@ -961,8 +969,7 @@ class Swedbank_Pay_Api {
 	/**
 	 * Refund Checkout.
 	 *
-	 * @param WC_Order $order
-	 * @param array    $items
+	 * @param \WC_Order_Refund $order
 	 *
 	 * @return \WP_Error|array
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
@@ -971,33 +978,35 @@ class Swedbank_Pay_Api {
 	 * @SuppressWarnings(PHPMD.MissingImport)
 	 * @SuppressWarnings(PHPMD.ElseExpression)
 	 */
-	public function refund_checkout( WC_Order $order, array $items = array() ) {
+	public function refund_checkout( \WC_Order_Refund $refund_order ) {
+		$order            = wc_get_order( $refund_order->get_parent_id() );
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
-			return new \WP_Error( 0, 'Unable to get the payment order ID' );
+			return new WP_Error( 0, 'Unable to get the payment order ID' );
 		}
-		$helper           = new Order( $order, $items );
+		$helper           = new Order( $refund_order );
 		$transaction_data = $helper->get_transaction_data();
 		$amount           = $transaction_data->getAmount();
 		$transaction_data = $transaction_data
-			->setDescription( sprintf( 'Refund for Order #%s. Amount: %s', $order->get_order_number(), $amount / 100 ) );
+			->setDescription( sprintf( 'Refund Order #%s', $order->get_order_number() ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$requestService = ( new TransactionReversalV3( $transaction ) )
+		$request_service = ( new TransactionReversalV3( $transaction ) )
 			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
-			$response_service = $requestService->send();
+			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
 
 			$result = $response_service->getResponseData();
+			$result = $response_service->getResponseResource()->__toArray();
 
-			// Save transaction
+			// Save transaction.
 			$transaction = $result['reversal']['transaction'];
 
 			$gateway = swedbank_pay_get_payment_method( $order );
@@ -1007,7 +1016,7 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->error( $requestService->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
 
 			Swedbank_Pay()->logger()->error(
 				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
@@ -1015,7 +1024,7 @@ class Swedbank_Pay_Api {
 
 			return new \WP_Error(
 				'refund',
-				$this->format_error_message( $requestService->getClient()->getResponseBody(), $e->getMessage() )
+				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
 	}
