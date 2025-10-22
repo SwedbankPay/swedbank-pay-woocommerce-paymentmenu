@@ -31,7 +31,6 @@ class Swedbank_Pay_Plugin {
 	const SUPPORT_EMAIL           = 'support.ecom@payex.com';
 	const DB_VERSION              = '1.0.0';
 	const DB_VERSION_SLUG         = 'swedbank_pay_menu_version';
-	const ADMIN_SUPPORT_PAGE_SLUG = 'swedbank-pay-menu-support';
 	const ADMIN_UPGRADE_PAGE_SLUG = 'swedbank-pay-menu-upgrade';
 
 	/**
@@ -82,8 +81,6 @@ class Swedbank_Pay_Plugin {
 		add_action( 'admin_menu', array( $this, 'admin_menu' ), 99 );
 
 		add_action( 'init', __CLASS__ . '::may_add_notice' );
-
-		add_action( 'admin_post_' . self::ADMIN_SUPPORT_PAGE_SLUG, __CLASS__ . '::support_submit' );
 
 		add_filter(
 			'woocommerce_order_data_store_cpt_get_orders_query',
@@ -334,39 +331,12 @@ class Swedbank_Pay_Plugin {
 		// Add Upgrade Page
 		global $_registered_pages;
 
-		// Add Support Page
-		$hookname = get_plugin_page_hookname( self::ADMIN_SUPPORT_PAGE_SLUG, '' );
-		if ( ! empty( $hookname ) ) {
-			add_action( $hookname, __CLASS__ . '::support_page' );
-		}
-
-		$_registered_pages[ $hookname ] = true;
-
 		$hookname = get_plugin_page_hookname( self::ADMIN_UPGRADE_PAGE_SLUG, '' );
 		if ( ! empty( $hookname ) ) {
 			add_action( $hookname, __CLASS__ . '::upgrade_page' );
 		}
 
 		$_registered_pages[ $hookname ] = true;
-	}
-
-	/**
-	 * Support Page
-	 *
-	 * @SuppressWarnings(PHPMD.Superglobals)
-	 */
-	public static function support_page() {
-		wc_get_template(
-			'admin/support.php',
-			array(
-				'form_url' => admin_url( 'admin-post.php' ),
-				'action'   => self::ADMIN_SUPPORT_PAGE_SLUG,
-				'error'    => isset( $_GET['error'] ) ? sanitize_text_field( wp_unslash( $_GET['error'] ) ) : null, // WPCS: input var ok, CSRF ok.
-				'message'  => isset( $_GET['message'] ) ? sanitize_text_field( wp_unslash( $_GET['message'] ) ) : null, // WPCS: input var ok, CSRF ok.
-			),
-			'',
-			__DIR__ . '/../templates/'
-		);
 	}
 
 	/**
