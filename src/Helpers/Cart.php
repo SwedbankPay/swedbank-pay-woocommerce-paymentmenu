@@ -10,6 +10,7 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Paymen
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderUrl;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderPayer;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 
 /**
  * Class Order
@@ -65,9 +66,9 @@ class Cart extends PaymentDataHelper {
 		$items           = array();
 		$formatted_items = swedbank_pay_get_cart_lines();
 		foreach ( $formatted_items as $item ) {
-			// Swedbank does not allow negative values in any numeric field which will always be the case for WC_Order_Refund.
+			// Swedbank does not allow negative values in any numeric field which will always be the case for WC_Order_Refund unless the row is a discount.
 			$items[] = array_map(
-				fn( $value ) => is_numeric( $value ) ? abs( $value ) : $value,
+				fn( $value ) => is_numeric( $value ) ? ( $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] === Swedbank_Pay_Order_Item::TYPE_DISCOUNT ? $value : abs( $value ) ) : $value,
 				$item
 			);
 
@@ -220,8 +221,7 @@ class Cart extends PaymentDataHelper {
 			->setImplementation( 'PaymentsOnly' )
 			->setDisablePaymentMenu( false )
 			->setUrls( $this->get_url_data() )
-			->setPayeeInfo( $this->get_payee_info() )
-			->setMetadata( $this->get_metadata() );
+			->setPayeeInfo( $this->get_payee_info() );
 
 		// The Verify operation does not support amount and vatAmount.
 		if ( ! $verify ) {
