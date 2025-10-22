@@ -626,7 +626,7 @@ function swedbank_pay_get_cart_lines() {
 	}
 
 	// Process cart discounts.
-	$discount_total = WC()->cart->get_total_discount();
+	$discount_total = WC()->cart->get_discount_total();
 	if ( $discount_total > 0 ) {
 		$items[] = swedbank_pay_get_cart_item_discount( $discount_total );
 	}
