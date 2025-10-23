@@ -6,7 +6,7 @@ Tested up to: 6.8.2
 Requires PHP: 7.4
 WC requires at least: 5.5.1
 WC tested up to: 10.1.2
-Stable tag: 4.2.0
+Stable tag: 4.2.1
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -94,6 +94,9 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2025.10.23    - version 4.2.1 =
+* Tweak         - Replaced the internal support form page with a direct link to the external website's support page.
+
 = 2025.10.16    - version 4.2.0 =
 * Tweak         - Refund processing has been optimized for improved speed and reliability.
 * Tweak         - IP address validation has been removed and replaced with a new mechanism that validates callback data, preventing valid callbacks from being incorrectly rejected.
