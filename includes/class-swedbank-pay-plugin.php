@@ -189,7 +189,7 @@ class Swedbank_Pay_Plugin {
 				'Settings',
 				'swedbank-pay-woocommerce-checkout'
 			) . '</a>',
-			'<a href="' . esc_url( 'https://krokedil.com/support?plugin=316450&utm_source=swedbank-pay&utm_medium=docs&utm_campaign=mainpage' ) . '">' . __(
+			'<a href="' . esc_url( 'https://krokedil.com/support/?plugin=316450&utm_source=swedbank-pay&utm_medium=wp-admin' ) . '">' . __(
 				'Support',
 				'swedbank-pay-woocommerce-checkout'
 			) . '</a>',
