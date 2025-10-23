@@ -1,3 +1,6 @@
+Version 4.2.1
+* Replaced the internal support form page with a direct link to the external website's support page.
+
 Version 4.2.0
 * Refund processing has been optimized for improved speed and reliability.
 * IP address validation has been removed and replaced with a new mechanism that validates callback data, preventing valid callbacks from being incorrectly rejected.
