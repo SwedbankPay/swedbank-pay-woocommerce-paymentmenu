@@ -83,7 +83,7 @@ class Swedbank_Thankyou {
 			untrailingslashit( plugins_url( '/', __FILE__ ) ) . '/../assets/js/payment-status' . $suffix . '.js',
 			array(
 				'jquery',
-				'jquery-blockui',
+				'wc-jquery-blockui',
 			),
 			SWEDBANK_PAY_VERSION,
 			true
