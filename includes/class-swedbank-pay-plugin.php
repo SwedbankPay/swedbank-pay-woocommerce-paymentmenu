@@ -40,7 +40,7 @@ class Swedbank_Pay_Plugin {
 	 *
 	 * @var OrderManagement
 	 */
-	private $om;
+	private $order_management;
 
 	/**
 	 * @var Swedbank_Pay_Background_Queue
@@ -54,8 +54,13 @@ class Swedbank_Pay_Plugin {
 	 */
 	protected $composer_initialized = false;
 
-	public function om() {
-		return $this->om;
+	/**
+	 * Handle for the order management instance.
+	 *
+	 * @return OrderManagement
+	 */
+	public function order_management() {
+		return $this->order_management;
 	}
 
 	/**
@@ -130,7 +135,7 @@ class Swedbank_Pay_Plugin {
 			require_once __DIR__ . '/class-swedbank-pay-blocks-support.php';
 		}
 
-		$this->om = OrderManagement::get_instance();
+		$this->order_management = OrderManagement::get_instance();
 	}
 
 	/**
