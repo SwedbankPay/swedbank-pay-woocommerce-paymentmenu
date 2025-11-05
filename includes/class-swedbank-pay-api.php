@@ -488,8 +488,10 @@ class Swedbank_Pay_Api {
 					$is_full_capture = true;
 				}
 
+				$captured_amount = wc_price( $transaction['amount'] / 100, array( 'currency' => $order->get_currency() ) );
 				// Update order status.
 				if ( $is_full_capture ) {
+
 					$this->update_order_status(
 						$order,
 						'completed',
@@ -497,7 +499,7 @@ class Swedbank_Pay_Api {
 						sprintf(
 							'Payment has been captured. Transaction: %s. Amount: %s',
 							$transaction_id,
-							$transaction['amount'] / 100
+							$captured_amount
 						)
 					);
 				} else {
@@ -508,8 +510,11 @@ class Swedbank_Pay_Api {
 							// translators: 1: transaction ID, 2: transaction amount, 3: remaining amount.
 							'Payment has been partially captured: Transaction: %s. Amount: %s. Remaining amount: %s',
 							$transaction_id,
-							$transaction['amount'] / 100,
-							$remaining_amount
+							$captured_amount,
+							wc_price(
+								$remaining_amount,
+								array( 'currency' => $order->get_currency() )
+							)
 						)
 					);
 				}
@@ -664,7 +669,7 @@ class Swedbank_Pay_Api {
 					$order->update_status(
 						apply_filters(
 							'woocommerce_payment_complete_order_status',
-							$order->needs_processing() ? 'processing' : 'completed',
+							$status,
 							$order->get_id(),
 							$order
 						),
