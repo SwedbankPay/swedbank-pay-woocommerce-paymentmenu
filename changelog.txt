@@ -1,3 +1,6 @@
+Version 4.2.2
+* Fixed reference to plugin_loaded instead of plugins_loaded action hook.
+
 Version 4.2.1
 * Replaced the internal support form page with a direct link to the external website's support page.
 
