@@ -513,11 +513,10 @@ class Swedbank_Pay_Subscription {
 	/**
 	 * Check if the order has a subscription, and then set the generateUnscheduledToken to true.
 	 *
-	 * @param Paymentorder $payment_order The Swedbank Pay payment order.
+	 * @param Paymentorder      $payment_order The Swedbank Pay payment order.
 	 * @param PaymentDataHelper $helper The Order helper.
 	 */
 	public function maybe_generate_unscheduled_token( $payment_order, $helper ) {
-		$order = $helper->get_order();
 		if ( ! self::order_has_subscription( $helper->get_order() ) ) {
 			return $payment_order;
 		}
