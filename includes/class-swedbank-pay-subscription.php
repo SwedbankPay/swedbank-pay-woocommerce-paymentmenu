@@ -517,14 +517,17 @@ class Swedbank_Pay_Subscription {
 	 * @param PaymentDataHelper $helper The Order helper.
 	 */
 	public function maybe_generate_unscheduled_token( $payment_order, $helper ) {
-		if ( ! self::order_has_subscription( $helper->get_order() ) ) {
+		$order = $helper->get_order();
+		if ( ! self::order_has_subscription( $order ) && ! self::cart_has_subscription() ) {
 			return $payment_order;
 		}
 
-		// Do not generate unscheduled token if the order already has one. Most likely this is a renewal order.
-		// On the 'change payment method' page, we'll generate a new recurring token even if it already exists.
-		if ( ! self::is_change_payment_method() && ! empty( $helper->get_order()->get_meta( self::UNSCHEDULED_TOKEN ) ) ) {
-			return $payment_order;
+		if ( ! empty( $order ) ) {
+			// Do not generate unscheduled token if the order already has one. Most likely this is a renewal order.
+			// On the 'change payment method' page, we'll generate a new recurring token even if it already exists.
+			if ( ! self::is_change_payment_method() && ! empty( $order->get_meta( self::UNSCHEDULED_TOKEN ) ) ) {
+				return $payment_order;
+			}
 		}
 
 		return $payment_order->setGenerateUnscheduledToken( true );
