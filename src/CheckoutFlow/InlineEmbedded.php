@@ -220,7 +220,7 @@ class InlineEmbedded extends CheckoutFlow {
 	 */
 	protected function payment_fields_content() {
 		?>
-		<div id="payex_container" style="position:relative;z-index:99999;"></div>
+		<div id="payex_container" style="position:relative;z-index:9999;"></div>
 		<?php
 	}
 }
