@@ -150,6 +150,7 @@ class Cart extends PaymentDataHelper {
 			)
 			->setCompleteUrl( $complete_url )
 			->setCancelUrl( $cancel_url )
+			->setPaymentUrl( $cancel_url ) // the same URL the checkout was initiated from, and the JavaScript assets were loaded in.
 			->setCallbackUrl( $callback_url )
 			->setTermsOfService( $this->gateway->terms_url )
 			->setLogoUrl( $this->gateway->logo_url );
@@ -265,11 +266,12 @@ class Cart extends PaymentDataHelper {
 	 * @return Paymentorder
 	 */
 	public function get_update_payment_order() {
-		$items = $this->get_formatted_items();
+		$items                 = $this->get_formatted_items();
 		$this->formatted_items = $items;
-		$payment_order = ( new Paymentorder() )
+		$payment_order         = ( new Paymentorder() )
 			->setOperation( 'UpdateOrder' )
-			->setAmount( (int) bcmul(
+			->setAmount(
+				(int) bcmul(
 					100,
 					apply_filters(
 						'swedbank_pay_order_amount',
@@ -277,13 +279,16 @@ class Cart extends PaymentDataHelper {
 						$items,
 						WC()->cart
 					)
-				) )
-			->setVatAmount( apply_filters(
+				)
+			)
+			->setVatAmount(
+				apply_filters(
 					'swedbank_pay_order_vat',
 					$this->calculate_vat_amount( $items ),
 					$items,
 					WC()->cart
-				) )
+				)
+			)
 			->setOrderItems( $this->get_order_items() );
 
 		return apply_filters( 'swedbank_pay_update_payment_order', $payment_order, $this );
@@ -307,7 +312,6 @@ class Cart extends PaymentDataHelper {
 			->setVatAmount( $this->calculate_vat_amount( $items ) )
 			->setPayeeReference( $this->get_payee_reference() )
 			->setOrderItems( $order_items );
-
 
 		return apply_filters( 'swedbank_pay_transaction_data', $transaction_data, $this );
 	}
