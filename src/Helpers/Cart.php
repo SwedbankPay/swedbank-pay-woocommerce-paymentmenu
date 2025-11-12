@@ -149,7 +149,6 @@ class Cart extends PaymentDataHelper {
 				)
 			)
 			->setCompleteUrl( $complete_url )
-			->setCancelUrl( $cancel_url )
 			->setPaymentUrl( $cancel_url ) // the same URL the checkout was initiated from, and the JavaScript assets were loaded in.
 			->setCallbackUrl( $callback_url )
 			->setTermsOfService( $this->gateway->terms_url )
