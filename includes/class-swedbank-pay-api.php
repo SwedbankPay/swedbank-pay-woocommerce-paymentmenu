@@ -248,7 +248,7 @@ class Swedbank_Pay_Api {
 	 */
 	public function update_embedded_purchase() {
 		$update_payment_url = WC()->session->get( 'swedbank_pay_update_order_url' );
-		$helper = new Cart();
+		$helper             = new Cart();
 
 		$payment_order        = $helper->get_update_payment_order();
 		$payment_order_object = new PaymentorderObject();
@@ -337,7 +337,7 @@ class Swedbank_Pay_Api {
 
 			// https://tools.ietf.org/html/rfc7807
 			$response_body = self::get_client()->getResponseBody() ?? '{}';
-			$data = json_decode( $response_body, true );
+			$data          = json_decode( $response_body, true );
 			if ( json_last_error() === JSON_ERROR_NONE &&
 				isset( $data['title'] ) &&
 				isset( $data['detail'] )

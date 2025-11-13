@@ -149,7 +149,8 @@ class Cart extends PaymentDataHelper {
 				)
 			)
 			->setCompleteUrl( $complete_url )
-			->setPaymentUrl( $cancel_url ) // the same URL the checkout was initiated from, and the JavaScript assets were loaded in.
+			->setCancelUrl( $cancel_url ) // Seamless: you cannot have both paymentUrl and cancelUrl. Due to issues with paymentUrl, we'll use cancelUrl as a stopgap.
+			// ->setPaymentUrl( $cancel_url ) // the same URL the checkout was initiated from, and the JavaScript assets were loaded in.
 			->setCallbackUrl( $callback_url )
 			->setTermsOfService( $this->gateway->terms_url )
 			->setLogoUrl( $this->gateway->logo_url );
