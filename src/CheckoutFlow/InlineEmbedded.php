@@ -158,23 +158,23 @@ class InlineEmbedded extends CheckoutFlow {
 		}
 
 		// Initiate Payment Order.
-		$payment_order = $this->api->get_embedded_purchase();
-		if ( is_wp_error( $payment_order ) ) {
+		$result = $this->api->get_embedded_purchase();
+		if ( is_wp_error( $result ) ) {
 			throw new \Exception(
-				$payment_order->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-woocommerce-checkout' ),
-				$payment_order->get_error_code()
+				$result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-woocommerce-checkout' ),
+				$result->get_error_code()
 			);
 		}
 
 		if ( $has_subscription ) {
-			$this->process_subscription( $order, $payment_order );
+			$this->process_subscription( $order );
 		}
 
 		$payee_reference = WC()->session->get( 'swedbank_pay_payee_reference' );
-		$payment_order   = $payment_order['paymentSession'];
+		$payment_session = $result['paymentSession'];
 
 		// Save payment ID and payee reference.
-		$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
+		$order->update_meta_data( '_payex_paymentorder_id', $payment_session['id'] );
 		$order->update_meta_data( '_payex_payee_reference', $payee_reference );
 		$order->save_meta_data();
 
@@ -189,20 +189,16 @@ class InlineEmbedded extends CheckoutFlow {
 	 * Process a subscription purchase.
 	 *
 	 * @param \WC_Order $order The WooCommerce order to be processed.
-	 * @param array     $payment_order The payment order data.
 	 *
 	 * @return void
 	 */
-	private function process_subscription( $order, $payment_order ) {
-		if ( swedbank_pay_is_zero( $order->get_total() ) ) {
+	private function process_subscription( $order ) {
+		if ( Swedbank_Pay_Subscription::cart_has_zero_order() ) {
 			$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-woocommerce-checkout' ) );
-			Swedbank_Pay_Subscription::set_skip_om( $order, $payment_order['created'] );
+			Swedbank_Pay_Subscription::set_skip_om( $order, gmdate( 'Y-m-d\TH:i:s\Z' ) );
 		} else {
 			$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-woocommerce-checkout' ) );
 		}
-
-		$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
-		$order->save_meta_data();
 	}
 
 	/**
