@@ -1,9 +1,11 @@
 <?php
 namespace Krokedil\Swedbank\Pay\CheckoutFlow;
 
+use Krokedil\Swedbank\Pay\Helpers\PaymentDataHelper;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use WP_Error;
+
 
 /**
  * Class for processing the inline embedded checkout flow on the shortcode checkout page.
@@ -83,6 +85,7 @@ class InlineEmbedded extends CheckoutFlow {
 	/**
 	 * Create or update embedded purchase.
 	 *
+	 * @throws \Exception If there is an error during the creation or update process.
 	 * @return \WP_Error|Paymentorder|array
 	 */
 	public function create_or_update_embedded_purchase() {
@@ -92,16 +95,27 @@ class InlineEmbedded extends CheckoutFlow {
 
 			// If we have a payment order ID in the session, try to first get the session, and then update.
 			if ( ! empty( $payment_order_id ) ) {
-
-				// A verify operation cannot be updated which is the case for all zero amount order.
-				if ( Swedbank_Pay_Subscription::cart_has_zero_order() ) {
-					return array();
-				}
-
 				// Try to get the payment to ensure it still exists.
 				$get_purchase_result = $this->api->get_embedded_purchase();
 				if ( is_wp_error( $get_purchase_result ) ) {
 					throw new \Exception( $result->get_error_message() );
+				}
+
+				// A verify operation cannot be updated which is the case for all zero amount order.
+				$get_payment_info = $this->api->request( 'GET', $payment_order_id );
+				if ( Swedbank_Pay_Subscription::cart_has_zero_order() ) {
+					if ( is_wp_error( $get_payment_info ) ) {
+						return array();
+					}
+
+					// This is a cart whose content was changed from nonzero (operation=Purchase) to zero amount (operation=Verify).
+					if ( PaymentDataHelper::OPERATION_VERIFY !== $get_payment_info['paymentOrder']['operation'] ) {
+						// clear the session.
+						throw new \Exception( 'The payment operation cannot be changed to Verify from Purchase.' );
+					}
+
+					// This is a Verify operation, do not update.
+					return array();
 				}
 
 				// Update the existing payment.
