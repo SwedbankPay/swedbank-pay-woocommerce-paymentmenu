@@ -583,7 +583,12 @@ class Swedbank_Pay_Subscription {
 		}
 
 		$subscription = self::get_subscription( $helper->get_order() );
-		$url_data->setCompleteUrl( add_query_arg( 'swedbank_pay_redirect', 'subscription', $subscription->get_view_order_url() ) )
+		if ( empty( $subscription ) ) {
+			return $url_data;
+		}
+
+		$url_data
+		->setCompleteUrl( add_query_arg( 'swedbank_pay_redirect', 'subscription', $subscription->get_view_order_url() ) )
 		->setCancelUrl( $subscription->get_change_payment_method_url() );
 
 		return $url_data;
@@ -602,7 +607,7 @@ class Swedbank_Pay_Subscription {
 		}
 
 		$subscription = self::get_subscription( $subscription_id );
-		if ( self::GATEWAY_ID !== $subscription->get_payment_method() ) {
+		if ( empty( $subscription ) || self::GATEWAY_ID !== $subscription->get_payment_method() ) {
 			return;
 		}
 
@@ -739,10 +744,10 @@ class Swedbank_Pay_Subscription {
 	 * Retrieve a WC_Subscription from order ID.
 	 *
 	 * @param \WC_Order|int $order  The WC order or id.
-	 * @return bool|\WC_Subscription The subscription object, or false if it cannot be found.
+	 * @return null|\WC_Subscription The subscription object, or false if it cannot be found.
 	 */
 	public static function get_subscription( $order ) {
-		return ! function_exists( 'wcs_get_subscription' ) ? false : wcs_get_subscription( $order );
+		return ! function_exists( 'wcs_get_subscription' ) ? null : wcs_get_subscription( $order );
 	}
 
 	/**
