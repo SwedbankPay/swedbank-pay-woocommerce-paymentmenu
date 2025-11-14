@@ -92,6 +92,12 @@ class InlineEmbedded extends CheckoutFlow {
 
 			// If we have a payment order ID in the session, try to first get the session, and then update.
 			if ( ! empty( $payment_order_id ) ) {
+
+				// A verify operation cannot be updated which is the case for all zero amount order.
+				if ( Swedbank_Pay_Subscription::cart_has_zero_order() ) {
+					return array();
+				}
+
 				// Try to get the payment to ensure it still exists.
 				$get_purchase_result = $this->api->get_embedded_purchase();
 				if ( is_wp_error( $get_purchase_result ) ) {
@@ -147,24 +153,25 @@ class InlineEmbedded extends CheckoutFlow {
 	 */
 	public function process( $order ) {
 		$has_subscription = Swedbank_Pay_Subscription::order_has_subscription( $order );
-		if ( $has_subscription || ( Swedbank_Pay_Subscription::is_change_payment_method() && $has_subscription ) ) {
-			return $this->process_subscription( $order );
-		}
-
-		if ( swedbank_pay_is_zero( $order->get_total() ) ) {
+		if ( ! $has_subscription && swedbank_pay_is_zero( $order->get_total() ) ) {
 			throw new \Exception( 'Zero order is not supported.' );
 		}
 
 		// Initiate Payment Order.
-		$result = $this->api->get_embedded_purchase();
-		if ( is_wp_error( $result ) ) {
+		$payment_order = $this->api->get_embedded_purchase();
+		if ( is_wp_error( $payment_order ) ) {
 			throw new \Exception(
-				$result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-woocommerce-checkout' ),
-				$result->get_error_code()
+				$payment_order->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-woocommerce-checkout' ),
+				$payment_order->get_error_code()
 			);
 		}
+
+		if ( $has_subscription ) {
+			$this->process_subscription( $order, $payment_order );
+		}
+
 		$payee_reference = WC()->session->get( 'swedbank_pay_payee_reference' );
-		$payment_order   = $result['paymentSession'];
+		$payment_order   = $payment_order['paymentSession'];
 
 		// Save payment ID and payee reference.
 		$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
@@ -182,21 +189,11 @@ class InlineEmbedded extends CheckoutFlow {
 	 * Process a subscription purchase.
 	 *
 	 * @param \WC_Order $order The WooCommerce order to be processed.
+	 * @param array     $payment_order The payment order data.
 	 *
-	 * @throws \Exception If there is an error during the payment processing.
-	 * @return array{redirect: array|bool|string, result: string}
+	 * @return void
 	 */
-	private function process_subscription( $order ) {
-		$result = swedbank_pay_is_zero( $order->get_total() ) ? Swedbank_Pay_Subscription::approve_for_renewal( $order ) : $this->api->initiate_purchase( $order );
-		if ( is_wp_error( $result ) ) {
-			throw new \Exception(
-				// translators: %s: order number.
-				sprintf( __( 'The payment change could not be initiated. Please contact store, and provide them the order number %s for more information.', 'swedbank-pay-woocommerce-checkout' ), $order->get_order_number() ),
-				esc_html( $result->get_error_code() )
-			);
-		}
-
-		$payment_order = $result->getResponseData()['payment_order'];
+	private function process_subscription( $order, $payment_order ) {
 		if ( swedbank_pay_is_zero( $order->get_total() ) ) {
 			$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-woocommerce-checkout' ) );
 			Swedbank_Pay_Subscription::set_skip_om( $order, $payment_order['created'] );
@@ -206,11 +203,6 @@ class InlineEmbedded extends CheckoutFlow {
 
 		$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
 		$order->save_meta_data();
-
-		return array(
-			'result'   => 'success',
-			'redirect' => $result->getOperationByRel( 'redirect-checkout', 'href' ),
-		);
 	}
 
 	/**

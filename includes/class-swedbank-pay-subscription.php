@@ -720,6 +720,22 @@ class Swedbank_Pay_Subscription {
 	}
 
 	/**
+	 * Checks if the cart contains a zero order subscription.
+	 *
+	 * A zero order subscription is defined as a subscription that has an initial value,
+	 * but results in a zero amount due to discounts. This includes carts with mixed products.
+	 *
+	 * @return bool True if a zero order subscription exists in the cart, false otherwise.
+	 */
+	public static function cart_has_zero_order() {
+		if ( ! is_checkout() || ! self::cart_has_subscription() ) {
+			return false;
+		}
+
+		return swedbank_pay_is_zero( WC()->cart->total );
+	}
+
+	/**
 	 * Retrieve a WC_Subscription from order ID.
 	 *
 	 * @param \WC_Order|int $order  The WC order or id.
