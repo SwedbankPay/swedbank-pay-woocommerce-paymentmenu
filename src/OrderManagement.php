@@ -9,6 +9,7 @@ namespace Krokedil\Swedbank\Pay;
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
 /**
  * Class OrderManagement
@@ -38,6 +39,10 @@ class OrderManagement {
 	public function capture_order( $order_id, $order ) {
 		$payment_method = $order->get_payment_method();
 		if ( ! in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+			return;
+		}
+
+		if ( Swedbank_Pay_Subscription::should_skip_order_management( $order ) ) {
 			return;
 		}
 
