@@ -172,7 +172,7 @@ class Cart extends PaymentDataHelper {
 				->setFirstName( WC()->customer->get_billing_first_name() )
 				->setLastName( WC()->customer->get_billing_last_name() )
 				->setEmail( WC()->customer->get_billing_email() )
-				->setMsisdn( str_replace( ' ', '', WC()->customer->get_billing_phone() ) );
+				->setMsisdn( self::format_phone_number( WC()->customer->get_billing_phone(), WC()->customer->get_billing_country() ) );
 
 		$needs_shipping = false;
 		foreach ( WC()->cart->get_cart() as $cart_item ) {
