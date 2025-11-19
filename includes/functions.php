@@ -633,3 +633,35 @@ function swedbank_pay_get_cart_lines() {
 
 	return $items;
 }
+
+/**
+ * Get a WooCommerce order by the Payee reference.
+ *
+ * @param string $payee_reference The Payee reference.
+ *
+ * @return WC_Order|null The WooCommerce order or null if not found.
+ */
+function swedbank_pay_get_order_by_payee_reference( $payee_reference ) {
+	$orders = wc_get_orders(
+		array(
+			'meta_key'     => '_payex_payee_reference', // phpcs:ignore WordPress.DB.SlowDBQuery -- We need to query by meta key.
+			'meta_value'   => $payee_reference, // phpcs:ignore WordPress.DB.SlowDBQuery -- We need to query by meta value.
+			'meta_compare' => '=',
+			'order'        => 'DESC',
+			'orderby'      => 'date',
+			'limit'        => 1,
+		)
+	);
+
+	foreach ( $orders as $order ) {
+		// Compare the metadata to the search value to be sure its the correct one.
+		$stored_reference = $order->get_meta( '_payex_payee_reference' );
+		if ( $stored_reference !== $payee_reference ) {
+			continue;
+		}
+
+		return $order;
+	}
+
+	return null;
+}
