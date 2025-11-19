@@ -45,7 +45,7 @@ class Cart extends PaymentDataHelper {
 	 *
 	 * @return string
 	 */
-	private function get_payee_reference() {
+	public static function get_payee_reference() {
 		$payee_reference = WC()->session->get( 'swedbank_pay_payee_reference' );
 		if ( empty( $payee_reference ) ) {
 			$payee_reference = swedbank_pay_generate_payee_reference( wp_generate_password( 12, false, false ) );
@@ -103,7 +103,7 @@ class Cart extends PaymentDataHelper {
 				'payeeId'        => $this->gateway->payee_id,
 				'payeeReference' => apply_filters(
 					'swedbank_pay_payee_reference',
-					$this->get_payee_reference(),
+					self::get_payee_reference(),
 				),
 				'payeeName'      => apply_filters(
 					'swedbank_pay_payee_name',
@@ -125,31 +125,31 @@ class Cart extends PaymentDataHelper {
 	 * @return PaymentorderUrl
 	 */
 	public function get_url_data() {
+		$payee_reference = self::get_payee_reference();
 		$callback_url = add_query_arg(
 			array(
 				'type'            => 'inline_embedded',
-				'payee_reference' => self::get_payee_reference(),
+				'payee_reference' => $payee_reference,
 			),
 			WC()->api_request_url( get_class( $this->gateway ) )
 		);
 
 		$complete_url = $this->gateway->get_return_url();
-		$cancel_url   = is_checkout() ? wc_get_checkout_url() : wc_get_cart_url();
-
+		$payment_url  = add_query_arg( 'payex-payment-complete', $payee_reference, wc_get_checkout_url() );
 		$url_data = ( new PaymentorderUrl() )
 			->setHostUrls(
 				Swedbank_Pay_Api::get_host_urls(
 					array(
 						$complete_url,
-						$cancel_url,
 						$callback_url,
+						$payment_url,
 						$this->gateway->terms_url,
 						$this->gateway->logo_url,
 					)
 				)
 			)
 			->setCompleteUrl( $complete_url )
-			->setCancelUrl( $cancel_url )
+			->setPaymentUrl( $payment_url )
 			->setCallbackUrl( $callback_url )
 			->setTermsOfService( $this->gateway->terms_url )
 			->setLogoUrl( $this->gateway->logo_url );
@@ -211,7 +211,7 @@ class Cart extends PaymentDataHelper {
 					sprintf(
 						/* translators: 1: order id */
 						__( 'Order #%1$s', 'swedbank-pay-woocommerce-payments' ),
-						$this->get_payee_reference()
+						self::get_payee_reference()
 					)
 				)
 			)
@@ -305,7 +305,7 @@ class Cart extends PaymentDataHelper {
 		$transaction_data = ( new TransactionData() )
 			->setAmount( $this->calculate_total_amount( $items ) )
 			->setVatAmount( $this->calculate_vat_amount( $items ) )
-			->setPayeeReference( $this->get_payee_reference() )
+			->setPayeeReference( self::get_payee_reference() )
 			->setOrderItems( $order_items );
 
 
