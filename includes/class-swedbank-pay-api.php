@@ -224,7 +224,7 @@ class Swedbank_Pay_Api {
 	/**
 	 * Get a embedded payment.
 	 *
-	 * @return WP_Error|ResponseServiceInterface
+	 * @return WP_Error|array
 	 */
 	public function get_embedded_purchase() {
 		$view_session_url = WC()->session->get( 'swedbank_pay_view_session_url' );

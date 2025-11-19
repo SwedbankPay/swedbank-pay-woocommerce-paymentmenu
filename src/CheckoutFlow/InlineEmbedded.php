@@ -1,6 +1,7 @@
 <?php
 namespace Krokedil\Swedbank\Pay\CheckoutFlow;
 
+use Krokedil\Swedbank\Pay\Helpers\Cart;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use WP_Error;
@@ -10,17 +11,53 @@ use WP_Error;
  */
 class InlineEmbedded extends CheckoutFlow {
 	/**
+	 * If this is for the payment complete return.
+	 *
+	 * @var bool
+	 */
+	protected $is_payment_complete = false;
+
+	/**
+	 * The Payee reference for the completed payment.
+	 *
+	 * @var string|null
+	 */
+	protected $payee_reference = null;
+
+	protected function set_is_payment_complete() {
+		$payment_complete = filter_input( INPUT_GET, 'payex-payment-complete', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
+		if ( ! empty( $payment_complete ) ) {
+			$this->is_payment_complete = true;
+			$this->payee_reference = sanitize_text_field( wp_unslash( $payment_complete ) );
+			return;
+		}
+
+		// If we did not have it in the GET params, check the POST data. Needed to handle potential ajax requests.
+		$post_data = isset( $_POST['post_data'] ) ? sanitize_text_field( wp_unslash( $_POST['post_data'] ) ) : null;
+		wp_parse_str( $post_data, $post_data_array );
+		if ( isset( $post_data_array['swedbank_pay_payee_reference'] ) && isset( $post_data_array['swedbank_pay_payment_complete'] ) ) {
+			$this->is_payment_complete = true;
+			$this->payee_reference     = sanitize_text_field( $post_data_array['swedbank_pay_payee_reference'] );
+		}
+	}
+
+	/**
 	 * Initialize any actions or filters needed for the checkout flow.
 	 *
 	 * @return void
 	 */
 	protected function init() {
-		// Create a payment from the cart contents.
-		$result = $this->create_or_update_embedded_purchase();
+		$this->set_is_payment_complete();
+		if ( ! $this->is_payment_complete ) {
+			// Create a payment from the cart contents.
+			$result = $this->create_or_update_embedded_purchase();
 
-		if ( is_wp_error( $result ) ) {
-			wc_add_notice( $result->get_error_message(), 'error' );
-			return;
+			if ( is_wp_error( $result ) ) {
+				wc_add_notice( $result->get_error_message(), 'error' );
+				return;
+			}
+		} else { // If this is on the payment complete return, verify the payment to make sure no errors occurred.
+			$this->process_payment_complete_return();
 		}
 
 		// Get the src url for the script.
@@ -32,8 +69,16 @@ class InlineEmbedded extends CheckoutFlow {
 		}
 
 		$params = array(
-			'script_debug' => defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG,
+			'script_debug'     => defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG,
+			'payment_complete' => $this->is_payment_complete,
 		);
+
+		if ( $this->is_payment_complete ) {
+			$order = swedbank_pay_get_order_by_payee_reference( $this->payee_reference );
+			$params['thankyou_url']    = $this->gateway->get_return_url( $order );
+			$params['payee_reference'] = $this->payee_reference;
+		}
+
 		wp_register_script( 'payex_inline_embedded_sdk', $script_src, array(), SWEDBANK_PAY_VERSION, true );
 		wp_localize_script( 'payex_inline_embedded_sdk', 'swedbank_pay_params', $params );
 		wp_register_script( 'payex_inline_embedded', SWEDBANK_PAY_PLUGIN_URL . '/assets/js/inline-embedded-checkout.js', array( 'jquery', 'payex_inline_embedded_sdk' ), SWEDBANK_PAY_VERSION, true );
@@ -66,7 +111,6 @@ class InlineEmbedded extends CheckoutFlow {
 		if ( ! is_checkout() || is_order_received_page() ) {
 			return;
 		}
-
 		$payment_order_id = WC()->session->get( 'swedbank_pay_paymentorder_id' );
 
 		if ( empty( $payment_order_id ) ) {
@@ -97,7 +141,6 @@ class InlineEmbedded extends CheckoutFlow {
 				if ( is_wp_error( $get_purchase_result ) ) {
 					throw new \Exception( $result->get_error_message() );
 				}
-
 				// Update the existing payment.
 				$result = $this->api->update_embedded_purchase();
 				// Check for errors.
@@ -159,9 +202,10 @@ class InlineEmbedded extends CheckoutFlow {
 		// Initiate Payment Order.
 		$result = $this->api->get_embedded_purchase();
 		if ( is_wp_error( $result ) ) {
+			$code = \is_int( $result->get_error_code() ) ? \intval( $result->get_error_code() ) : 500;
 			throw new \Exception(
 				$result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-woocommerce-checkout' ),
-				$result->get_error_code()
+				$code
 			);
 		}
 		$payee_reference = WC()->session->get( 'swedbank_pay_payee_reference' );
@@ -172,6 +216,7 @@ class InlineEmbedded extends CheckoutFlow {
 		$order->update_meta_data( '_payex_payee_reference', $payee_reference );
 		$order->save_meta_data();
 
+		// Return success and redirect to the embedded container, and pass the redirect url for the thankyou page to be used in the onPaid event.
 		return array(
 			'result'           => 'success',
 			'redirect'         => '#payex_container',
@@ -215,12 +260,46 @@ class InlineEmbedded extends CheckoutFlow {
 	}
 
 	/**
+	 * Process the payment complete return to verify the payment and handle any potential issues.
+	 * If any issues are found, the current session with Swedbank is cleared and the user is redirected back to the checkout page with an error message.
+	 *
+	 * @return void
+	 */
+	protected function process_payment_complete_return() {
+		try{
+			// Get the payment to verify its status.
+			$get_purchase_result = $this->api->get_embedded_purchase();
+
+			// If we could not get the payment, throw an error.
+			if ( is_wp_error( $get_purchase_result ) ) {
+				throw new \Exception( $get_purchase_result->get_error_message() );
+			}
+
+			// Get any potential problems from the payment response.
+			$problem = $get_purchase_result['problem'] ?? null;
+			if ( ! empty( $problem ) ) {
+				$message = $problem['detail'] ?? __( 'An unknown error occurred during the payment process.', 'swedbank-pay-woocommerce-checkout' );
+				throw new \Exception( $message );
+			}
+		} catch( \Exception $e ) {
+			self::unset_embedded_session_data();
+			wc_add_notice( $e->getMessage(), 'error' );
+			wp_safe_redirect( wc_get_checkout_url() );
+			exit;
+		}
+	}
+
+	/**
 	 * Output the payment fields content for the handler.
 	 *
 	 * @return void
 	 */
 	protected function payment_fields_content() {
 		?>
+		<?php if ( $this->is_payment_complete ) : ?>
+			<input type="hidden" id="swedbank_pay_payment_complete" name="swedbank_pay_payment_complete" value="1" />
+			<input type="hidden" id="swedbank_pay_payee_reference" name="swedbank_pay_payee_reference" value="<?php echo esc_attr( $this->payee_reference ); ?>" />
+		<?php endif; ?>
 		<div id="payex_container"></div>
 		<?php
 	}
