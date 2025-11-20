@@ -25,6 +25,12 @@ class InlineEmbedded extends CheckoutFlow {
 			return;
 		}
 
+		if ( WC()->session->get( 'swedbank_pay_should_reset_session' ) ) {
+			WC()->session->set( 'reload_checkout', true );
+			self::unset_embedded_session_data();
+			return;
+		}
+
 		// Get the src url for the script.
 		$script_src = WC()->session->get( 'swedbank_pay_view_checkout_url' );
 
@@ -56,6 +62,8 @@ class InlineEmbedded extends CheckoutFlow {
 		WC()->session->__unset( 'swedbank_pay_update_order_url' );
 		WC()->session->__unset( 'swedbank_pay_view_checkout_url' );
 		WC()->session->__unset( 'swedbank_pay_payee_reference' );
+		WC()->session->__unset( 'swedbank_pay_should_reset_session' );
+		WC()->session->__unset( 'swedbank_pay_operation' );
 	}
 
 	/**
@@ -66,6 +74,12 @@ class InlineEmbedded extends CheckoutFlow {
 	public function update_embedded_purchase() {
 		// Only if we are on the checkout page, and not the order received page.
 		if ( ! is_checkout() || is_order_received_page() ) {
+			return;
+		}
+
+		if ( WC()->session->get( 'swedbank_pay_should_reset_session' ) ) {
+			self::unset_embedded_session_data();
+			WC()->session->set( 'reload_checkout', true );
 			return;
 		}
 
@@ -101,20 +115,16 @@ class InlineEmbedded extends CheckoutFlow {
 					throw new \Exception( $result->get_error_message() );
 				}
 
+				$session_operation = WC()->session->get( 'swedbank_pay_operation' );
+				$is_zero_order     = Swedbank_Pay_Subscription::cart_has_zero_order();
+				if ( ( PaymentDataHelper::OPERATION_PURCHASE === $session_operation && $is_zero_order ) || ( PaymentDataHelper::OPERATION_VERIFY === $session_operation && ! $is_zero_order ) ) {
+					// clear the session.
+					WC()->session->set( 'swedbank_pay_should_reset_session', true );
+					return array();
+				}
+
 				// A verify operation cannot be updated which is the case for all zero amount order.
-				$get_payment_info = $this->api->request( 'GET', $payment_order_id );
-				if ( Swedbank_Pay_Subscription::cart_has_zero_order() ) {
-					if ( is_wp_error( $get_payment_info ) ) {
-						return array();
-					}
-
-					// This is a cart whose content was changed from nonzero (operation=Purchase) to zero amount (operation=Verify).
-					if ( PaymentDataHelper::OPERATION_VERIFY !== $get_payment_info['paymentOrder']['operation'] ) {
-						// clear the session.
-						throw new \Exception( 'The payment operation cannot be changed to Verify from Purchase.' );
-					}
-
-					// This is a Verify operation, do not update.
+				if ( PaymentDataHelper::OPERATION_VERIFY === $session_operation ) {
 					return array();
 				}
 
@@ -138,12 +148,14 @@ class InlineEmbedded extends CheckoutFlow {
 				$view_session_url  = $result->getOperationByRel( 'view-paymentsession', 'href' );
 				$update_order_url  = $result->getOperationByRel( 'update-order', 'href' );
 				$view_checkout_url = $result->getOperationByRel( 'view-checkout', 'href' );
+				$operation         = $result->getResponseData()['payment_order']['operation'];
 
 				// Save payment ID to the session.
 				WC()->session->set( 'swedbank_pay_paymentorder_id', $payment_order['id'] );
 				WC()->session->set( 'swedbank_pay_view_session_url', $view_session_url );
 				WC()->session->set( 'swedbank_pay_update_order_url', $update_order_url );
 				WC()->session->set( 'swedbank_pay_view_checkout_url', $view_checkout_url );
+				WC()->session->set( 'swedbank_pay_operation', $operation );
 			}
 
 			if ( is_wp_error( $result ) ) {
