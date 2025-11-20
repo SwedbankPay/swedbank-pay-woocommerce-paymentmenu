@@ -63,7 +63,7 @@ abstract class PaymentDataHelper {
 			->setItemClass( $item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] )
 			->setItemUrl( $item[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ] ?? '' )
 			->setImageUrl( $item[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] ?? '' )
-			->setDescription( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] ?? '' )
+			->setDescription( mb_substr( trim( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] ?? '' ), 0, 40 ) )
 			->setQuantity( $item[ Swedbank_Pay_Order_Item::FIELD_QTY ] )
 			->setUnitPrice( $item[ Swedbank_Pay_Order_Item::FIELD_UNITPRICE ] )
 			->setQuantityUnit( $item[ Swedbank_Pay_Order_Item::FIELD_QTY_UNIT ] )

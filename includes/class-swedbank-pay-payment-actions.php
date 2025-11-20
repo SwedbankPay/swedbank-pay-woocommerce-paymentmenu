@@ -177,7 +177,7 @@ class Swedbank_Pay_Payment_Actions {
 
 			$order_item = array(
 				Swedbank_Pay_Order_Item::FIELD_NAME        => $product_name,
-				Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $product_name,
+				Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => mb_substr( trim( $product_name ), 0, 40 ),
 				Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => (int) bcmul( 100, $unit_price ),
 				Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => (int) bcmul( 100, $tax_percent ),
 				Swedbank_Pay_Order_Item::FIELD_AMOUNT      => (int) bcmul( 100, $refund_amount ),
