@@ -513,19 +513,21 @@ class Swedbank_Pay_Subscription {
 	/**
 	 * Check if the order has a subscription, and then set the generateUnscheduledToken to true.
 	 *
-	 * @param Paymentorder $payment_order The Swedbank Pay payment order.
+	 * @param Paymentorder      $payment_order The Swedbank Pay payment order.
 	 * @param PaymentDataHelper $helper The Order helper.
 	 */
 	public function maybe_generate_unscheduled_token( $payment_order, $helper ) {
 		$order = $helper->get_order();
-		if ( ! self::order_has_subscription( $helper->get_order() ) ) {
+		if ( ! self::order_has_subscription( $order ) && ! self::cart_has_subscription() ) {
 			return $payment_order;
 		}
 
-		// Do not generate unscheduled token if the order already has one. Most likely this is a renewal order.
-		// On the 'change payment method' page, we'll generate a new recurring token even if it already exists.
-		if ( ! self::is_change_payment_method() && ! empty( $helper->get_order()->get_meta( self::UNSCHEDULED_TOKEN ) ) ) {
-			return $payment_order;
+		if ( ! empty( $order ) ) {
+			// Do not generate unscheduled token if the order already has one. Most likely this is a renewal order.
+			// On the 'change payment method' page, we'll generate a new recurring token even if it already exists.
+			if ( ! self::is_change_payment_method() && ! empty( $order->get_meta( self::UNSCHEDULED_TOKEN ) ) ) {
+				return $payment_order;
+			}
 		}
 
 		return $payment_order->setGenerateUnscheduledToken( true );
@@ -581,7 +583,12 @@ class Swedbank_Pay_Subscription {
 		}
 
 		$subscription = self::get_subscription( $helper->get_order() );
-		$url_data->setCompleteUrl( add_query_arg( 'swedbank_pay_redirect', 'subscription', $subscription->get_view_order_url() ) )
+		if ( empty( $subscription ) ) {
+			return $url_data;
+		}
+
+		$url_data
+		->setCompleteUrl( add_query_arg( 'swedbank_pay_redirect', 'subscription', $subscription->get_view_order_url() ) )
 		->setCancelUrl( $subscription->get_change_payment_method_url() );
 
 		return $url_data;
@@ -600,7 +607,7 @@ class Swedbank_Pay_Subscription {
 		}
 
 		$subscription = self::get_subscription( $subscription_id );
-		if ( self::GATEWAY_ID !== $subscription->get_payment_method() ) {
+		if ( empty( $subscription ) || self::GATEWAY_ID !== $subscription->get_payment_method() ) {
 			return;
 		}
 
@@ -694,7 +701,12 @@ class Swedbank_Pay_Subscription {
 			return false;
 		}
 
-		return ( class_exists( 'WC_Subscriptions_Cart' ) && \WC_Subscriptions_Cart::cart_contains_subscription() ) || ( function_exists( 'wcs_cart_contains_failed_renewal_order_payment' ) && wcs_cart_contains_failed_renewal_order_payment() );
+		return ( class_exists( 'WC_Subscriptions_Cart' ) && \WC_Subscriptions_Cart::cart_contains_subscription() ) ||
+		( function_exists( 'wcs_cart_contains_renewal' ) && wcs_cart_contains_renewal() ) ||
+		( function_exists( 'wcs_cart_contains_failed_renewal_order_payment' ) && wcs_cart_contains_failed_renewal_order_payment() ) ||
+		( function_exists( 'wcs_cart_contains_resubscribe' ) && wcs_cart_contains_resubscribe() ) ||
+		( function_exists( 'wcs_cart_contains_early_renewal' ) && wcs_cart_contains_early_renewal() ) ||
+		( function_exists( 'wcs_cart_contains_switches' ) && wcs_cart_contains_switches() );
 	}
 
 	/**
@@ -713,13 +725,29 @@ class Swedbank_Pay_Subscription {
 	}
 
 	/**
+	 * Checks if the cart contains a zero order subscription.
+	 *
+	 * A zero order subscription is defined as a subscription that has an initial value,
+	 * but results in a zero amount due to discounts. This includes carts with mixed products.
+	 *
+	 * @return bool True if a zero order subscription exists in the cart, false otherwise.
+	 */
+	public static function cart_has_zero_order() {
+		if ( ! is_checkout() || ! self::cart_has_subscription() ) {
+			return false;
+		}
+
+		return swedbank_pay_is_zero( WC()->cart->total );
+	}
+
+	/**
 	 * Retrieve a WC_Subscription from order ID.
 	 *
 	 * @param \WC_Order|int $order  The WC order or id.
-	 * @return bool|\WC_Subscription The subscription object, or false if it cannot be found.
+	 * @return null|\WC_Subscription The subscription object, or false if it cannot be found.
 	 */
 	public static function get_subscription( $order ) {
-		return ! function_exists( 'wcs_get_subscription' ) ? false : wcs_get_subscription( $order );
+		return ! function_exists( 'wcs_get_subscription' ) ? null : wcs_get_subscription( $order );
 	}
 
 	/**

@@ -4,6 +4,7 @@ namespace Krokedil\Swedbank\Pay\CheckoutFlow;
 use Krokedil\Swedbank\Pay\Utility\BlocksUtility;
 use Krokedil\Swedbank\Pay\Utility\SettingsUtility;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
 /**
  * Abstract class for processing different checkout flows.
@@ -96,12 +97,13 @@ abstract class CheckoutFlow {
 	 * @return CheckoutFlow
 	 */
 	public static function get_handler( $order = null ) {
-		$flow_setting   = SettingsUtility::get_setting( 'checkout_flow', 'redirect' );
-		$blocks_enabled = BlocksUtility::is_checkout_block_enabled();
-		$order_pay      = is_wc_endpoint_url( 'order-pay' );
+		$flow_setting          = SettingsUtility::get_setting( 'checkout_flow', 'redirect' );
+		$blocks_enabled        = BlocksUtility::is_checkout_block_enabled();
+		$order_pay             = is_wc_endpoint_url( 'order-pay' );
+		$change_payment_method = Swedbank_Pay_Subscription::is_change_payment_method();
 
 		// If the redirect flow is enabled, we are on the order pay page, or blocks are enabled, always use the Redirect flow.
-		if ( SettingsUtility::is_redirect_flow() || $order_pay || $blocks_enabled ) {
+		if ( SettingsUtility::is_redirect_flow() || $order_pay || $blocks_enabled || $change_payment_method ) {
 			return new Redirect( $order );
 		}
 
