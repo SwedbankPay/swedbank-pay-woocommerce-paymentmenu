@@ -24,6 +24,7 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchas
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Verify;
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
@@ -193,11 +194,19 @@ class Swedbank_Pay_Api {
 	public function initiate_embedded_purchase() {
 		$helper = new Cart();
 
-		$payment_order        = $helper->get_payment_order();
+		// Required for zero amount orders. Only checks for subscriptions.
+		$is_verify = Swedbank_Pay_Subscription::cart_has_zero_order();
+
+		$payment_order        = $helper->get_payment_order( $is_verify );
 		$payment_order_object = new PaymentorderObject();
 		$payment_order_object->setPaymentorder( $payment_order );
 
-		$purchase_request = new Purchase( $payment_order_object );
+		if ( $is_verify ) {
+			$purchase_request = new Verify( $payment_order_object );
+		} else {
+			$purchase_request = new Purchase( $payment_order_object );
+		}
+
 		$purchase_request->setClient( self::get_client() );
 
 		try {
@@ -248,7 +257,7 @@ class Swedbank_Pay_Api {
 	 */
 	public function update_embedded_purchase() {
 		$update_payment_url = WC()->session->get( 'swedbank_pay_update_order_url' );
-		$helper = new Cart();
+		$helper             = new Cart();
 
 		$payment_order        = $helper->get_update_payment_order();
 		$payment_order_object = new PaymentorderObject();
@@ -337,7 +346,7 @@ class Swedbank_Pay_Api {
 
 			// https://tools.ietf.org/html/rfc7807
 			$response_body = self::get_client()->getResponseBody() ?? '{}';
-			$data = json_decode( $response_body, true );
+			$data          = json_decode( $response_body, true );
 			if ( json_last_error() === JSON_ERROR_NONE &&
 				isset( $data['title'] ) &&
 				isset( $data['detail'] )
