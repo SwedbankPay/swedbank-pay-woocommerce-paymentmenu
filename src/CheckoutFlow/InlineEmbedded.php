@@ -304,36 +304,6 @@ class InlineEmbedded extends CheckoutFlow {
 	}
 
 	/**
-	 * Process the payment complete return to verify the payment and handle any potential issues.
-	 * If any issues are found, the current session with Swedbank is cleared and the user is redirected back to the checkout page with an error message.
-	 *
-	 * @return void
-	 */
-	protected function process_payment_complete_return() {
-		try{
-			// Get the payment to verify its status.
-			$get_purchase_result = $this->api->get_embedded_purchase();
-
-			// If we could not get the payment, throw an error.
-			if ( is_wp_error( $get_purchase_result ) ) {
-				throw new \Exception( $get_purchase_result->get_error_message() );
-			}
-
-			// Get any potential problems from the payment response.
-			$problem = $get_purchase_result['problem'] ?? null;
-			if ( ! empty( $problem ) ) {
-				$message = $problem['detail'] ?? __( 'An unknown error occurred during the payment process.', 'swedbank-pay-woocommerce-checkout' );
-				throw new \Exception( $message );
-			}
-		} catch( \Exception $e ) {
-			self::unset_embedded_session_data();
-			wc_add_notice( $e->getMessage(), 'error' );
-			wp_safe_redirect( wc_get_checkout_url() );
-			exit;
-		}
-	}
-
-	/**
 	 * Output the payment fields content for the handler.
 	 *
 	 * @return void
