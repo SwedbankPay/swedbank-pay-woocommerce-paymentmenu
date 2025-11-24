@@ -28,6 +28,7 @@ jQuery(document).ready(function ($) {
 
             // Toggle the WooCommerce elements based on the initially selected payment method.
             sbie.toggleWooCommerceElements();
+            sbie.ifPaymentComplete();
         },
 
         /**
@@ -93,6 +94,7 @@ jQuery(document).ready(function ($) {
             }
 
             sbie.toggleWooCommerceElements();
+            sbie.ifPaymentComplete();
         },
 
         /**
@@ -196,12 +198,16 @@ jQuery(document).ready(function ($) {
          * Handle the paid event from the embedded checkout.
          *
          * @param {Object} data The data object from the paid event.
-         * @returns {string|null} The redirect URL if set, null otherwise.
+         * @returns {void}
          */
         onPaid: function (data) {
+            // If the onPaidRedirectUrl is empty, get it from the params instead.
+            if (sbie.onPaidRedirectUrl === null) {
+                sbie.onPaidRedirectUrl = sbie.params.thankyou_url;
+            }
+
             if (sbie.onPaidRedirectUrl !== null) {
                 window.location.href = sbie.onPaidRedirectUrl;
-                return sbie.onPaidRedirectUrl;
             }
         },
 
@@ -221,8 +227,6 @@ jQuery(document).ready(function ($) {
          * @returns {void}
          */
         failPayment: function () {
-            sbie.payButtonPressed = false;
-
             // Disable the event listeners for the checkout result.
             $('body').off('checkout_error.swedbank');
             $('form.checkout').off('checkout_place_order_success.swedbank');
@@ -231,10 +235,14 @@ jQuery(document).ready(function ($) {
             $('form.checkout').unblock();
             $('form.checkout').removeClass('processing');
 
-            sbie.checkout.resume({
-                paymentOrderId: sbie.paymentOrderId,
-                confirmation: false,
-            });
+            if( sbie.payButtonPressed ) {
+                sbie.checkout.resume({
+                    paymentOrderId: sbie.paymentOrderId,
+                    confirmation: false,
+                });
+            }
+
+            sbie.payButtonPressed = false;
         },
 
         /**
@@ -341,7 +349,34 @@ jQuery(document).ready(function ($) {
          */
         showWooCommerceElements: function () {
             $('div.form-row.place-order').show();
-        }
+        },
+
+        /**
+         * If payment is complete, lock the checkout to prevent further actions.
+         *
+         * @returns {void}
+         */
+        ifPaymentComplete: function () {
+            if ( sbie.params.payment_complete ) {
+                // Lock the checkout form.
+                $('form.checkout').addClass('processing');
+                $('form.checkout').block({
+                    message: null,
+                    overlayCSS: {
+                        background: '#fff',
+                        opacity: 0.6
+                    }
+                });
+
+                // Ensure the embedded checkout is positioned above the overlay for the locked form.
+                $('#payex_container').css('zIndex', '5000');
+                $('#payex_container').css('position', 'relative');
+
+                if( sbie.isOpen ) {
+                    sbie.checkout.refresh();
+                }
+            }
+        },
     };
     sbie.init();
 });
