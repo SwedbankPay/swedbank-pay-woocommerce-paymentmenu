@@ -2,6 +2,7 @@
 
 use Automattic\WooCommerce\Utilities\OrderUtil;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 
 /**
  * Checks if High-Performance Order Storage is enabled.
@@ -182,12 +183,12 @@ function swedbank_pay_get_order_lines( $order ) {
 		$shipping_with_tax = $shipping + $tax;
 		$tax_percent       = $tax > 0 ? round( 100 / ( $shipping / $tax ) ) : 0;
 		$shipping_method   = trim( $order->get_shipping_method() );
-		$name = ! empty( $shipping_method ) ? $shipping_method : __( 'Shipping','woocommerce' );
+		$name              = ! empty( $shipping_method ) ? $shipping_method : __( 'Shipping', 'woocommerce' );
 
 		$items[] = array(
 			Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'shipping',
 			Swedbank_Pay_Order_Item::FIELD_NAME        => $name,
-			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION        => $name,
+			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $name,
 			Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_SHIPPING,
 			Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
 			Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
@@ -288,17 +289,7 @@ function swedbank_pay_get_order_lines( $order ) {
 		}
 	}
 
-	return array_map(
-		function ( $item ) {
-			if ( isset( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] ) ) {
-				// limited to 40 characters in the API.
-				$item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] = mb_substr( trim( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] ), 0, 40 );
-			}
-
-			return $item;
-		},
-		$items
-	);
+	return Swedbank_Pay_Api::prepare_for_api( $items );
 }
 
 function swedbank_pay_get_available_line_items_for_refund( WC_Order $order ) {

@@ -84,6 +84,23 @@ class Swedbank_Pay_Api {
 		$this->gateway = $gateway;
 	}
 
+	/**
+	 * Prepare item for API.
+	 *
+	 * Sanitize and apply necessary limitations for compatibility with the API.
+	 *
+	 * @param array $items The Swedbank Pay order items.
+	 * @return array The prepared items.
+	 */
+	public static function prepare_for_api( $items ) {
+		if ( isset( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] ) ) {
+			// limited to 40 characters in the API.
+			$item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] = mb_substr( trim( $items[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] ), 0, 40 );
+		}
+
+		return $items;
+	}
+
 	public function set_access_token( $access_token ) {
 		$this->access_token = $access_token;
 
@@ -248,7 +265,7 @@ class Swedbank_Pay_Api {
 	 */
 	public function update_embedded_purchase() {
 		$update_payment_url = WC()->session->get( 'swedbank_pay_update_order_url' );
-		$helper = new Cart();
+		$helper             = new Cart();
 
 		$payment_order        = $helper->get_update_payment_order();
 		$payment_order_object = new PaymentorderObject();
@@ -337,7 +354,7 @@ class Swedbank_Pay_Api {
 
 			// https://tools.ietf.org/html/rfc7807
 			$response_body = self::get_client()->getResponseBody() ?? '{}';
-			$data = json_decode( $response_body, true );
+			$data          = json_decode( $response_body, true );
 			if ( json_last_error() === JSON_ERROR_NONE &&
 				isset( $data['title'] ) &&
 				isset( $data['detail'] )

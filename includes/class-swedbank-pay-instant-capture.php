@@ -372,17 +372,7 @@ class Swedbank_Pay_Instant_Capture {
 			}
 		}
 
-		return array_map(
-			function ( $item ) {
-				if ( isset( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] ) ) {
-					// limited to 40 characters in the API.
-					$item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] = mb_substr( trim( $item[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] ), 0, 40 );
-				}
-
-				return $item;
-			},
-			$items
-		);
+		return Swedbank_Pay_Api::prepare_for_api( $items );
 	}
 
 
