@@ -499,6 +499,13 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
+		if ( 'cancelled' === $new_status ) {
+			$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+			if ( ! wc_string_to_bool( $settings['enable_order_cancel'] ?? 'yes' ) ) {
+				return;
+			}
+		}
+
 		$gateway = swedbank_pay_get_payment_method( $order );
 
 		Swedbank_Pay()->logger()->log(
