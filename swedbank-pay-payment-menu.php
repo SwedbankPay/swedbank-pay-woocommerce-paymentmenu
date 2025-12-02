@@ -19,6 +19,7 @@
  */
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
+use Krokedil\Swedbank\Pay\OrderManagement;
 use KrokedilSwedbankPayDeps\Krokedil\Support\Logger;
 use KrokedilSwedbankPayDeps\Krokedil\Support\SystemReport;
 
@@ -45,6 +46,13 @@ require_once __DIR__ . '/includes/class-swedbank-pay-plugin.php';
  */
 class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	public const TEXT_DOMAIN = 'swedbank-pay-woocommerce-checkout';
+
+	/**
+	 * Order Management.
+	 *
+	 * @var OrderManagement
+	 */
+	private $order_management;
 
 	/**
 	 * Logger instance.
@@ -99,6 +107,15 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 */
 	public function __wakeup() {
 		wc_doing_it_wrong( __FUNCTION__, __( 'Nope' ), '1.0' );
+	}
+
+	/**
+	 * Handle for the order management instance.
+	 *
+	 * @return OrderManagement
+	 */
+	public function order_management() {
+		return $this->order_management;
 	}
 
 	/**
@@ -174,7 +191,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		$plugin_settings = get_option( 'woocommerce_payex_checkout_settings', array() );
 		$this->logger    = new Logger( 'swedbank_pay', wc_string_to_bool( $plugin_settings['logger'] ?? true ) );
 
-		$system_report_options = array(
+		$system_report_options  = array(
 			array(
 				'type' => 'checkbox',
 			),
@@ -188,7 +205,8 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 				),
 			),
 		);
-		$this->system_report   = new SystemReport( 'payex_checkout', 'Swedbank Pay', $system_report_options );
+		$this->system_report    = new SystemReport( 'payex_checkout', 'Swedbank Pay', $system_report_options );
+		$this->order_management = OrderManagement::get_instance();
 
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateways' ) );
 	}
