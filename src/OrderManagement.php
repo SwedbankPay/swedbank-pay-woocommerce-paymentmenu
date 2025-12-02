@@ -26,7 +26,12 @@ class OrderManagement {
 	 * Class constructor.
 	 */
 	public function __construct() {
-		add_action( 'woocommerce_order_status_completed', array( $this, 'capture_order' ), 10, 2 );
+		$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+
+		// Here we default to 'no' although the actual default in the settings is 'yes'. This is to preserve existing behavior, and is indicated by the settings absence.
+		if ( wc_string_to_bool( $settings['enable_order_capture'] ?? 'no' ) ) {
+			add_action( 'woocommerce_order_status_completed', array( $this, 'capture_order' ), 10, 2 );
+		}
 	}
 
 	/**
