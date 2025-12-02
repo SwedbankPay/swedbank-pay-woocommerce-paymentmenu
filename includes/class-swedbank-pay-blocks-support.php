@@ -58,13 +58,15 @@ class Swedbank_Pay_Blocks_Support extends AbstractPaymentMethodType {
 
 		// Localize the script
 		$translation_array = array(
-			'proceed_to' => sprintf(
-			/* translators: 1: title */                __( 'Proceed to %s', 'swedbank-pay-woocommerce-checkout' ), $this->settings['title']
+			'proceed_to'  => sprintf(
+			/* translators: 1: title */                __( 'Proceed to %s', 'swedbank-pay-woocommerce-checkout' ),
+				$this->settings['title']
 			),
 			'payment_via' => sprintf(
-			/* translators: 1: title */                __( 'Payment via %s', 'swedbank-pay-woocommerce-checkout' ), $this->settings['title']
+			/* translators: 1: title */                __( 'Payment via %s', 'swedbank-pay-woocommerce-checkout' ),
+				$this->settings['title']
 			),
-			'logo_src' => plugin_dir_url( __FILE__ ) . '../assets/images/checkout.svg'
+			'logo_src'    => plugin_dir_url( __FILE__ ) . '../assets/images/checkout.svg',
 		);
 
 		wp_localize_script(
@@ -82,10 +84,10 @@ class Swedbank_Pay_Blocks_Support extends AbstractPaymentMethodType {
 	 * @return array
 	 */
 	public function get_payment_method_data() {
-		return [
+		return array(
 			'title'       => $this->get_setting( 'title' ),
 			'description' => $this->get_setting( 'description' ),
 			'supports'    => $this->get_supported_features(),
-		];
+		);
 	}
 }

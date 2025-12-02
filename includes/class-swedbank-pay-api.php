@@ -2,6 +2,8 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
+use Krokedil\Swedbank\Pay\Helpers\Cart;
+
 defined( 'ABSPATH' ) || exit;
 
 use WP_Error;
@@ -22,6 +24,7 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchas
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Verify;
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
@@ -184,13 +187,103 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Create a Client for payment.
+	 *
+	 * @return WP_Error|ResponseServiceInterface
+	 */
+	public function initiate_embedded_purchase() {
+		$helper = new Cart();
+
+		// Required for zero amount orders. Only checks for subscriptions.
+		$is_verify = Swedbank_Pay_Subscription::cart_has_zero_order();
+
+		$payment_order        = $helper->get_payment_order( $is_verify );
+		$payment_order_object = new PaymentorderObject();
+		$payment_order_object->setPaymentorder( $payment_order );
+
+		if ( $is_verify ) {
+			$purchase_request = new Verify( $payment_order_object );
+		} else {
+			$purchase_request = new Purchase( $payment_order_object );
+		}
+
+		$purchase_request->setClient( self::get_client() );
+
+		try {
+			/** @var ResponseServiceInterface $response_service */
+			$response_service = $purchase_request->send();
+
+			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
+
+			return $response_service;
+		} catch ( ClientException $e ) {
+
+			Swedbank_Pay()->logger()->error( $purchase_request->getClient()->getDebugInfo() );
+			Swedbank_Pay()->logger()->error( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
+
+			return Swedbank_Pay()->system_report()->request(
+				new WP_Error(
+					400,
+					$this->format_error_message( $purchase_request->getClient()->getResponseBody(), $e->getMessage() )
+				)
+			);
+		}
+	}
+
+	/**
+	 * Get a embedded payment.
+	 *
+	 * @return WP_Error|array
+	 */
+	public function get_embedded_purchase() {
+		$view_session_url = WC()->session->get( 'swedbank_pay_view_session_url' );
+		$result           = $this->request( 'GET', $view_session_url );
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+			/** @var \WP_Error $result */
+			Swedbank_Pay()->logger()->debug(
+				sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() )
+			);
+
+			return $result;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Update a embedded payment.
+	 *
+	 * @return WP_Error|ResponseServiceInterface
+	 */
+	public function update_embedded_purchase() {
+		$update_payment_url = WC()->session->get( 'swedbank_pay_update_order_url' );
+		$helper             = new Cart();
+
+		$payment_order        = $helper->get_update_payment_order();
+		$payment_order_object = new PaymentorderObject();
+		$payment_order_object->setPaymentorder( $payment_order );
+
+		$result = $this->request( 'PATCH', $update_payment_url, $payment_order_object );
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+			/** @var \WP_Error $result */
+			Swedbank_Pay()->logger()->debug(
+				sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() )
+			);
+
+			return $result;
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Do API Request
 	 *
 	 * @param       $method
 	 * @param       $url
-	 * @param array $params
+	 * @param array|string|object $params
 	 *
-	 * @return Response|\WP_Error
+	 * @return array|\WP_Error
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
 	 */
 	public function request( $method, $url, $params = array() ) {
@@ -252,7 +345,8 @@ class Swedbank_Pay_Api {
 			);
 
 			// https://tools.ietf.org/html/rfc7807
-			$data = json_decode( self::get_client()->getResponseBody(), true );
+			$response_body = self::get_client()->getResponseBody() ?? '{}';
+			$data          = json_decode( $response_body, true );
 			if ( json_last_error() === JSON_ERROR_NONE &&
 				isset( $data['title'] ) &&
 				isset( $data['detail'] )
