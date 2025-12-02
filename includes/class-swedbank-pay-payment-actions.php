@@ -42,12 +42,89 @@ class Swedbank_Pay_Payment_Actions {
 	/**
 	 * Capture.
 	 *
-	 * @param WC_Order $order
+	 * @param WC_Order $order The WC order.
 	 *
-	 * @return bool
+	 * @return \WP_Error|array
 	 */
 	public function capture_payment( $order ) {
-		return $order->update_status( 'completed', __( 'Order captured through metabox action.', 'swedbank-pay-woocommerce-checkout' ), true );
+		$order_lines = swedbank_pay_get_order_lines( $order );
+
+		$captured = $order->get_meta( '_payex_captured_items' );
+		$captured = empty( $captured ) ? array() : (array) $captured;
+		if ( count( $captured ) > 0 ) {
+			// Remove captured items from order items list.
+			foreach ( $order_lines as $key => &$order_item ) {
+				foreach ( $captured as &$captured_item ) {
+					if ( $order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ===
+						$captured_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ]
+					) {
+						$unit_vat = $order_item[Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT] / $order_item[Swedbank_Pay_Order_Item::FIELD_QTY]; //phpcs:ignore
+						$order_item[ Swedbank_Pay_Order_Item::FIELD_QTY ]     -= $captured_item[ Swedbank_Pay_Order_Item::FIELD_QTY ];
+						$order_item[Swedbank_Pay_Order_Item::FIELD_AMOUNT] = $order_item[Swedbank_Pay_Order_Item::FIELD_QTY] * $order_item[Swedbank_Pay_Order_Item::FIELD_UNITPRICE]; //phpcs:ignore
+						$order_item[Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT] = $order_item[Swedbank_Pay_Order_Item::FIELD_QTY] * $unit_vat; //phpcs:ignore
+
+						$captured_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] += $order_item[ Swedbank_Pay_Order_Item::FIELD_QTY ];
+
+						if ( 0 === $order_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] ) {
+							unset( $order_lines[ $key ] );
+						}
+					}
+				}
+			}
+		}
+
+		remove_action(
+			'woocommerce_order_status_changed',
+			Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
+			0
+		);
+
+		// @todo Log capture items $order_lines.
+
+		/** @var \WP_Error|array $result */
+		$result = $this->gateway->api->capture_checkout( $order, $order_lines );
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+			return $result;
+		}
+
+		// Append to exists list if applicable.
+		$current_items = $order->get_meta( '_payex_captured_items' );
+		$current_items = empty( $current_items ) ? array() : (array) $current_items;
+
+		foreach ( $order_lines as $captured_line ) {
+			$is_found = false;
+			foreach ( $current_items as &$current_item ) {
+				if ( $current_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] === $captured_line[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ) {
+					// Update
+					$current_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] += $captured_line[ Swedbank_Pay_Order_Item::FIELD_QTY ];
+					$is_found = true;
+
+					break;
+				}
+			}
+
+			if ( ! $is_found ) {
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_NAME ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_TYPE ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_CLASS ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_ITEM_URL ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_IMAGE_URL ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_DESCRIPTION ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_UNITPRICE ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_QTY_UNIT ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] );
+				unset( $captured_line[ Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT ] );
+
+				$current_items[] = $captured_line;
+			}
+		}
+
+		$order->update_meta_data( '_payex_captured_items', $current_items );
+		$order->add_order_note( __( 'Order captured through metabox action.', 'swedbank-pay-woocommerce-checkout' ) );
+		$order->save_meta_data();
+
+		return $result;
 	}
 
 	/**
