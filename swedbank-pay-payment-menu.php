@@ -149,7 +149,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		// This is required since the 'install' method is dependant on classes being loaded by the parent class.
 		parent::__construct();
 
-		add_action( 'plugin_loaded', array( $this, 'init' ) );
+		add_action( 'plugins_loaded', array( $this, 'init' ) );
 
 		// Activation.
 		register_activation_hook( __FILE__, array( $this, 'install' ) );
