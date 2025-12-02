@@ -6,7 +6,7 @@ Tested up to: 6.8.2
 Requires PHP: 7.4
 WC requires at least: 5.5.1
 WC tested up to: 10.1.2
-Stable tag: 4.2.2
+Stable tag: 4.3.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -89,13 +89,18 @@ You are now done with configuring our plugin.
 = Minimum Requirements =
 * PHP 7.4 or greater is recommended
 * WooCommerce 5 or greater is recommended
+
 == Upgrade Notice ==
 = 1.2.0 =
 Please update to version 1.2.0.
 
 == Changelog ==
-= 2025.11.06    - version 4.2.2 =
-* Fix           - Fixed reference to plugin_loaded instead of plugins_loaded action hook.
+= 2025.12.02    - version 4.3.0 =
+* Feature       - Added a new checkout flow, Seamless Menu, which provides a more integrated payment experience within the WooCommerce checkout page.
+* Feature       - Added an option to automatically capture the payment when the order is marked as Completed in WooCommerce. This can be toggled in the plugin settings. Note, you can still manually capture payments if needed through the metabox action buttons.
+* Feature       - Added an option to automatically cancel the payment when the order is marked as Cancelled in WooCommerce. This can be toggled in the plugin settings. Note, you can still manually cancel payments if needed through the metabox action buttons.
+* Tweak         - Replaced jquery-blockui with wc-jquery-blockui for eligible WooCommerce versions.
+* Tweak         - Added UTM parameters in support form link for better tracking of support requests.
 
 = 2025.10.23    - version 4.2.1 =
 * Tweak         - Replaced the internal support form page with a direct link to the external website's support page.

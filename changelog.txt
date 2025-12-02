@@ -1,5 +1,9 @@
-Version 4.2.2
-* Fixed reference to plugin_loaded instead of plugins_loaded action hook.
+Version 4.3.0
+* Added a new checkout flow, Seamless Menu, which provides a more integrated payment experience within the WooCommerce checkout page.
+* Added an option to automatically capture the payment when the order is marked as Completed in WooCommerce. This can be toggled in the plugin settings. Note, you can still manually capture payments if needed through the metabox action buttons.
+* Added an option to automatically cancel the payment when the order is marked as Cancelled in WooCommerce. This can be toggled in the plugin settings. Note, you can still manually cancel payments if needed through the metabox action buttons.
+* Replaced jquery-blockui with wc-jquery-blockui for eligible WooCommerce versions.
+* Added UTM parameters in support form link for better tracking of support requests.
 
 Version 4.2.1
 * Replaced the internal support form page with a direct link to the external website's support page.

@@ -42,7 +42,7 @@ class Swedbank_Pay_Payment_Actions {
 	/**
 	 * Capture.
 	 *
-	 * @param WC_Order $order
+	 * @param WC_Order $order The WC order.
 	 *
 	 * @return \WP_Error|array
 	 */
@@ -52,7 +52,7 @@ class Swedbank_Pay_Payment_Actions {
 		$captured = $order->get_meta( '_payex_captured_items' );
 		$captured = empty( $captured ) ? array() : (array) $captured;
 		if ( count( $captured ) > 0 ) {
-			// Remove captured items from order items list
+			// Remove captured items from order items list.
 			foreach ( $order_lines as $key => &$order_item ) {
 				foreach ( $captured as &$captured_item ) {
 					if ( $order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ===
@@ -79,7 +79,7 @@ class Swedbank_Pay_Payment_Actions {
 			0
 		);
 
-		// @todo Log capture items $order_lines
+		// @todo Log capture items $order_lines.
 
 		/** @var \WP_Error|array $result */
 		$result = $this->gateway->api->capture_checkout( $order, $order_lines );
@@ -87,7 +87,7 @@ class Swedbank_Pay_Payment_Actions {
 			return $result;
 		}
 
-		// Append to exists list if applicable
+		// Append to exists list if applicable.
 		$current_items = $order->get_meta( '_payex_captured_items' );
 		$current_items = empty( $current_items ) ? array() : (array) $current_items;
 
@@ -121,6 +121,7 @@ class Swedbank_Pay_Payment_Actions {
 		}
 
 		$order->update_meta_data( '_payex_captured_items', $current_items );
+		$order->add_order_note( __( 'Order captured through metabox action.', 'swedbank-pay-woocommerce-checkout' ) );
 		$order->save_meta_data();
 
 		return $result;

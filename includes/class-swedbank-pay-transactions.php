@@ -26,6 +26,7 @@ class Swedbank_Pay_Transactions {
 
 	/**
 	 * Allowed Fields
+	 *
 	 * @var array
 	 */
 	protected static $allowed_fields = array(
@@ -193,7 +194,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 	public function get( $transaction_id ) {
 		global $wpdb;
 		$query = $wpdb->prepare(
-			"SELECT * FROM " . esc_sql( $wpdb->prefix ) . "payex_transactions WHERE transaction_id = %d;",
+			'SELECT * FROM ' . esc_sql( $wpdb->prefix ) . 'payex_transactions WHERE transaction_id = %d;',
 			$transaction_id
 		);
 
@@ -348,5 +349,4 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 
 		return $result;
 	}
-
 }

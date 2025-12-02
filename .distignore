@@ -51,3 +51,5 @@ tsconfig.json
 
 gruntfile.js
 tsconfig.json
+
+.changelogs

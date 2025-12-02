@@ -40,5 +40,9 @@
             ]
         }
     },
+    "scripts": {
+        "phpcs": "@php ./vendor/bin/phpcs --standard=phpcs.xml **/*.php",
+        "phpcbf": "@php ./vendor/bin/phpcbf --standard=phpcs.xml **/*.php"
+    },
     "minimum-stability": "dev"
 }

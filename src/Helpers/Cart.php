@@ -2,6 +2,7 @@
 
 namespace Krokedil\Swedbank\Pay\Helpers;
 
+use Krokedil\Swedbank\Pay\Utility\SettingsUtility;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\Transaction as TransactionData;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderMetadata;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
@@ -18,14 +19,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
  * including items, metadata, payee information, URLs, and payer information.
  * It also provides methods to calculate total amounts and VAT amounts for the order.
  */
-class Order extends PaymentDataHelper {
-	/**
-	 * This is the WooCommerce order or refund object.
-	 *
-	 * @var \WC_Order|\WC_Order_Refund
-	 */
-	private $order;
-
+class Cart extends PaymentDataHelper {
 	/**
 	 * Order constructor.
 	 *
@@ -36,28 +30,29 @@ class Order extends PaymentDataHelper {
 	 * @param array|null                 $items Optional. If provided, these items will be used for generating the OrderItemsCollection instead of using the WC order items.
 	 *                                           Set to `null` (or empty) to retrieve from the WC order instead.
 	 */
-	public function __construct( $order, ?array $items = null ) {
-		$this->order           = $order;
+	public function __construct( ?array $items = null ) {
 		$this->formatted_items = $items;
+		$this->gateway         = SettingsUtility::get_gateway_class();
+		$this->user_agent      = wc_get_user_agent();
 
-		if ( $order instanceof \WC_Order_Refund ) {
-			$order = wc_get_order( $order->get_parent_id() );
-		}
-		$this->gateway = swedbank_pay_get_payment_method( $order );
-
-		$this->user_agent = $order->get_customer_user_agent();
 		if ( empty( $this->user_agent ) ) {
 			$this->user_agent = 'WooCommerce/' . WC()->version;
 		}
 	}
 
 	/**
-	 * Get the WC order.
+	 * Get the payee reference either by creating one, or retrieving it from the session.
 	 *
-	 * @return \WC_Order|\WC_Order_Refund
+	 * @return string
 	 */
-	public function get_order() {
-		return $this->order;
+	public static function get_payee_reference() {
+		$payee_reference = WC()->session->get( 'swedbank_pay_payee_reference' );
+		if ( empty( $payee_reference ) ) {
+			$payee_reference = swedbank_pay_generate_payee_reference( wp_generate_password( 12, false, false ) );
+			WC()->session->set( 'swedbank_pay_payee_reference', $payee_reference );
+		}
+
+		return $payee_reference;
 	}
 
 	/**
@@ -69,9 +64,9 @@ class Order extends PaymentDataHelper {
 	 */
 	public function get_formatted_items() {
 		$items           = array();
-		$formatted_items = swedbank_pay_get_order_lines( $this->order );
+		$formatted_items = swedbank_pay_get_cart_lines();
 		foreach ( $formatted_items as $item ) {
-			// Swedbank does not allow negative values in any numeric field which will always be the case for WC_Order_Refund.
+			// Swedbank does not allow negative values in any numeric field which will always be the case for WC_Order_Refund unless the row is a discount.
 			$items[] = array_map(
 				fn( $value ) => is_numeric( $value ) ? ( $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] === Swedbank_Pay_Order_Item::TYPE_DISCOUNT ? $value : abs( $value ) ) : $value,
 				$item
@@ -91,7 +86,7 @@ class Order extends PaymentDataHelper {
 	 * @return PaymentorderMetadata
 	 */
 	public function get_metadata() {
-		$metadata = ( new PaymentorderMetadata() )->setData( 'order_id', $this->order->get_id() );
+		$metadata = ( new PaymentorderMetadata() )->setData( 'order_id', 'order_id' );
 		return apply_filters( 'swedbank_pay_metadata', $metadata, $this );
 	}
 
@@ -105,15 +100,11 @@ class Order extends PaymentDataHelper {
 	public function get_payee_info() {
 		$payee = new PaymentorderPayeeInfo(
 			array(
-				'orderReference' => apply_filters(
-					'swedbank_pay_order_reference',
-					$this->order->get_order_number()
-				),
+				'payeeId'        => $this->gateway->payee_id,
 				'payeeReference' => apply_filters(
 					'swedbank_pay_payee_reference',
-					swedbank_pay_generate_payee_reference( $this->order->get_id() )
+					self::get_payee_reference(),
 				),
-				'payeeId'        => $this->gateway->payee_id,
 				'payeeName'      => apply_filters(
 					'swedbank_pay_payee_name',
 					get_bloginfo( 'name' ),
@@ -134,31 +125,31 @@ class Order extends PaymentDataHelper {
 	 * @return PaymentorderUrl
 	 */
 	public function get_url_data() {
+		$payee_reference = self::get_payee_reference();
 		$callback_url = add_query_arg(
 			array(
-				'order_id' => $this->order->get_id(),
-				'key'      => $this->order->get_order_key(),
+				'type'            => 'inline_embedded',
+				'payee_reference' => $payee_reference,
 			),
 			WC()->api_request_url( get_class( $this->gateway ) )
 		);
 
-		$complete_url = $this->gateway->get_return_url( $this->order );
-		$cancel_url   = is_checkout() ? wc_get_checkout_url() : $this->order->get_cancel_order_url_raw();
-
+		$complete_url = $this->gateway->get_return_url();
+		$payment_url  = add_query_arg( 'payex-payment-complete', $payee_reference, wc_get_checkout_url() );
 		$url_data = ( new PaymentorderUrl() )
 			->setHostUrls(
 				Swedbank_Pay_Api::get_host_urls(
 					array(
 						$complete_url,
-						$cancel_url,
 						$callback_url,
+						$payment_url,
 						$this->gateway->terms_url,
 						$this->gateway->logo_url,
 					)
 				)
 			)
 			->setCompleteUrl( $complete_url )
-			->setCancelUrl( $cancel_url )
+			->setPaymentUrl( $payment_url )
 			->setCallbackUrl( $callback_url )
 			->setTermsOfService( $this->gateway->terms_url )
 			->setLogoUrl( $this->gateway->logo_url );
@@ -178,14 +169,14 @@ class Order extends PaymentDataHelper {
 	public function get_payer() {
 		$payer = ( new PaymentorderPayer() )
 				->setPayerReference( $this->get_customer_uuid() )
-				->setFirstName( $this->order->get_billing_first_name() )
-				->setLastName( $this->order->get_billing_last_name() )
-				->setEmail( $this->order->get_billing_email() )
-				->setMsisdn( str_replace( ' ', '', $this->order->get_billing_phone() ) );
+				->setFirstName( WC()->customer->get_billing_first_name() )
+				->setLastName( WC()->customer->get_billing_last_name() )
+				->setEmail( WC()->customer->get_billing_email() )
+				->setMsisdn( self::format_phone_number( WC()->customer->get_billing_phone(), WC()->customer->get_billing_country() ) );
 
 		$needs_shipping = false;
-		foreach ( $this->order->get_items() as $order_item ) {
-			$product = $order_item->get_product();
+		foreach ( WC()->cart->get_cart() as $cart_item ) {
+			$product = $cart_item['data'];
 			if ( $product && $product->needs_shipping() ) {
 				$needs_shipping = true;
 				break;
@@ -213,16 +204,15 @@ class Order extends PaymentDataHelper {
 	public function get_payment_order( $verify = false ) {
 		$payment_order = ( new Paymentorder() )
 			->setOperation( $verify ? self::OPERATION_VERIFY : self::OPERATION_PURCHASE )
-			->setCurrency( $this->order->get_currency() )
+			->setCurrency( get_woocommerce_currency() )
 			->setDescription(
 				apply_filters(
 					'swedbank_pay_payment_description',
 					sprintf(
 						/* translators: 1: order id */
 						__( 'Order #%1$s', 'swedbank-pay-woocommerce-payments' ),
-						$this->order->get_order_number()
-					),
-					$this->order
+						self::get_payee_reference()
+					)
 				)
 			)
 			->setUserAgent( $this->user_agent )
@@ -231,8 +221,7 @@ class Order extends PaymentDataHelper {
 			->setImplementation( 'PaymentsOnly' )
 			->setDisablePaymentMenu( false )
 			->setUrls( $this->get_url_data() )
-			->setPayeeInfo( $this->get_payee_info() )
-			->setMetadata( $this->get_metadata() );
+			->setPayeeInfo( $this->get_payee_info() );
 
 		// The Verify operation does not support amount and vatAmount.
 		if ( ! $verify ) {
@@ -243,9 +232,9 @@ class Order extends PaymentDataHelper {
 					100,
 					apply_filters(
 						'swedbank_pay_order_amount',
-						$this->order->get_total(),
+						WC()->cart->get_total( 'edit' ),
 						$items,
-						$this->order
+						WC()->cart
 					)
 				)
 			)
@@ -254,7 +243,7 @@ class Order extends PaymentDataHelper {
 					'swedbank_pay_order_vat',
 					$this->calculate_vat_amount( $items ),
 					$items,
-					$this->order
+					WC()->cart
 				)
 			);
 
@@ -265,6 +254,43 @@ class Order extends PaymentDataHelper {
 
 		$payment_order->setPayer( $this->get_payer() );
 		return apply_filters( 'swedbank_pay_payment_order', $payment_order, $this );
+	}
+
+	/**
+	 * Get the update payment order object.
+	 *
+	 * This method constructs a Paymentorder object for updating an existing payment order.
+	 *
+	 * @hook swedbank_pay_update_payment_order
+	 * @return Paymentorder
+	 */
+	public function get_update_payment_order() {
+		$items                 = $this->get_formatted_items();
+		$this->formatted_items = $items;
+		$payment_order         = ( new Paymentorder() )
+			->setOperation( 'UpdateOrder' )
+			->setAmount(
+				(int) bcmul(
+					100,
+					apply_filters(
+						'swedbank_pay_order_amount',
+						WC()->cart->get_total( 'edit' ),
+						$items,
+						WC()->cart
+					)
+				)
+			)
+			->setVatAmount(
+				apply_filters(
+					'swedbank_pay_order_vat',
+					$this->calculate_vat_amount( $items ),
+					$items,
+					WC()->cart
+				)
+			)
+			->setOrderItems( $this->get_order_items() );
+
+		return apply_filters( 'swedbank_pay_update_payment_order', $payment_order, $this );
 	}
 
 	/**
@@ -280,20 +306,11 @@ class Order extends PaymentDataHelper {
 		$order_items = $this->get_order_items();
 		$items       = $this->get_formatted_items();
 
-		$payee_reference = apply_filters(
-			'swedbank_pay_payee_reference',
-			swedbank_pay_generate_payee_reference( $this->order->get_id() )
-		);
-
 		$transaction_data = ( new TransactionData() )
 			->setAmount( $this->calculate_total_amount( $items ) )
 			->setVatAmount( $this->calculate_vat_amount( $items ) )
-			->setPayeeReference( $payee_reference )
+			->setPayeeReference( self::get_payee_reference() )
 			->setOrderItems( $order_items );
-
-		if ( $this->order instanceof \WC_Order_Refund ) {
-			$transaction_data->setReceiptReference( $payee_reference );
-		}
 
 		return apply_filters( 'swedbank_pay_transaction_data', $transaction_data, $this );
 	}
@@ -307,7 +324,7 @@ class Order extends PaymentDataHelper {
 	 * @return string
 	 */
 	public function get_customer_uuid() {
-		$user_id = $this->order->get_user_id();
+		$user_id = WC()->customer->get_id();
 
 		if ( $user_id > 0 ) {
 			$payer_reference = get_user_meta( $user_id, '_payex_customer_uuid', true );
@@ -316,7 +333,7 @@ class Order extends PaymentDataHelper {
 				update_user_meta( $user_id, '_payex_customer_uuid', $payer_reference );
 			}
 		} else {
-			$payer_reference = uniqid( $this->order->get_billing_email() );
+			$payer_reference = uniqid( WC()->customer->get_email() );
 		}
 
 		return apply_filters( 'swedbank_pay_generate_uuid', $payer_reference, $user_id );
