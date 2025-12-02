@@ -369,18 +369,16 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'type'  => 'title',
 			),
 			'enable_order_capture' => array(
-				'title'       => __( 'Enable order capture', 'swedbank-pay-woocommerce-checkout' ),
-				'type'        => 'checkbox',
-				'label'       => __( 'Allows capturing the Swedbank order through WooCommerce.', 'swedbank-pay-woocommerce-checkout' ),
-				'description' => __( 'When the order status is set to Completed, or completed through any of the action buttons, a capture order request will be sent to Swedbank.', 'swedbank-pay-woocommerce-checkout' ),
-				'default'     => 'yes',
+				'title'   => __( 'Capture on status change', 'swedbank-pay-woocommerce-checkout' ),
+				'type'    => 'checkbox',
+				'label'   => __( 'Capture payment on order status change to Completed', 'swedbank-pay-woocommerce-checkout' ),
+				'default' => 'yes',
 			),
 			'enable_order_cancel'  => array(
-				'title'       => __( 'Enable order cancel', 'swedbank-pay-woocommerce-checkout' ),
-				'type'        => 'checkbox',
-				'label'       => __( 'Allows cancelling the Swedbank order through WooCommerce.', 'swedbank-pay-woocommerce-checkout' ),
-				'description' => __( 'When the order status is set to Cancelled, or cancelled through any of the action buttons, a cancel order request will be sent to Swedbank.', 'swedbank-pay-woocommerce-checkout' ),
-				'default'     => 'yes',
+				'title'   => __( 'Cancel on status change', 'swedbank-pay-woocommerce-checkout' ),
+				'type'    => 'checkbox',
+				'label'   => __( 'Cancel payment on order status change to Cancelled', 'swedbank-pay-woocommerce-checkout' ),
+				'default' => 'yes',
 			),
 
 		);
