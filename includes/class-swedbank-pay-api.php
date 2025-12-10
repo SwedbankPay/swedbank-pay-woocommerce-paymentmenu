@@ -561,28 +561,30 @@ class Swedbank_Pay_Api {
 		$payment_order = $this->request( 'GET', $payment_order_id );
 		$payment_order = $payment_order['paymentOrder'];
 
-		// Apply action
+		// Apply action.
 		switch ( $transaction['type'] ) {
-			case self::TYPE_VERIFICATION:
-				// This is always the case for free trial subscription orders.
-				$order->payment_complete( $transaction_id );
-				$order->add_order_note( __( "Payment has been verified. Transaction: {$transaction_id}", 'swedbank-pay-woocommerce-payment-menu' ) );
-				break;
+			case self::TYPE_VERIFICATION: // This is always the case for free trial subscription orders.
 			case self::TYPE_AUTHORIZATION:
-				// translators: 1: transaction ID.
-				$message = sprintf( __( 'Payment has been authorized. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ), $transaction_id );
-
+			case self::TYPE_SALE:
 				if ( empty( $order->get_date_paid() ) ) {
+					// List of different messages based on the transaction type.
+					$messages = array(
+						// translators: 1: transaction ID.
+						self::TYPE_SALE          => __( 'Payment has been completed. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ),
+						// translators: 1: transaction ID.
+						self::TYPE_AUTHORIZATION => __( 'Payment has been authorized. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ),
+						// translators: 1: transaction ID.
+						self::TYPE_VERIFICATION  => __( 'Payment has been verified. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ),
+					);
+					$message  = sprintf( $messages[ $transaction['type'] ], $transaction_id );
 					$order->payment_complete( $transaction_id );
 					$order->add_order_note( $message );
 				}
-
 				break;
-			case self::TYPE_SALE:
 			case self::TYPE_CAPTURE:
 				$is_full_capture = false;
 
-				// Check if the payment was captured fully
+				// Check if the payment was captured fully.
 				// `remainingCaptureAmount` is missing if the payment was captured fully.
 				if ( ! isset( $payment_order['remainingCaptureAmount'] ) ) {
 					Swedbank_Pay()->logger()->debug(
@@ -600,43 +602,36 @@ class Swedbank_Pay_Api {
 				}
 
 				$captured_amount = wc_price( $transaction['amount'] / 100, array( 'currency' => $order->get_currency() ) );
-				// Update order status.
-				if ( $is_full_capture ) {
 
-					$this->update_order_status(
-						$order,
-						'completed',
+				// Add the order note for the capture based on if it was full or partial.
+				if ( $is_full_capture ) {
+					$message = sprintf(
+						// translators: 1: transaction ID, 2: transaction amount.
+						__( 'Payment has been fully captured. Transaction: %1$s. Amount: %2$s', 'swedbank-pay-woocommerce-checkout' ),
 						$transaction_id,
-						sprintf(
-							'Payment has been captured. Transaction: %s. Amount: %s',
-							$transaction_id,
-							$captured_amount
-						)
+						$captured_amount
 					);
+					$order->add_order_note( $message );
 				} else {
 					$remaining_amount = isset( $payment_order['remainingCaptureAmount'] ) ? $payment_order['remainingCaptureAmount'] / 100 : 0;
-
-					$order->add_order_note(
-						sprintf(
-							// translators: 1: transaction ID, 2: transaction amount, 3: remaining amount.
-							'Payment has been partially captured: Transaction: %s. Amount: %s. Remaining amount: %s',
-							$transaction_id,
-							$captured_amount,
-							wc_price(
-								$remaining_amount,
-								array( 'currency' => $order->get_currency() )
-							)
-						)
+					$price            = wc_price( $remaining_amount, array( 'currency' => $order->get_currency() ) );
+					$message          = sprintf(
+						// translators: 1: transaction ID, 2: transaction amount, 3: remaining amount.
+						__( 'Payment has been partially captured: Transaction: %1$s. Amount: %2$s. Remaining amount: %3$s', 'swedbank-pay-woocommerce-checkout' ),
+						$transaction_id,
+						$captured_amount,
+						$price
 					);
+					$order->add_order_note( $message );
 				}
-
 				break;
 			case self::TYPE_CANCELLATION:
 				$this->update_order_status(
 					$order,
 					'cancelled',
 					$transaction_id,
-					sprintf( 'Payment has been cancelled. Transaction: %s', $transaction_id )
+					// translators: 1: transaction ID.
+					sprintf( __( 'Payment has been cancelled. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ), $transaction_id )
 				);
 
 				break;
