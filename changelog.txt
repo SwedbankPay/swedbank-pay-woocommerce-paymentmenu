@@ -1,3 +1,9 @@
+Version 4.3.1
+* Reduced the amount of requests made to Swedbank Pay when the customer gets to the thankyou page for an order that could happen in some cases.
+* Fixed an issue where some payments would automatically be set to Completed in WooCommerce when the callback from Swedbank Pay was processed for some payment methods.
+* Fixed an issue where the overlay from WooCommerce would cover some modal windows shown by Swedbank Pay during the checkout when using the Seamless Menu checkout flow.
+* Fixed an issue where the description for shipping methods was not included in the order lines sent to Swedbank Pay.
+
 Version 4.3.0
 * Added a new checkout flow, Seamless Menu, which provides a more integrated payment experience within the WooCommerce checkout page.
 * Added an option to automatically capture the payment when the order is marked as Completed in WooCommerce. This can be toggled in the plugin settings. Note, you can still manually capture payments if needed through the metabox action buttons.
@@ -11,7 +17,7 @@ Version 4.2.1
 Version 4.2.0
 * Refund processing has been optimized for improved speed and reliability.
 * IP address validation has been removed and replaced with a new mechanism that validates callback data, preventing valid callbacks from being incorrectly rejected.
-* API requests no longer fail when the order line's description is too long. The item name is now used and trimmed if it exceeds the allowed length. 
+* API requests no longer fail when the order line's description is too long. The item name is now used and trimmed if it exceeds the allowed length.
 * Admin scripts now load only on Swedbank Pay orders, preventing read-only fields on other orders.
 * Fixed a critical error when cancelling or refunding an order.
 

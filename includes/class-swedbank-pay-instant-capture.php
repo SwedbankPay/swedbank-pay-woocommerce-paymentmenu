@@ -161,13 +161,13 @@ class Swedbank_Pay_Instant_Capture {
 				$image = wp_guess_url() . $image;
 			}
 
-			// Get Product Class
+			// Get Product Class.
 			$product_class = $product->get_meta( '_swedbank_pay_product_class' );
 			if ( empty( $product_class ) ) {
 				$product_class = 'ProductGroup1';
 			}
 
-			// Get Product Sku
+			// Get Product Sku.
 			$product_reference = trim(
 				str_replace(
 					array( ' ', '.', ',' ),
@@ -256,17 +256,16 @@ class Swedbank_Pay_Instant_Capture {
 				$shipping_with_tax = $shipping + $tax;
 				$tax_percent       = ( $tax > 0 ) ? round( 100 / ( $shipping / $tax ) ) : 0;
 				$shipping_method   = trim( $order->get_shipping_method() );
+				$shipping_name     = ! empty( $shipping_method ) ? $shipping_method : __( 'Shipping', 'woocommerce' );
 
 				$items[] = array(
 					Swedbank_Pay_Order_Item::FIELD_REFERENCE => 'shipping',
-					Swedbank_Pay_Order_Item::FIELD_NAME   => ! empty( $shipping_method ) ? $shipping_method : __(
-						'Shipping',
-						'woocommerce'
-					),
+					Swedbank_Pay_Order_Item::FIELD_NAME   => $shipping_name,
 					Swedbank_Pay_Order_Item::FIELD_TYPE   => Swedbank_Pay_Order_Item::TYPE_SHIPPING,
 					Swedbank_Pay_Order_Item::FIELD_CLASS  => 'ProductGroup1',
 					Swedbank_Pay_Order_Item::FIELD_QTY    => 1,
 					Swedbank_Pay_Order_Item::FIELD_QTY_UNIT => 'pcs',
+					Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $shipping_name,
 					Swedbank_Pay_Order_Item::FIELD_UNITPRICE => round( $shipping_with_tax * 100 ),
 					Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
 					Swedbank_Pay_Order_Item::FIELD_AMOUNT => round( $shipping_with_tax * 100 ),
@@ -283,10 +282,12 @@ class Swedbank_Pay_Instant_Capture {
 				$tax          = (float) $order_fee->get_total_tax();
 				$fee_with_tax = $fee + $tax;
 				$tax_percent  = ( $tax > 0 ) ? round( 100 / ( $fee / $tax ) ) : 0;
+				$name         = $order_fee->get_name();
 
 				$items[] = array(
 					Swedbank_Pay_Order_Item::FIELD_REFERENCE => 'fee',
-					Swedbank_Pay_Order_Item::FIELD_NAME   => $order_fee->get_name(),
+					Swedbank_Pay_Order_Item::FIELD_NAME   => $name,
+					Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $name,
 					Swedbank_Pay_Order_Item::FIELD_TYPE   => Swedbank_Pay_Order_Item::TYPE_OTHER,
 					Swedbank_Pay_Order_Item::FIELD_CLASS  => 'ProductGroup1',
 					Swedbank_Pay_Order_Item::FIELD_QTY    => 1,
@@ -305,10 +306,12 @@ class Swedbank_Pay_Instant_Capture {
 			$discount_with_tax = abs( $order->get_total_discount( false ) );
 			$tax               = $discount_with_tax - $discount;
 			$tax_percent       = ( $tax > 0 ) ? round( 100 / ( $discount / $tax ) ) : 0;
+			$name              = __( 'Discount', 'swedbank-pay-woocommerce-checkout' );
 
 			$items[] = array(
 				Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
-				Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-checkout' ),
+				Swedbank_Pay_Order_Item::FIELD_NAME        => $name,
+				Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $name,
 				Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
 				Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
 				Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
@@ -320,14 +323,14 @@ class Swedbank_Pay_Instant_Capture {
 			);
 		}
 
-		// YITH WooCommerce Gift Cards
+		// YITH WooCommerce Gift Cards.
 		if ( function_exists( 'YITH_YWGC' ) ) {
 			$order_gift_cards = $order->get_meta( '_ywgc_applied_gift_cards' );
 			if ( empty( $order_gift_cards ) ) {
 				$order_gift_cards = array();
 			}
 
-			// Compatibility: YITH WooCommerce Gift Cards v4.11
+			// Compatibility: YITH WooCommerce Gift Cards v4.11.
 			if ( 0 === count( $order_gift_cards ) ) {
 				foreach ( $order->get_items( 'yith_gift_card' ) as $gift_card ) {
 					/** @var \YITH_Gift_Card_Order_Item $gift_card */
@@ -350,10 +353,12 @@ class Swedbank_Pay_Instant_Capture {
 					$rate_aux          = '0.' . $tax_rate;
 					$discount_with_tax = -1 * $amount;
 					$discount          = round( -1 * ( $amount / ( 1 + (float) $rate_aux ) ), 2 );
+					$name              = __( 'Gift card: ' . esc_html( $code ), 'yith-woocommerce-gift-cards' );
 
 					$items[] = array(
 						Swedbank_Pay_Order_Item::FIELD_REFERENCE => 'gift_card_' . esc_html( $code ),
-						Swedbank_Pay_Order_Item::FIELD_NAME => __( 'Gift card: ' . esc_html( $code ), 'yith-woocommerce-gift-cards' ),
+						Swedbank_Pay_Order_Item::FIELD_NAME => $name,
+						Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $name,
 						Swedbank_Pay_Order_Item::FIELD_TYPE => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
 						Swedbank_Pay_Order_Item::FIELD_CLASS => 'ProductGroup1',
 						Swedbank_Pay_Order_Item::FIELD_QTY => 1,
@@ -367,7 +372,7 @@ class Swedbank_Pay_Instant_Capture {
 			}
 		}
 
-		return $items;
+		return Swedbank_Pay_Api::prepare_for_api( $items );
 	}
 
 

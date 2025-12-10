@@ -2,6 +2,7 @@
 
 use Automattic\WooCommerce\Utilities\OrderUtil;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 
 /**
  * Checks if High-Performance Order Storage is enabled.
@@ -165,7 +166,7 @@ function swedbank_pay_get_order_lines( $order ) {
 			Swedbank_Pay_Order_Item::FIELD_CLASS       => $product_class,
 			Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $product->get_permalink(),
 			Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image_url,
-			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => mb_substr( trim( $product->get_name() ), 0, 40 ), // limited to 40 characters in the API.
+			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $product->get_name(),
 			Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
 			Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
 			Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
@@ -182,13 +183,12 @@ function swedbank_pay_get_order_lines( $order ) {
 		$shipping_with_tax = $shipping + $tax;
 		$tax_percent       = $tax > 0 ? round( 100 / ( $shipping / $tax ) ) : 0;
 		$shipping_method   = trim( $order->get_shipping_method() );
+		$name              = ! empty( $shipping_method ) ? $shipping_method : __( 'Shipping', 'woocommerce' );
 
 		$items[] = array(
 			Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'shipping',
-			Swedbank_Pay_Order_Item::FIELD_NAME        => ! empty( $shipping_method ) ? $shipping_method : __(
-				'Shipping',
-				'woocommerce'
-			),
+			Swedbank_Pay_Order_Item::FIELD_NAME        => $name,
+			Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $name,
 			Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_SHIPPING,
 			Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
 			Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
@@ -289,7 +289,7 @@ function swedbank_pay_get_order_lines( $order ) {
 		}
 	}
 
-	return $items;
+	return Swedbank_Pay_Api::prepare_for_api( $items );
 }
 
 function swedbank_pay_get_available_line_items_for_refund( WC_Order $order ) {
@@ -437,56 +437,56 @@ function swedbank_pay_is_zero( $value ) {
  * @return array
  */
 function swedbank_pay_get_cart_item_product( $cart_item ) {
-    /** @var \WC_Product $product */
-    $product        = $cart_item['data'];
-    $price          = $cart_item['line_subtotal'];
-    $price_with_tax = $cart_item['line_subtotal'] + $cart_item['line_subtotal_tax'];
-    $tax            = $cart_item['line_subtotal_tax'];
-    $tax_percent    = $tax > 0 ? round( 100 / ($price / $tax ) ) : 0;
-    $qty            = $cart_item['quantity'];
+	/** @var \WC_Product $product */
+	$product        = $cart_item['data'];
+	$price          = $cart_item['line_subtotal'];
+	$price_with_tax = $cart_item['line_subtotal'] + $cart_item['line_subtotal_tax'];
+	$tax            = $cart_item['line_subtotal_tax'];
+	$tax_percent    = $tax > 0 ? round( 100 / ( $price / $tax ) ) : 0;
+	$qty            = $cart_item['quantity'];
 
-    $product_class = $product->get_meta( '_swedbank_pay_product_class' );
-    if ( empty( $product_class ) ) {
-    	$product_class = 'ProductGroup1';
-    }
+	$product_class = $product->get_meta( '_swedbank_pay_product_class' );
+	if ( empty( $product_class ) ) {
+		$product_class = 'ProductGroup1';
+	}
 
-    // Get Product Sku.
-    $product_reference = trim(
-    	str_replace(
-    		array( ' ', '.', ',' ),
-    		'-',
-    		$product->get_sku()
-    	)
-    );
+	// Get Product Sku.
+	$product_reference = trim(
+		str_replace(
+			array( ' ', '.', ',' ),
+			'-',
+			$product->get_sku()
+		)
+	);
 
-    if ( empty( $product_reference ) ) {
-    	$product_reference = wp_generate_password( 12, false );
-    }
+	if ( empty( $product_reference ) ) {
+		$product_reference = wp_generate_password( 12, false );
+	}
 
-    $product_name = trim( $product->get_name() );
+	$product_name = trim( $product->get_name() );
 
-    $image_url = wc_placeholder_img_src( 'shop_single' );
-    if ( $product->get_image_id() > 0 ) {
-    	$image_id  = $product->get_image_id();
-    	$image_url = wp_get_attachment_image_url( $image_id, 'shop_single', false );
-    }
+	$image_url = wc_placeholder_img_src( 'shop_single' );
+	if ( $product->get_image_id() > 0 ) {
+		$image_id  = $product->get_image_id();
+		$image_url = wp_get_attachment_image_url( $image_id, 'shop_single', false );
+	}
 
-    return array(
-    	// The field Reference must match the regular expression '[\\w-]*'.
-    	Swedbank_Pay_Order_Item::FIELD_REFERENCE   => $product_reference,
-    	Swedbank_Pay_Order_Item::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
-    	Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_PRODUCT,
-    	Swedbank_Pay_Order_Item::FIELD_CLASS       => $product_class,
-    	Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $product->get_permalink(),
-    	Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image_url,
-    	Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => mb_substr( trim( $product->get_name() ), 0, 40 ), // limited to 40 characters in the API.
-    	Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
-    	Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
-    	Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
-    	Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
-    	Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $price_with_tax * 100 ),
-    	Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
-    );
+	return array(
+		// The field Reference must match the regular expression '[\\w-]*'.
+		Swedbank_Pay_Order_Item::FIELD_REFERENCE   => $product_reference,
+		Swedbank_Pay_Order_Item::FIELD_NAME        => ! empty( $product_name ) ? $product_name : '-',
+		Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_PRODUCT,
+		Swedbank_Pay_Order_Item::FIELD_CLASS       => $product_class,
+		Swedbank_Pay_Order_Item::FIELD_ITEM_URL    => $product->get_permalink(),
+		Swedbank_Pay_Order_Item::FIELD_IMAGE_URL   => $image_url,
+		Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => mb_substr( trim( $product->get_name() ), 0, 40 ), // limited to 40 characters in the API.
+		Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
+		Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+		Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $price_with_tax / $qty * 100 ),
+		Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
+		Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $price_with_tax * 100 ),
+		Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
+	);
 }
 
 /**
@@ -495,45 +495,46 @@ function swedbank_pay_get_cart_item_product( $cart_item ) {
  * @return array
  */
 function swedbank_pay_get_cart_item_shipping() {
-    $shipping_methods = WC()->shipping->get_shipping_methods();
-    $chosen_methods   = WC()->session->get( 'chosen_shipping_methods' );
+	$shipping_methods = WC()->shipping->get_shipping_methods();
+	$chosen_methods   = WC()->session->get( 'chosen_shipping_methods' );
 
-    if ( is_array( $chosen_methods ) && ! empty( $chosen_methods ) ) {
-    	$chosen_shipping = $chosen_methods[0];
-    	if ( isset( $shipping_methods[ $chosen_shipping ] ) ) {
-    		$shipping_method = $shipping_methods[ $chosen_shipping ];
-    		$cost            = WC()->cart->get_shipping_total();
-    		$tax             = WC()->cart->get_shipping_tax();
-    		$cost_with_tax   = $cost + $tax;
-    		$tax_percent     = $tax > 0 ? round( 100 / ( $cost / $tax ) ) : 0;
+	if ( is_array( $chosen_methods ) && ! empty( $chosen_methods ) ) {
+		$chosen_shipping = $chosen_methods[0];
+		if ( isset( $shipping_methods[ $chosen_shipping ] ) ) {
+			$shipping_method = $shipping_methods[ $chosen_shipping ];
+			$cost            = WC()->cart->get_shipping_total();
+			$tax             = WC()->cart->get_shipping_tax();
+			$cost_with_tax   = $cost + $tax;
+			$tax_percent     = $tax > 0 ? round( 100 / ( $cost / $tax ) ) : 0;
+			$name            = ! empty( $shipping_method->get_method_title() ) ? $shipping_method->get_method_title() : __( 'Shipping', 'woocommerce' );
 
-    		return array(
-    			Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'shipping',
-    			Swedbank_Pay_Order_Item::FIELD_NAME        => ! empty( $shipping_method->get_method_title() ) ? $shipping_method->get_method_title() : __(
-    				'Shipping',
-    				'woocommerce'
-    			),
-    			Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_SHIPPING,
-    			Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
-    			Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
-    			Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
-    			Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $cost_with_tax * 100 ),
-    			Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
-    			Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $cost_with_tax * 100 ),
-    			Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
-    		);
-    	}
-    }
+			return array(
+				Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'shipping',
+				Swedbank_Pay_Order_Item::FIELD_NAME        => $name,
+				Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $name,
+				Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_SHIPPING,
+				Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
+				Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
+				Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+				Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $cost_with_tax * 100 ),
+				Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
+				Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $cost_with_tax * 100 ),
+				Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
+			);
+		}
+	}
 
 	// If we did not get any shipping method, add a generic one since we need shipping.
-	$cost            = WC()->cart->get_shipping_total();
-	$tax             = WC()->cart->get_shipping_tax();
-	$cost_with_tax   = $cost + $tax;
-	$tax_percent     = $tax > 0 ? round( 100 / ( $cost / $tax ) ) : 0;
+	$cost          = WC()->cart->get_shipping_total();
+	$tax           = WC()->cart->get_shipping_tax();
+	$cost_with_tax = $cost + $tax;
+	$tax_percent   = $tax > 0 ? round( 100 / ( $cost / $tax ) ) : 0;
+	$name          = __( 'Shipping', 'woocommerce' );
 
 	return array(
 		Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'shipping',
-		Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Shipping', 'woocommerce' ),
+		Swedbank_Pay_Order_Item::FIELD_NAME        => $name,
+		Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => $name,
 		Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_SHIPPING,
 		Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
 		Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
@@ -553,23 +554,23 @@ function swedbank_pay_get_cart_item_shipping() {
  * @return array
  */
 function swedbank_pay_get_cart_item_fee( $cart_fee ) {
-    $fee          = (float) $cart_fee->amount;
-    $tax          = (float) $cart_fee->tax;
-    $fee_with_tax = $fee + $tax;
-    $tax_percent  = ( $tax > 0 ) ? round( 100 / ( $fee / $tax ) ) : 0;
+	$fee          = (float) $cart_fee->amount;
+	$tax          = (float) $cart_fee->tax;
+	$fee_with_tax = $fee + $tax;
+	$tax_percent  = ( $tax > 0 ) ? round( 100 / ( $fee / $tax ) ) : 0;
 
-    return array(
-    	Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'fee',
-    	Swedbank_Pay_Order_Item::FIELD_NAME        => $cart_fee->name,
-    	Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_OTHER,
-    	Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
-    	Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
-    	Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
-    	Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $fee_with_tax * 100 ),
-    	Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
-    	Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $fee_with_tax * 100 ),
-    	Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
-    );
+	return array(
+		Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'fee',
+		Swedbank_Pay_Order_Item::FIELD_NAME        => $cart_fee->name,
+		Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_OTHER,
+		Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
+		Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
+		Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+		Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( $fee_with_tax * 100 ),
+		Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( $tax_percent * 100 ),
+		Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( $fee_with_tax * 100 ),
+		Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( $tax * 100 ),
+	);
 }
 
 /**
@@ -580,23 +581,23 @@ function swedbank_pay_get_cart_item_fee( $cart_fee ) {
  * @return array
  */
 function swedbank_pay_get_cart_item_discount( $discount_total ) {
-    $discount          = abs( $discount_total );
-    $discount_with_tax = abs( $discount_total + WC()->cart->get_discount_tax() );
-    $tax               = $discount_with_tax - $discount;
-    $tax_percent       = $tax > 0 ? round( 100 / ( $discount / $tax ) ) : 0;
+	$discount          = abs( $discount_total );
+	$discount_with_tax = abs( $discount_total + WC()->cart->get_discount_tax() );
+	$tax               = $discount_with_tax - $discount;
+	$tax_percent       = $tax > 0 ? round( 100 / ( $discount / $tax ) ) : 0;
 
-    return array(
-    	Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
-    	Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-checkout' ),
-    	Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
-    	Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
-    	Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
-    	Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
-    	Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( -100 * $discount_with_tax ),
-    	Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( 100 * $tax_percent ),
-    	Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( -100 * $discount_with_tax ),
-    	Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( -100 * $tax ),
-    );
+	return array(
+		Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
+		Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-checkout' ),
+		Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
+		Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
+		Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
+		Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
+		Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => round( -100 * $discount_with_tax ),
+		Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => round( 100 * $tax_percent ),
+		Swedbank_Pay_Order_Item::FIELD_AMOUNT      => round( -100 * $discount_with_tax ),
+		Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => round( -100 * $tax ),
+	);
 }
 
 /**

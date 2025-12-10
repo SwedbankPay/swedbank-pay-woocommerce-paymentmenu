@@ -2,11 +2,11 @@
 Contributors: swedbankpay
 Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
-Tested up to: 6.8.2
+Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 10.1.2
-Stable tag: 4.3.0
+WC tested up to: 10.3.6
+Stable tag: 4.3.1
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,12 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2025.12.10    - version 4.3.1 =
+* Enhancement   - Reduced the amount of requests made to Swedbank Pay when the customer gets to the thankyou page for an order that could happen in some cases.
+* Fix           - Fixed an issue where some payments would automatically be set to Completed in WooCommerce when the callback from Swedbank Pay was processed for some payment methods.
+* Fix           - Fixed an issue where the overlay from WooCommerce would cover some modal windows shown by Swedbank Pay during the checkout when using the Seamless Menu checkout flow.
+* Fix           - Fixed an issue where the description for shipping methods was not included in the order lines sent to Swedbank Pay.
+
 = 2025.12.02    - version 4.3.0 =
 * Feature       - Added a new checkout flow, Seamless Menu, which provides a more integrated payment experience within the WooCommerce checkout page.
 * Feature       - Added an option to automatically capture the payment when the order is marked as Completed in WooCommerce. This can be toggled in the plugin settings. Note, you can still manually capture payments if needed through the metabox action buttons.
@@ -108,7 +114,7 @@ Please update to version 1.2.0.
 = 2025.10.16    - version 4.2.0 =
 * Tweak         - Refund processing has been optimized for improved speed and reliability.
 * Tweak         - IP address validation has been removed and replaced with a new mechanism that validates callback data, preventing valid callbacks from being incorrectly rejected.
-* Fix           - API requests no longer fail when the order line's description is too long. The item name is now used and trimmed if it exceeds the allowed length. 
+* Fix           - API requests no longer fail when the order line's description is too long. The item name is now used and trimmed if it exceeds the allowed length.
 * Fix           - Admin scripts now load only on Swedbank Pay orders, preventing read-only fields on other orders.
 * Fix           - Fixed a critical error when cancelling or refunding an order.
 
