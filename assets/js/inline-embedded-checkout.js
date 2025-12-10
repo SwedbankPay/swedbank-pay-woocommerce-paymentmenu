@@ -180,7 +180,7 @@ jQuery(document).ready(function ($) {
             }
 
             // Set the default z-index for block ui to not block any modals that Swedbank needs to show.
-            $.blockUI.defaults.baseZ = 40; // Default for WooCommerce is 10000, but Swedbank modals use 50.
+            $.blockUI.defaults.baseZ = 40; // Default for WooCommerce is 1000, but Swedbank modals use 50.
 
             // Set the payment order ID.
             sbie.paymentOrderId = data.paymentOrder.id;
