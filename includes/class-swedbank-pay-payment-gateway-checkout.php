@@ -778,6 +778,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return $value;
 		}
 
+		// Prevent the filter from running more than once on a page load.
+		if ( did_filter( 'woocommerce_order_get_payment_method_title' ) > 1 ) {
+			return $value;
+		}
+
 		$instrument = $order->get_meta( '_swedbank_pay_payment_instrument' );
 		if ( empty( $instrument ) ) {
 			$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
@@ -788,7 +793,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					// Request failed.
 					return $value;
 				}
-
 				$instrument = $result['paid']['instrument'];
 				$order->update_meta_data( '_swedbank_pay_payment_instrument', $instrument );
 				$order->save();
