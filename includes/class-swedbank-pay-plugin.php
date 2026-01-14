@@ -123,7 +123,7 @@ class Swedbank_Pay_Plugin {
 	 */
 	protected function init_composer() {
 		$autoloader              = SWEDBANK_PAY_PLUGIN_PATH . '/vendor/autoload.php';
-		$autoloader_dependencies = SWEDBANK_PAY_PLUGIN_PATH . '/dependencies/scoper-autoload.php';
+		$autoloader_dependencies = SWEDBANK_PAY_PLUGIN_PATH . '/vendor/dependencies/scoper-autoload.php';
 
 		// Check if the autoloaders was read.
 		$autoloader_result              = is_readable( $autoloader ) && require $autoloader;

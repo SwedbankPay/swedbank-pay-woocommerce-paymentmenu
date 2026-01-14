@@ -32,12 +32,14 @@
     "extra": {
         "wpify-scoper": {
             "prefix": "KrokedilSwedbankPayDeps",
-            "folder": "dependencies",
+            "folder": "vendor/dependencies",
             "autorun": true,
             "globals": [
                 "wordpress",
                 "woocommerce"
-            ]
+            ],
+            "composerjson": "composer-dependencies.json",
+            "composerlock": "composer-dependencies.lock"
         }
     },
     "scripts": {
