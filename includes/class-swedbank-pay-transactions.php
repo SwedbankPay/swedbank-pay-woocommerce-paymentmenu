@@ -266,10 +266,10 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 
 			$key = esc_sql( sanitize_text_field( $key ) );
 			if ( ! is_numeric( $value ) ) {
-				$value   = esc_sql( sanitize_text_field( $value ) );
-				$lines[] = "{$key} = '{$value}'";
+				$lines[] = $wpdb->prepare( "%s = %s", array( $key, $value ) );
 			} else {
-				$lines[] = "{$key} = " . floatval( sanitize_text_field( $value ) );
+				$value   = floatval( sanitize_text_field( $value ) );
+				$lines[] = $wpdb->prepare( "%s = %f", array( $key, $value ) );
 			}
 		}
 
