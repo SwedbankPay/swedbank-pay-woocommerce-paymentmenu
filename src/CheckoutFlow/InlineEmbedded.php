@@ -35,7 +35,7 @@ class InlineEmbedded extends CheckoutFlow {
 		}
 
 		// If we did not have it in the GET params, check the POST data. Needed to handle potential ajax requests.
-		$post_data = isset( $_POST['post_data'] ) ? sanitize_text_field( wp_unslash( $_POST['post_data'] ) ) : null;
+		$post_data = isset( $_POST['post_data'] ) ? sanitize_text_field( wp_unslash( $_POST['post_data'] ) ) : null; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		wp_parse_str( $post_data, $post_data_array );
 		if ( isset( $post_data_array['swedbank_pay_payee_reference'] ) && isset( $post_data_array['swedbank_pay_payment_complete'] ) ) {
 			$this->is_payment_complete = true;

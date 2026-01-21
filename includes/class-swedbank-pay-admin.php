@@ -255,10 +255,7 @@ class Swedbank_Pay_Admin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_capture() {
-		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
-		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
-			exit( 'No naughty business' );
-		}
+		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
 		remove_action(
 			'woocommerce_order_status_changed',
@@ -266,7 +263,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
+		$order_id = filter_input( INPUT_REQUEST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
@@ -287,10 +284,7 @@ class Swedbank_Pay_Admin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_cancel() {
-		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
-		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
-			exit( 'No naughty business' );
-		}
+		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
 		remove_action(
 			'woocommerce_order_status_changed',
@@ -298,7 +292,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
+		$order_id = filter_input( INPUT_REQUEST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
@@ -319,10 +313,7 @@ class Swedbank_Pay_Admin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_refund() {
-		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
-		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
-			exit( 'No naughty business' );
-		}
+		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
 		remove_action(
 			'woocommerce_order_status_changed',
@@ -330,7 +321,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
+		$order_id = filter_input( INPUT_REQUEST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		$order    = wc_get_order( $order_id );
 		$gateway  = swedbank_pay_get_payment_method( $order );
 		if ( ! $gateway ) {
@@ -369,12 +360,9 @@ class Swedbank_Pay_Admin {
 	 * @global array $_REQUEST The request data.
 	 */
 	public function ajax_swedbank_pay_get_refund_mode() {
-		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
-		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
-			exit( 'No naughty business' );
-		}
+		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
-		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
+		$order_id = filter_input( INPUT_REQUEST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		if ( ! $order_id ) {
 			wp_send_json_success(
 				array(

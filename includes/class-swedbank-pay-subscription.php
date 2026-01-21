@@ -602,7 +602,7 @@ class Swedbank_Pay_Subscription {
 	 */
 	public function handle_redirect_from_change_payment_method( $subscription_id ) {
 		// We use the 'swedbank_pay_redirect' query var to determine if we are redirected from Swedbank Pay after changing payment method, otherwise the customer is viewing a subscription.
-		if ( wc_get_var( $_GET['swedbank_pay_redirect'], '' ) !== 'subscription' ) {
+		if ( wc_get_var( $_GET['swedbank_pay_redirect'], '' ) !== 'subscription' ) { // phpcs:ignore
 			return;
 		}
 
@@ -670,7 +670,7 @@ class Swedbank_Pay_Subscription {
 	 * @return bool
 	 */
 	public static function is_change_payment_method() {
-		return isset( $_GET['change_payment_method'] );
+		return isset( $_GET['change_payment_method'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 	}
 
 	/**
