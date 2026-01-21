@@ -11,6 +11,8 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Class OrderManagement
  */

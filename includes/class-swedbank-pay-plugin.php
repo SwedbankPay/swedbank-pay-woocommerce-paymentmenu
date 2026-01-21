@@ -213,18 +213,18 @@ class Swedbank_Pay_Plugin {
 	 * @param string $class_name
 	 */
 	public static function register_gateway( $class_name ) {
-		global $px_gateways;
+		global $swedbank_pay_gateways;
 
-		if ( ! $px_gateways ) {
-			$px_gateways = array();
+		if ( ! $swedbank_pay_gateways ) {
+			$swedbank_pay_gateways = array();
 		}
 
-		if ( ! isset( $px_gateways[ $class_name ] ) ) {
+		if ( ! isset( $swedbank_pay_gateways[ $class_name ] ) ) {
 			// Initialize instance
 			$gateway = new $class_name();
 
 			if ( $gateway ) {
-				$px_gateways[] = $class_name;
+				$swedbank_pay_gateways[] = $class_name;
 
 				// Register gateway instance
 				add_filter(

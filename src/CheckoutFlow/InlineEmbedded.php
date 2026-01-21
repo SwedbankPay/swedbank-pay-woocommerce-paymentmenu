@@ -6,6 +6,7 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Reques
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use WP_Error;
 
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Class for processing the inline embedded checkout flow on the shortcode checkout page.

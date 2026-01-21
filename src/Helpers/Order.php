@@ -11,6 +11,8 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Paymen
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Class Order
  *

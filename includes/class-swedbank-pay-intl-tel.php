@@ -87,7 +87,7 @@ class Swedbank_Intl_Tel {
 			array(
 				'swedbank-intl-tel-js',
 			),
-			false,
+			SWEDBANK_PAY_VERSION,
 			true
 		);
 

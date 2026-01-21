@@ -6,6 +6,8 @@ use Krokedil\Swedbank\Pay\Utility\SettingsUtility;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Abstract class for processing different checkout flows.
  */

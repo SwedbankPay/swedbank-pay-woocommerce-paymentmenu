@@ -5,6 +5,8 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collec
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\Item\OrderItem;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Abstract helper class to generate payment data.
  */

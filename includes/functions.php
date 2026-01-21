@@ -4,6 +4,8 @@ use Automattic\WooCommerce\Utilities\OrderUtil;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Checks if High-Performance Order Storage is enabled.
  *

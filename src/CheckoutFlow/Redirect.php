@@ -4,6 +4,8 @@ namespace Krokedil\Swedbank\Pay\CheckoutFlow;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use WC_Order;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Class for processing the redirect checkout flow on the shortcode checkout page and pay for order pages.
  */
