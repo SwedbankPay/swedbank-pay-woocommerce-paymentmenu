@@ -499,8 +499,8 @@ class Swedbank_Pay_Api {
 
 			$transaction = array(
 				'id'             => $payment_order_id . '/financialtransactions/' . uniqid( 'fake' ),
-				'created'        => date( 'Y-m-d H:i:s' ),
-				'updated'        => date( 'Y-m-d H:i:s' ),
+				'created'        => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
+				'updated'        => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
 				'type'           => $data['paid']['transactionType'] ?? '',
 				'number'         => $transaction_number,
 				'amount'         => $data['paid']['amount'] ?? 0,

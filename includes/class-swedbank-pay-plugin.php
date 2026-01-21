@@ -595,11 +595,11 @@ class Swedbank_Pay_Plugin {
 				throw new \Exception( __( 'Unable to send mail message.', 'swedbank-pay-woocommerce-paymentmenu' ) );
 			}
 		} catch ( \Exception $exception ) {
-			wp_redirect( add_query_arg( array( 'error' => $exception->getMessage() ), $redirect ) );
+			wp_safe_redirect( add_query_arg( array( 'error' => $exception->getMessage() ), $redirect ) );
 			return;
 		}
 
-		wp_redirect(
+		wp_safe_redirect(
 			add_query_arg(
 				array( 'message' => __( 'Your message has been sent.', 'swedbank-pay-woocommerce-paymentmenu' ) ),
 				$redirect
