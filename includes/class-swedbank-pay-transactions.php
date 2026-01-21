@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 		}
 
 		$fields = $this->prepare( $fields );
-		$result = $wpdb->insert( $wpdb->prefix . 'payex_transactions', $fields );
+		$result = $wpdb->insert( $wpdb->prefix . 'payex_transactions', $fields ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		if ( $result > 0 ) {
 			return $wpdb->insert_id;
 		}
@@ -134,11 +134,11 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 	 */
 	public function delete( $transaction_id ) {
 		global $wpdb;
-
-		$result = $wpdb->delete(
+		$result = $wpdb->delete( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->prefix . 'payex_transactions',
 			array( 'transaction_id' => (int) $transaction_id )
 		);
+		wp_cache_delete( $transaction_id, 'swedbank_pay_transactions' );
 
 		if ( false === $result ) {
 			return new WP_Error(
@@ -166,7 +166,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 		}
 
 		$fields = $this->prepare( $fields );
-		$result = $wpdb->update(
+		$result = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->prefix . 'payex_transactions',
 			$fields,
 			array(
@@ -181,6 +181,8 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 			);
 		}
 
+		wp_cache_delete( $transaction_id, 'swedbank_pay_transactions' );
+
 		return $result;
 	}
 
@@ -193,14 +195,28 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 	 */
 	public function get( $transaction_id ) {
 		global $wpdb;
-		$query = $wpdb->prepare(
-			'SELECT * FROM ' . esc_sql( $wpdb->prefix ) . 'payex_transactions WHERE transaction_id = %d;',
-			$transaction_id
+
+		// Check cache first
+		$result = wp_cache_get( $transaction_id, 'swedbank_pay_transactions' );
+		if ( false !== $result ) {
+			return $result;
+		}
+
+		$result = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+			$wpdb->prepare(
+				'SELECT * FROM ' . esc_sql( $wpdb->prefix ) . 'payex_transactions WHERE transaction_id = %d;',
+				$transaction_id
+			),
+			ARRAY_A
 		);
 
-		// phpcs:disable
-		return $wpdb->get_row( $query, ARRAY_A );
-		// phpcs:enable
+		if ( null === $result ) {
+			return null;
+		}
+
+		wp_cache_add( $transaction_id, $result, 'swedbank_pay_transactions' );
+
+		return $result;
 	}
 
 	/**
@@ -258,7 +274,8 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 		}
 
 		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared
-		return $wpdb->get_results(
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.NoCaching
+		return $wpdb->get_results( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$wpdb->prepare( 'SELECT * FROM ' . esc_sql( $wpdb->prefix ) . 'payex_transactions WHERE ' . join( ' AND ', $lines ) . ';' ),
 			ARRAY_A
 		);
