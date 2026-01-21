@@ -664,8 +664,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$args   = array(
 			'limit'        => 1,
 			'type'         => 'shop_order',
-			'meta_key'     => '_payex_payee_reference',
-			'meta_value'   => $payee_reference,
+			'meta_key'     => '_payex_payee_reference', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- We need to query by meta.
+			'meta_value'   => $payee_reference, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- We need to query by meta.
 			'meta_compare' => '=',
 			'status'       => array_keys( wc_get_order_statuses() ),
 		);
