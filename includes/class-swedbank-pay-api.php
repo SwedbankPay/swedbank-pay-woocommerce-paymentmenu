@@ -570,11 +570,11 @@ class Swedbank_Pay_Api {
 					// List of different messages based on the transaction type.
 					$messages = array(
 						// translators: 1: transaction ID.
-						self::TYPE_SALE          => __( 'Payment has been completed. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ),
+						self::TYPE_SALE          => __( 'Payment has been completed. Transaction: %s', 'swedbank-pay-woocommerce-paymentmenu' ),
 						// translators: 1: transaction ID.
-						self::TYPE_AUTHORIZATION => __( 'Payment has been authorized. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ),
+						self::TYPE_AUTHORIZATION => __( 'Payment has been authorized. Transaction: %s', 'swedbank-pay-woocommerce-paymentmenu' ),
 						// translators: 1: transaction ID.
-						self::TYPE_VERIFICATION  => __( 'Payment has been verified. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ),
+						self::TYPE_VERIFICATION  => __( 'Payment has been verified. Transaction: %s', 'swedbank-pay-woocommerce-paymentmenu' ),
 					);
 					$message  = sprintf( $messages[ $transaction['type'] ], $transaction_id );
 					$order->payment_complete( $transaction_id );
@@ -607,7 +607,7 @@ class Swedbank_Pay_Api {
 				if ( $is_full_capture ) {
 					$message = sprintf(
 						// translators: 1: transaction ID, 2: transaction amount.
-						__( 'Payment has been fully captured. Transaction: %1$s. Amount: %2$s', 'swedbank-pay-woocommerce-checkout' ),
+						__( 'Payment has been fully captured. Transaction: %1$s. Amount: %2$s', 'swedbank-pay-woocommerce-paymentmenu' ),
 						$transaction_id,
 						$captured_amount
 					);
@@ -617,7 +617,7 @@ class Swedbank_Pay_Api {
 					$price            = wc_price( $remaining_amount, array( 'currency' => $order->get_currency() ) );
 					$message          = sprintf(
 						// translators: 1: transaction ID, 2: transaction amount, 3: remaining amount.
-						__( 'Payment has been partially captured: Transaction: %1$s. Amount: %2$s. Remaining amount: %3$s', 'swedbank-pay-woocommerce-checkout' ),
+						__( 'Payment has been partially captured: Transaction: %1$s. Amount: %2$s. Remaining amount: %3$s', 'swedbank-pay-woocommerce-paymentmenu' ),
 						$transaction_id,
 						$captured_amount,
 						$price
@@ -631,7 +631,7 @@ class Swedbank_Pay_Api {
 					'cancelled',
 					$transaction_id,
 					// translators: 1: transaction ID.
-					sprintf( __( 'Payment has been cancelled. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ), $transaction_id )
+					sprintf( __( 'Payment has been cancelled. Transaction: %s', 'swedbank-pay-woocommerce-paymentmenu' ), $transaction_id )
 				);
 
 				break;
@@ -1217,7 +1217,7 @@ class Swedbank_Pay_Api {
 		}
 
 		if ( empty( $message ) ) {
-			$message = ! empty( $err_msg ) ? $err_msg : __( 'Error', 'woocommerce' );
+			$message = ! empty( $err_msg ) ? $err_msg : __( 'Error', 'woocommerce' ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 		}
 
 		return $message;

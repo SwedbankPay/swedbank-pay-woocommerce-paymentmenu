@@ -183,7 +183,7 @@ function swedbank_pay_get_order_lines( $order ) {
 		$shipping_with_tax = $shipping + $tax;
 		$tax_percent       = $tax > 0 ? round( 100 / ( $shipping / $tax ) ) : 0;
 		$shipping_method   = trim( $order->get_shipping_method() );
-		$name              = ! empty( $shipping_method ) ? $shipping_method : __( 'Shipping', 'woocommerce' );
+		$name              = ! empty( $shipping_method ) ? $shipping_method : __( 'Shipping', 'woocommerce' ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 
 		$items[] = array(
 			Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'shipping',
@@ -231,7 +231,7 @@ function swedbank_pay_get_order_lines( $order ) {
 
 		$items[] = array(
 			Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
-			Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-checkout' ),
+			Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-paymentmenu' ),
 			Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
 			Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
 			Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
@@ -275,7 +275,8 @@ function swedbank_pay_get_order_lines( $order ) {
 
 				$items[] = array(
 					Swedbank_Pay_Order_Item::FIELD_REFERENCE => 'gift_card_' . esc_html( $code ),
-					Swedbank_Pay_Order_Item::FIELD_NAME   => __( 'Gift card: ' . esc_html( $code ), 'yith-woocommerce-gift-cards' ),
+					// translators: Gift card code.
+					Swedbank_Pay_Order_Item::FIELD_NAME   => sprintf( __( 'Gift card: %s', 'yith-woocommerce-gift-cards' ), $code ), // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 					Swedbank_Pay_Order_Item::FIELD_TYPE   => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
 					Swedbank_Pay_Order_Item::FIELD_CLASS  => 'ProductGroup1',
 					Swedbank_Pay_Order_Item::FIELD_QTY    => 1,
@@ -506,7 +507,7 @@ function swedbank_pay_get_cart_item_shipping() {
 			$tax             = WC()->cart->get_shipping_tax();
 			$cost_with_tax   = $cost + $tax;
 			$tax_percent     = $tax > 0 ? round( 100 / ( $cost / $tax ) ) : 0;
-			$name            = ! empty( $shipping_method->get_method_title() ) ? $shipping_method->get_method_title() : __( 'Shipping', 'woocommerce' );
+			$name            = ! empty( $shipping_method->get_method_title() ) ? $shipping_method->get_method_title() : __( 'Shipping', 'woocommerce' ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 
 			return array(
 				Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'shipping',
@@ -529,7 +530,7 @@ function swedbank_pay_get_cart_item_shipping() {
 	$tax           = WC()->cart->get_shipping_tax();
 	$cost_with_tax = $cost + $tax;
 	$tax_percent   = $tax > 0 ? round( 100 / ( $cost / $tax ) ) : 0;
-	$name          = __( 'Shipping', 'woocommerce' );
+	$name          = __( 'Shipping', 'woocommerce' ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 
 	return array(
 		Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'shipping',
@@ -588,7 +589,7 @@ function swedbank_pay_get_cart_item_discount( $discount_total ) {
 
 	return array(
 		Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
-		Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-checkout' ),
+		Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-paymentmenu' ),
 		Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
 		Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
 		Swedbank_Pay_Order_Item::FIELD_QTY         => 1,

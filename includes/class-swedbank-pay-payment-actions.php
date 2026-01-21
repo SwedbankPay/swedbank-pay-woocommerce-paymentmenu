@@ -121,7 +121,7 @@ class Swedbank_Pay_Payment_Actions {
 		}
 
 		$order->update_meta_data( '_payex_captured_items', $current_items );
-		$order->add_order_note( __( 'Order captured through metabox action.', 'swedbank-pay-woocommerce-checkout' ) );
+		$order->add_order_note( __( 'Order captured through metabox action.', 'swedbank-pay-woocommerce-paymentmenu' ) );
 		$order->save_meta_data();
 
 		return $result;
@@ -396,7 +396,7 @@ class Swedbank_Pay_Payment_Actions {
 			sprintf(
 			/* translators: 1: transaction 2: state 3: reason */                __(
 				'Refund process has been executed from order admin. Transaction ID: %1$s. State: %2$s. Reason: %3$s', //phpcs:ignore
-				'swedbank-pay-woocommerce-checkout' //phpcs:ignore
+				'swedbank-pay-woocommerce-paymentmenu' //phpcs:ignore
 			), //phpcs:ignore
 				$transaction_id,
 				$result['state'],

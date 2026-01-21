@@ -256,7 +256,7 @@ class Swedbank_Pay_Instant_Capture {
 				$shipping_with_tax = $shipping + $tax;
 				$tax_percent       = ( $tax > 0 ) ? round( 100 / ( $shipping / $tax ) ) : 0;
 				$shipping_method   = trim( $order->get_shipping_method() );
-				$shipping_name     = ! empty( $shipping_method ) ? $shipping_method : __( 'Shipping', 'woocommerce' );
+				$shipping_name     = ! empty( $shipping_method ) ? $shipping_method : __( 'Shipping', 'woocommerce' ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 
 				$items[] = array(
 					Swedbank_Pay_Order_Item::FIELD_REFERENCE => 'shipping',
@@ -306,7 +306,7 @@ class Swedbank_Pay_Instant_Capture {
 			$discount_with_tax = abs( $order->get_total_discount( false ) );
 			$tax               = $discount_with_tax - $discount;
 			$tax_percent       = ( $tax > 0 ) ? round( 100 / ( $discount / $tax ) ) : 0;
-			$name              = __( 'Discount', 'swedbank-pay-woocommerce-checkout' );
+			$name              = __( 'Discount', 'swedbank-pay-woocommerce-paymentmenu' );
 
 			$items[] = array(
 				Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
@@ -353,7 +353,8 @@ class Swedbank_Pay_Instant_Capture {
 					$rate_aux          = '0.' . $tax_rate;
 					$discount_with_tax = -1 * $amount;
 					$discount          = round( -1 * ( $amount / ( 1 + (float) $rate_aux ) ), 2 );
-					$name              = __( 'Gift card: ' . esc_html( $code ), 'yith-woocommerce-gift-cards' );
+					// translators: Gift card code.
+					$name              = sprintf( __( 'Gift card: %s', 'yith-woocommerce-gift-cards' ), $code ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 
 					$items[] = array(
 						Swedbank_Pay_Order_Item::FIELD_REFERENCE => 'gift_card_' . esc_html( $code ),

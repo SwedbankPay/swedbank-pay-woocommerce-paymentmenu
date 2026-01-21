@@ -219,7 +219,7 @@ class Order extends PaymentDataHelper {
 					'swedbank_pay_payment_description',
 					sprintf(
 						/* translators: 1: order id */
-						__( 'Order #%1$s', 'swedbank-pay-woocommerce-payments' ),
+						__( 'Order #%1$s', 'swedbank-pay-woocommerce-paymentmenu' ),
 						$this->order->get_order_number()
 					),
 					$this->order

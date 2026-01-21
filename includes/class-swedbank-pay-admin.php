@@ -119,7 +119,7 @@ class Swedbank_Pay_Admin {
 
 					add_meta_box(
 						'swedbank_payment_actions',
-						__( 'Swedbank Pay Payments Actions', 'swedbank-pay-woocommerce-checkout' ),
+						__( 'Swedbank Pay Payments Actions', 'swedbank-pay-woocommerce-paymentmenu' ),
 						__CLASS__ . '::order_meta_box_payment_actions',
 						$screen,
 						'side',
@@ -237,7 +237,7 @@ class Swedbank_Pay_Admin {
 			// Localize the script.
 			$translation_array = array(
 				'ajax_url'  => admin_url( 'admin-ajax.php' ),
-				'text_wait' => __( 'Please wait...', 'swedbank-pay-woocommerce-checkout' ),
+				'text_wait' => __( 'Please wait...', 'swedbank-pay-woocommerce-paymentmenu' ),
 				'nonce'     => wp_create_nonce( 'swedbank_pay' ),
 				'order_id'  => $order_id,
 			);
@@ -277,7 +277,7 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
-		wp_send_json_success( __( 'Capture success.', 'swedbank-pay-woocommerce-checkout' ) );
+		wp_send_json_success( __( 'Capture success.', 'swedbank-pay-woocommerce-paymentmenu' ) );
 	}
 
 	/**
@@ -309,7 +309,7 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
-		wp_send_json_success( __( 'Cancel success.', 'swedbank-pay-woocommerce-checkout' ) );
+		wp_send_json_success( __( 'Cancel success.', 'swedbank-pay-woocommerce-paymentmenu' ) );
 	}
 
 	/**
@@ -341,7 +341,7 @@ class Swedbank_Pay_Admin {
 		$result = $gateway->payment_actions_handler->refund_payment(
 			$order,
 			swedbank_pay_get_available_line_items_for_refund( $order ),
-			__( 'Full refund.', 'swedbank-pay-woocommerce-checkout' ),
+			__( 'Full refund.', 'swedbank-pay-woocommerce-paymentmenu' ),
 			true
 		);
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
@@ -354,7 +354,7 @@ class Swedbank_Pay_Admin {
 		// @todo Create credit memo with order lines
 
 		// Refund will be created on transaction processing
-		wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-woocommerce-checkout' ) );
+		wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-woocommerce-paymentmenu' ) );
 	}
 
 	/**
@@ -528,7 +528,7 @@ class Swedbank_Pay_Admin {
 					}
 
 					$order->add_order_note(
-						__( 'Payment has been captured by order status change.', 'swedbank-pay-woocommerce-checkout' )
+						__( 'Payment has been captured by order status change.', 'swedbank-pay-woocommerce-paymentmenu' )
 					);
 
 					break;
@@ -541,7 +541,7 @@ class Swedbank_Pay_Admin {
 					}
 
 					$order->add_order_note(
-						__( 'Payment has been cancelled by order status change.', 'swedbank-pay-woocommerce-checkout' )
+						__( 'Payment has been cancelled by order status change.', 'swedbank-pay-woocommerce-paymentmenu' )
 					);
 
 					break;
@@ -558,7 +558,7 @@ class Swedbank_Pay_Admin {
 					$result = $gateway->payment_actions_handler->refund_payment(
 						$order,
 						$lines,
-						__( 'Order status changed to refunded.', 'swedbank-pay-woocommerce-checkout' ),
+						__( 'Order status changed to refunded.', 'swedbank-pay-woocommerce-paymentmenu' ),
 						true
 					);
 					if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
@@ -567,7 +567,7 @@ class Swedbank_Pay_Admin {
 					}
 
 					$order->add_order_note(
-						__( 'Payment has been refunded by order status change.', 'swedbank-pay-woocommerce-checkout' )
+						__( 'Payment has been refunded by order status change.', 'swedbank-pay-woocommerce-paymentmenu' )
 					);
 
 					break;
