@@ -197,7 +197,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 			),
 			array(
 				'type'    => 'text',
-				'exclude' => array(
+				'exclude' => array( // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Not used for a query.
 					'title' => 'Access Token',
 				),
 			),
