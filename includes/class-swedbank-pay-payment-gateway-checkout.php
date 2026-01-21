@@ -441,7 +441,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public function get_title() {
 		$title = __( 'Swedbank Pay Payment Menu', 'swedbank-pay-woocommerce-paymentmenu' );
 
-		return apply_filters( 'woocommerce_gateway_title', $title, $this->id );
+		return apply_filters( 'woocommerce_gateway_title', $title, $this->id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 	}
 
 	/**

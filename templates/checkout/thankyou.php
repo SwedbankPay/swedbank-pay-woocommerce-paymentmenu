@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
 	<?php
 	if ( $order ) :
 
-		do_action( 'woocommerce_before_thankyou', $order->get_id() );
+		do_action( 'woocommerce_before_thankyou', $order->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 		?>
 
         <div id="order-status-checking">
@@ -37,7 +37,7 @@ defined( 'ABSPATH' ) || exit;
 				<?php
 				echo esc_html(
 						apply_filters(
-							'woocommerce_thankyou_order_received_text',
+							'woocommerce_thankyou_order_received_text', // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 							__( 'Thank you. Your order has been received.', 'woocommerce' ),  // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 							$order
 						)
@@ -96,8 +96,8 @@ defined( 'ABSPATH' ) || exit;
             </p>
         </div>
 
-		<?php do_action( 'woocommerce_thankyou_' . $order->get_payment_method(), $order->get_id() ); ?>
-		<?php do_action( 'woocommerce_thankyou', $order->get_id() ); ?>
+		<?php do_action( 'woocommerce_thankyou_' . $order->get_payment_method(), $order->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound ?>
+		<?php do_action( 'woocommerce_thankyou', $order->get_id() ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound ?>
 
 	<?php else : ?>
 
@@ -105,7 +105,7 @@ defined( 'ABSPATH' ) || exit;
 			<?php
 			echo esc_html(
 				apply_filters(
-					'woocommerce_thankyou_order_received_text',
+					'woocommerce_thankyou_order_received_text', // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 					__( 'Thank you. Your order has been received.', 'woocommerce' ), // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 					null
 				)

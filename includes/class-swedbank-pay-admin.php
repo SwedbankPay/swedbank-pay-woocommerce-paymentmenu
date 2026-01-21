@@ -424,7 +424,7 @@ class Swedbank_Pay_Admin {
 			}
 
 			foreach ( $order_gift_cards as $code => $amount ) {
-				$amount = apply_filters( 'ywgc_gift_card_amount_order_total_item', $amount, YITH_YWGC()->get_gift_card_by_code( $code ) );
+				$amount = apply_filters( 'ywgc_gift_card_amount_order_total_item', $amount, YITH_YWGC()->get_gift_card_by_code( $code ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 				if ( $amount > 0 ) {
 					$gift_amount += $amount;
 				}
