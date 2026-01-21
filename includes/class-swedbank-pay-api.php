@@ -774,7 +774,7 @@ class Swedbank_Pay_Api {
 				} else {
 					$order->update_status(
 						apply_filters(
-							'woocommerce_payment_complete_order_status',
+							'woocommerce_payment_complete_order_status', // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 							$status,
 							$order->get_id(),
 							$order
