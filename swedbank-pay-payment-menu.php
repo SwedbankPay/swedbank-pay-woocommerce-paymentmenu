@@ -154,9 +154,6 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		// Activation.
 		register_activation_hook( __FILE__, array( $this, 'install' ) );
 
-		// Actions.
-		add_action( 'init', array( $this, 'load_textdomain' ) );
-
 		// Declare feature compatibility. Anonymous function is OK in this case, since this should not be easily removable.
 		add_action(
 			'before_woocommerce_init',
@@ -221,19 +218,6 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		$methods[] = Swedbank_Pay_Payment_Gateway_Checkout::class;
 
 		return $methods;
-	}
-
-	/**
-	 * Load the plugin text domain for translation.
-	 *
-	 * @return void
-	 */
-	public function load_textdomain() {
-		load_plugin_textdomain(
-			'swedbank-pay-woocommerce-paymentmenu',
-			false,
-			SWEDBANK_PAY_PLUGIN_PATH . '/languages'
-		);
 	}
 
 	/**
