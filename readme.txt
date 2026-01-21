@@ -1,6 +1,6 @@
 === Swedbank Pay Payment Menu ===
 Contributors: swedbankpay
-Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank, payex, payment gateway, woocommerce
+Tags: ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
 Tested up to: 6.9
 Requires PHP: 7.4
