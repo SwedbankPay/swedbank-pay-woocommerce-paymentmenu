@@ -265,7 +265,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				),
 				'sanitize_callback' => function ( $value ) {
 					if ( empty( $value ) ) {
-						throw new Exception( __( '"Payee Id" field can\'t be empty.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+						throw new Exception( esc_html__( '"Payee Id" field can\'t be empty.', 'swedbank-pay-woocommerce-paymentmenu' ) );
 					}
 
 					return $value;
@@ -281,7 +281,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				),
 				'sanitize_callback' => function ( $value ) {
 					if ( empty( $value ) ) {
-						throw new Exception( __( '"Access Token" field can\'t be empty.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+						throw new Exception( esc_html__( '"Access Token" field can\'t be empty.', 'swedbank-pay-woocommerce-paymentmenu' ) );
 					}
 
 					return $value;
@@ -331,9 +331,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'sanitize_callback' => function ( $value ) {
 					if ( ! empty( $value ) ) {
 						if ( ! filter_var( $value, FILTER_VALIDATE_URL ) ) {
-							throw new Exception( __( 'Logo Url is invalid.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+							throw new Exception( esc_html__( 'Logo Url is invalid.', 'swedbank-pay-woocommerce-paymentmenu' ) );
 						} elseif ( 'https' !== wp_parse_url( $value, PHP_URL_SCHEME ) ) {
-							throw new Exception( __( 'Logo Url should use https scheme.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+							throw new Exception( esc_html__( 'Logo Url should use https scheme.', 'swedbank-pay-woocommerce-paymentmenu' ) );
 						}
 					}
 
@@ -402,7 +402,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				&nbsp;
 			</th>
 			<td class="forminp">
-				<h4><?php _e( 'Advanced', 'swedbank-pay-woocommerce-paymentmenu' ); ?></h4>
+				<h4><?php esc_html_e( 'Advanced', 'swedbank-pay-woocommerce-paymentmenu' ); ?></h4>
 			</td>
 		</tr>
 		<?php

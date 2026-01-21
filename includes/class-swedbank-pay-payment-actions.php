@@ -455,7 +455,7 @@ class Swedbank_Pay_Payment_Actions {
 				/** @var WC_Order_Item $item */
 				$item = $order->get_item( $item_id );
 				if ( ! $item ) {
-					throw new \Exception( 'Unable to retrieve order item: ' . $item_id );
+					throw new \Exception( 'Unable to retrieve order item: ' . absint( $item_id ) );
 				}
 
 				$qty = (int) $line['qty'];
@@ -478,10 +478,12 @@ class Swedbank_Pay_Payment_Actions {
 								$qty > $order_item[ Swedbank_Pay_Order_Item::FIELD_QTY ]
 							) {
 								throw new \Exception(
-									sprintf(
-										'Product "%s" with quantity "%s" is not able to be captured.',
-										$sku,
-										$qty
+									esc_html(
+										sprintf(
+											'Product "%s" with quantity "%s" is not able to be captured.',
+											$sku,
+											$qty
+										)
 									)
 								);
 							}
@@ -500,10 +502,12 @@ class Swedbank_Pay_Payment_Actions {
 
 						if ( ! $isCaptured ) {
 							throw new \Exception(
-								sprintf(
-									'Order item "%s" with quantity "%s" is not able to be captured.',
-									$item->get_name(),
-									$qty
+								esc_html(
+									sprintf(
+										'Order item "%s" with quantity "%s" is not able to be captured.',
+										$item->get_name(),
+										$qty
+									)
 								)
 							);
 						}
@@ -521,10 +525,12 @@ class Swedbank_Pay_Payment_Actions {
 
 						if ( ! $isCaptured ) {
 							throw new \Exception(
-								sprintf(
-									'Order item "%s" with quantity "%s" is not able to be captured.',
-									$item->get_name(),
-									$qty
+								esc_html(
+									sprintf(
+										'Order item "%s" with quantity "%s" is not able to be captured.',
+										$item->get_name(),
+										$qty
+									)
 								)
 							);
 						}

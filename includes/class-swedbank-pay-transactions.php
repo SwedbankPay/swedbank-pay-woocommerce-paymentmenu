@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 
 		if ( false === $result ) {
 			throw new Exception(
-				__( 'Failed to install the transaction table.', 'swedbank-pay-woocommerce-paymentmenu' )
+				esc_html__( 'Failed to install the transaction table.', 'swedbank-pay-woocommerce-paymentmenu' )
 			);
 		}
 	}
@@ -244,7 +244,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 		$lines = array();
 		foreach ( $conditionals as $key => $value ) {
 			if ( ! in_array( $key, self::$allowed_fields, true ) ) {
-				_doing_it_wrong( __METHOD__, __( 'Cheatin&#8217; huh?', 'woocommerce' ), '1.0.0' ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
+				_doing_it_wrong( __METHOD__, esc_html__( 'Cheatin&#8217; huh?', 'woocommerce' ), '1.0.0' ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 				die();
 			}
 
@@ -318,7 +318,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 			$row_id = $this->add( $data );
 			if ( is_wp_error( $row_id ) ) {
 				/** @var WP_Error $row_id */
-				throw new Exception( $row_id->get_error_message() );
+				throw new Exception( esc_html( $row_id->get_error_message() ) );
 			}
 
 			return $row_id;
