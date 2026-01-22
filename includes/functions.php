@@ -185,7 +185,7 @@ function swedbank_pay_get_order_lines( $order ) {
 
 		$items[] = array(
 			Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
-			Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-paymentmenu' ),
+			Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-payment-menu' ),
 			Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
 			Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
 			Swedbank_Pay_Order_Item::FIELD_QTY         => 1,
@@ -543,7 +543,7 @@ function swedbank_pay_get_cart_item_discount( $discount_total ) {
 
 	return array(
 		Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',
-		Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-woocommerce-paymentmenu' ),
+		Swedbank_Pay_Order_Item::FIELD_NAME        => __( 'Discount', 'swedbank-pay-payment-menu' ),
 		Swedbank_Pay_Order_Item::FIELD_TYPE        => Swedbank_Pay_Order_Item::TYPE_DISCOUNT,
 		Swedbank_Pay_Order_Item::FIELD_CLASS       => 'ProductGroup1',
 		Swedbank_Pay_Order_Item::FIELD_QTY         => 1,

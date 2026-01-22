@@ -72,7 +72,7 @@ class InlineEmbedded extends CheckoutFlow {
 		$script_src = WC()->session->get( 'swedbank_pay_view_checkout_url' );
 
 		if ( empty( $script_src ) ) {
-			wc_add_notice( __( 'Failed to get the payment session URL.', 'swedbank-pay-woocommerce-paymentmenu' ), 'error' );
+			wc_add_notice( __( 'Failed to get the payment session URL.', 'swedbank-pay-payment-menu' ), 'error' );
 			return;
 		}
 
@@ -233,7 +233,7 @@ class InlineEmbedded extends CheckoutFlow {
 		if ( is_wp_error( $result ) ) {
 			$code = \is_int( $result->get_error_code() ) ? \intval( $result->get_error_code() ) : 500;
 			throw new \Exception(
-				esc_html( $result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-woocommerce-paymentmenu' ) ),
+				esc_html( $result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-payment-menu' ) ),
 				absint( $code )
 			);
 		}
@@ -267,10 +267,10 @@ class InlineEmbedded extends CheckoutFlow {
 	 */
 	private function process_subscription( $order ) {
 		if ( Swedbank_Pay_Subscription::cart_has_zero_order() ) {
-			$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+			$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-payment-menu' ) );
 			Swedbank_Pay_Subscription::set_skip_om( $order, gmdate( 'Y-m-d\TH:i:s\Z' ) );
 		} else {
-			$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+			$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-payment-menu' ) );
 		}
 	}
 
@@ -293,7 +293,7 @@ class InlineEmbedded extends CheckoutFlow {
 			// Get any potential problems from the payment response.
 			$problem = $get_purchase_result['problem'] ?? null;
 			if ( ! empty( $problem ) ) {
-				$message = $problem['detail'] ?? __( 'An unknown error occurred during the payment process.', 'swedbank-pay-woocommerce-paymentmenu' );
+				$message = $problem['detail'] ?? __( 'An unknown error occurred during the payment process.', 'swedbank-pay-payment-menu' );
 				throw new \Exception( $message );
 			}
 		} catch( \Exception $e ) {

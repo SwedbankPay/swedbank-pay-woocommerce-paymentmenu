@@ -8,7 +8,7 @@
  * License: Apache License 2.0
  * License URI: http://www.apache.org/licenses/LICENSE-2.0
  * Version: 4.3.1
- * Text Domain: swedbank-pay-woocommerce-paymentmenu
+ * Text Domain: swedbank-pay-payment-menu
  * Domain Path: /languages
  *
  * WC requires at least: 5.5.1
@@ -45,7 +45,7 @@ require_once __DIR__ . '/includes/class-swedbank-pay-plugin.php';
  * @SuppressWarnings(PHPMD.StaticAccess)
  */
 class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
-	public const TEXT_DOMAIN = 'swedbank-pay-woocommerce-paymentmenu';
+	public const TEXT_DOMAIN = 'swedbank-pay-payment-menu';
 
 	/**
 	 * Order Management.
@@ -96,7 +96,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @return void
 	 */
 	private function __clone() {
-		wc_doing_it_wrong( __FUNCTION__, __( 'Nope', 'swedbank-pay-woocommerce-paymentmenu' ), '1.0' );
+		wc_doing_it_wrong( __FUNCTION__, __( 'Nope', 'swedbank-pay-payment-menu' ), '1.0' );
 	}
 
 	/**
@@ -106,7 +106,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @return void
 	 */
 	public function __wakeup() {
-		wc_doing_it_wrong( __FUNCTION__, __( 'Nope', 'swedbank-pay-woocommerce-paymentmenu' ), '1.0' );
+		wc_doing_it_wrong( __FUNCTION__, __( 'Nope', 'swedbank-pay-payment-menu' ), '1.0' );
 	}
 
 	/**
@@ -227,17 +227,17 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		?>
 		<div id="message" class="error">
 			<p class="main">
-				<strong><?php echo esc_html__( 'WooCommerce is inactive or missing.', 'swedbank-pay-woocommerce-paymentmenu' ); ?></strong>
+				<strong><?php echo esc_html__( 'WooCommerce is inactive or missing.', 'swedbank-pay-payment-menu' ); ?></strong>
 			</p>
 			<p>
 				<?php
-				echo esc_html__( 'WooCommerce plugin is inactive or missing. Please install and active it.', 'swedbank-pay-woocommerce-paymentmenu' );
+				echo esc_html__( 'WooCommerce plugin is inactive or missing. Please install and active it.', 'swedbank-pay-payment-menu' );
 				echo '<br />';
 				printf(
 				/* translators: 1: plugin name */
 					esc_html__(
 						'%1$s will be deactivated.',
-						'swedbank-pay-woocommerce-paymentmenu'
+						'swedbank-pay-payment-menu'
 					),
 					self::PLUGIN_NAME //phpcs:ignore
 				);

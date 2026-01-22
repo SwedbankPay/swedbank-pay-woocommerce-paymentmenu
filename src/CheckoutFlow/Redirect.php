@@ -32,7 +32,7 @@ class Redirect extends CheckoutFlow {
 		$result = $this->api->initiate_purchase( $order );
 		if ( is_wp_error( $result ) ) {
 			throw new \Exception(
-				esc_html( $result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-woocommerce-paymentmenu' ) ),
+				esc_html( $result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-payment-menu' ) ),
 				absint( $result->get_error_code() )
 			);
 		}
@@ -63,17 +63,17 @@ class Redirect extends CheckoutFlow {
 	    if ( is_wp_error( $result ) ) {
 	    	throw new \Exception(
 	    		// translators: %s: order number.
-	    		esc_html( sprintf( __( 'The payment change could not be initiated. Please contact store, and provide them the order number %s for more information.', 'swedbank-pay-woocommerce-paymentmenu' ), $order->get_order_number() ) ),
+	    		esc_html( sprintf( __( 'The payment change could not be initiated. Please contact store, and provide them the order number %s for more information.', 'swedbank-pay-payment-menu' ), $order->get_order_number() ) ),
 	    		absint( $result->get_error_code() )
 	    	);
 	    }
 
 	    $payment_order = $result->getResponseData()['payment_order'];
 	    if ( swedbank_pay_is_zero( $order->get_total() ) ) {
-	    	$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+	    	$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-payment-menu' ) );
 	    	Swedbank_Pay_Subscription::set_skip_om( $order, $payment_order['created'] );
 	    } else {
-	    	$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+	    	$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-payment-menu' ) );
 	    }
 
 	    $order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );

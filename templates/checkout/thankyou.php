@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
 
         <div id="order-status-checking">
             <p>
-	            <?php esc_html_e( 'Please wait. We\'re checking the order status.', 'swedbank-pay-woocommerce-paymentmenu' ); ?>
+	            <?php esc_html_e( 'Please wait. We\'re checking the order status.', 'swedbank-pay-payment-menu' ); ?>
             </p>
         </div>
 

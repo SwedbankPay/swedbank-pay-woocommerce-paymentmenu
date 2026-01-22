@@ -146,7 +146,7 @@ class Swedbank_Pay_Plugin {
 	protected static function missing_autoloader() {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 	        error_log( // phpcs:ignore
-				esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-woocommerce-paymentmenu' )
+				esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-payment-menu' )
 			);
 		}
 		add_action(
@@ -155,7 +155,7 @@ class Swedbank_Pay_Plugin {
 				?>
 			<div class="notice notice-error">
 				<p>
-					<?php echo esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-woocommerce-paymentmenu' ); ?>
+					<?php echo esc_html__( 'Your installation of Swedbank Pay is not complete. If you installed this plugin directly from Github please refer to the readme.dev.txt file in the plugin.', 'swedbank-pay-payment-menu' ); ?>
 				</p>
 			</div>
 				<?php
@@ -187,11 +187,11 @@ class Swedbank_Pay_Plugin {
 		$plugin_links = array(
 			'<a href="' . admin_url( 'admin.php?page=wc-settings&tab=checkout&section=payex_checkout' ) . '">' . __(
 				'Settings',
-				'swedbank-pay-woocommerce-paymentmenu'
+				'swedbank-pay-payment-menu'
 			) . '</a>',
 			'<a href="' . esc_url( 'https://krokedil.com/support/?plugin=316450&&utm_source=swedbank-pay&utm_medium=wp-admin&utm_campaign=settings' ) . '">' . __(
 				'Support',
-				'swedbank-pay-woocommerce-paymentmenu'
+				'swedbank-pay-payment-menu'
 			) . '</a>',
 		);
 
@@ -351,7 +351,7 @@ class Swedbank_Pay_Plugin {
 		include_once __DIR__ . '/class-swedbank-pay-update.php';
 		Swedbank_Pay_Update::update();
 
-		echo esc_html__( 'Upgrade finished.', 'swedbank-pay-woocommerce-paymentmenu' );
+		echo esc_html__( 'Upgrade finished.', 'swedbank-pay-payment-menu' );
 	}
 
 	/**
@@ -366,7 +366,7 @@ class Swedbank_Pay_Plugin {
 					sprintf(
 					/* translators: 1: plugin name */                        esc_html__(
 						'Warning! %1$s requires to update the database structure.', //phpcs:ignore
-						'swedbank-pay-woocommerce-paymentmenu' //phpcs:ignore
+						'swedbank-pay-payment-menu' //phpcs:ignore
 						), //phpcs:ignore
 						self::PLUGIN_NAME
 					)
@@ -376,7 +376,7 @@ class Swedbank_Pay_Plugin {
 					' ' . sprintf(
 					/* translators: 1: start tag 2: end tag */                        esc_html__(
 						'Please click %1$s here %2$s to start upgrade.', //phpcs:ignore
-						'swedbank-pay-woocommerce-paymentmenu' //phpcs:ignore
+						'swedbank-pay-payment-menu' //phpcs:ignore
 						), //phpcs:ignore
 						'<a href="' . esc_url( admin_url( 'admin.php?page=' . self::ADMIN_UPGRADE_PAGE_SLUG ) ) . '">',
 						'</a>'
@@ -397,7 +397,7 @@ class Swedbank_Pay_Plugin {
 		$errors = array();
 		foreach ( $dependencies as $dependency ) {
 			if ( ! extension_loaded( $dependency ) ) {
-				/* translators: 1: plugin name */                        $errors[] = sprintf( esc_html__( 'Extension %s is missing.', 'swedbank-pay-woocommerce-paymentmenu' ), $dependency );
+				/* translators: 1: plugin name */                        $errors[] = sprintf( esc_html__( 'Extension %s is missing.', 'swedbank-pay-payment-menu' ), $dependency );
 			}
 		}
 
@@ -405,7 +405,7 @@ class Swedbank_Pay_Plugin {
 			?>
 			<div id="message" class="error">
 				<p class="main">
-					<strong><?php echo esc_html__( 'Required extensions are missing.', 'swedbank-pay-woocommerce-paymentmenu' ); ?></strong>
+					<strong><?php echo esc_html__( 'Required extensions are missing.', 'swedbank-pay-payment-menu' ); ?></strong>
 				</p>
 				<p>
 					<?php
@@ -417,7 +417,7 @@ class Swedbank_Pay_Plugin {
 						sprintf(
 						/* translators: 1: plugin name */                        esc_html__( //phpcs:ignore
 							'%1$s requires that. Please configure PHP or contact the server administrator.',
-							'swedbank-pay-woocommerce-paymentmenu'
+							'swedbank-pay-payment-menu'
 							), //phpcs:ignore
 							self::PLUGIN_NAME
 						)
@@ -437,7 +437,7 @@ class Swedbank_Pay_Plugin {
 		?>
 		<div id="message" class="error">
 			<p class="main">
-				<strong><?php echo esc_html__( 'Invalid value of "Number of decimals" detected.', 'swedbank-pay-woocommerce-paymentmenu' ); ?></strong>
+				<strong><?php echo esc_html__( 'Invalid value of "Number of decimals" detected.', 'swedbank-pay-payment-menu' ); ?></strong>
 			</p>
 			<p>
 				<?php
@@ -445,7 +445,7 @@ class Swedbank_Pay_Plugin {
 					sprintf(
 					/* translators: 1: start tag 2: end tag */                        esc_html__(
 						'"Number of decimals" is configured with zero value. It creates problems with rounding and checkout. Please change it to "2" on %1$sSettings page%2$s.',
-						'swedbank-pay-woocommerce-paymentmenu'
+						'swedbank-pay-payment-menu'
 						), //phpcs:ignore
 						'<a href="' . esc_url( admin_url( 'admin.php?page=wc-settings&tab=general' ) ) . '">',
 						'</a>'
@@ -466,13 +466,13 @@ class Swedbank_Pay_Plugin {
 		?>
 		<div id="message" class="updated woocommerce-message">
 			<p class="main">
-				<strong><?php echo esc_html__( 'Problems with plugin compatibility.', 'swedbank-pay-woocommerce-paymentmenu' ); ?></strong>
+				<strong><?php echo esc_html__( 'Problems with plugin compatibility.', 'swedbank-pay-payment-menu' ); ?></strong>
 			</p>
 			<p>
 				<?php
-				echo esc_html__( 'We\'ve detected that you\'ve used an older version of the Swedbank Pay Checkout integration.', 'swedbank-pay-woocommerce-paymentmenu' );
+				echo esc_html__( 'We\'ve detected that you\'ve used an older version of the Swedbank Pay Checkout integration.', 'swedbank-pay-payment-menu' );
 				echo '<br />';
-				echo esc_html__( 'Please disable "Swedbank Pay Checkout" plugin.', 'swedbank-pay-woocommerce-paymentmenu' );
+				echo esc_html__( 'Please disable "Swedbank Pay Checkout" plugin.', 'swedbank-pay-payment-menu' );
 				?>
 			</p>
 		</div>

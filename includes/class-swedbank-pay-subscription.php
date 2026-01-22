@@ -97,7 +97,7 @@ class Swedbank_Pay_Subscription {
 			return;
 		}
 
-		self::cancel_unscheduled_token( $token, $subscription, $gateway, __( 'The subscription was cancelled.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+		self::cancel_unscheduled_token( $token, $subscription, $gateway, __( 'The subscription was cancelled.', 'swedbank-pay-payment-menu' ) );
 	}
 
 	/**
@@ -117,7 +117,7 @@ class Swedbank_Pay_Subscription {
 			return;
 		}
 
-		self::cancel_unscheduled_token( $token, $subscription, $gateway, __( 'The subscription has expired.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+		self::cancel_unscheduled_token( $token, $subscription, $gateway, __( 'The subscription has expired.', 'swedbank-pay-payment-menu' ) );
 	}
 
 	/**
@@ -130,7 +130,7 @@ class Swedbank_Pay_Subscription {
 	public function process_scheduled_payment( $amount_to_charge, $renewal_order ) {
 		$gateway = swedbank_pay_get_payment_method( $renewal_order );
 		if ( ! $gateway ) {
-			$renewal_order->add_order_note( __( 'Failed to process subscription renewal. No Swedbank Pay payment gateway found.', 'swedbank-pay-woocommerce-paymentmenu' ) );
+			$renewal_order->add_order_note( __( 'Failed to process subscription renewal. No Swedbank Pay payment gateway found.', 'swedbank-pay-payment-menu' ) );
 			return;
 		}
 
@@ -140,7 +140,7 @@ class Swedbank_Pay_Subscription {
 		$response = self::charge_customer( $renewal_order, $token );
 		if ( is_wp_error( $response ) ) {
 			// translators: Error message.
-			$message = sprintf( __( 'Failed to renew subscription. Reason: %s', 'swedbank-pay-woocommerce-paymentmenu' ), $response->get_error_message() );
+			$message = sprintf( __( 'Failed to renew subscription. Reason: %s', 'swedbank-pay-payment-menu' ), $response->get_error_message() );
 
 			foreach ( $subscriptions as $subscription ) {
 				$subscription->add_order_note( $message );
@@ -153,7 +153,7 @@ class Swedbank_Pay_Subscription {
 
 		$message = sprintf(
 			/* translators: %s: subscription id */
-			__( 'Subscription renewal was made successfully via Swedbank Pay. Subscription token: %s', 'swedbank-pay-woocommerce-paymentmenu' ),
+			__( 'Subscription renewal was made successfully via Swedbank Pay. Subscription token: %s', 'swedbank-pay-payment-menu' ),
 			$token
 		);
 		$renewal_order->add_order_note( $message );
@@ -238,7 +238,7 @@ class Swedbank_Pay_Subscription {
 
 			if ( empty( $errors ) ) {
 				// translators: %s: Unscheduled token.
-				$errors[] = sprintf( __( 'something went wrong. Check the plugin log for more information related to %s.', 'swedbank-pay-woocommerce-paymentmenu' ), $token );
+				$errors[] = sprintf( __( 'something went wrong. Check the plugin log for more information related to %s.', 'swedbank-pay-payment-menu' ), $token );
 			}
 
 			return Swedbank_Pay()->system_report()->request(
@@ -293,7 +293,7 @@ class Swedbank_Pay_Subscription {
 
 			if ( empty( $errors ) ) {
 				// translators: %s: The WC order id.
-				$errors[] = sprintf( __( 'something went wrong. Check the plugin log for more information related to %s.', 'swedbank-pay-woocommerce-paymentmenu' ), $order->get_id() );
+				$errors[] = sprintf( __( 'something went wrong. Check the plugin log for more information related to %s.', 'swedbank-pay-payment-menu' ), $order->get_id() );
 			}
 
 			return Swedbank_Pay()->system_report()->request(
@@ -324,7 +324,7 @@ class Swedbank_Pay_Subscription {
 			"/psp/paymentorders/unscheduledTokens/{$token}",
 			array(
 				'state'   => 'Deleted',
-				'comment' => $reason ?? __( 'The subscription may have been cancelled or changed payment method.', 'swedbank-pay-woocommerce-paymentmenu' ),
+				'comment' => $reason ?? __( 'The subscription may have been cancelled or changed payment method.', 'swedbank-pay-payment-menu' ),
 			)
 		);
 
@@ -336,7 +336,7 @@ class Swedbank_Pay_Subscription {
 
 			$subscription->add_order_note(
 				// translators: 1: Unscheduled token.
-				sprintf( __( 'Cancelled subscription token: %s', 'swedbank-pay-woocommerce-paymentmenu' ), $token ) . ( $reason ? ". Reason: {$reason}" : '' )
+				sprintf( __( 'Cancelled subscription token: %s', 'swedbank-pay-payment-menu' ), $token ) . ( $reason ? ". Reason: {$reason}" : '' )
 			);
 
 		} else {
@@ -351,7 +351,7 @@ class Swedbank_Pay_Subscription {
 
 			$subscription->add_order_note(
 				// translators: 1: Error message, 2: Unscheduled token.
-				sprintf( __( 'Failed to cancel subscription token. Reason: %1$s. Token: %2$s', 'swedbank-pay-woocommerce-paymentmenu' ), $response->get_error_message(), $token )
+				sprintf( __( 'Failed to cancel subscription token. Reason: %1$s. Token: %2$s', 'swedbank-pay-payment-menu' ), $response->get_error_message(), $token )
 			);
 		}
 
@@ -398,7 +398,7 @@ class Swedbank_Pay_Subscription {
 				self::cancel_unscheduled_token( $existing_token, $order, $gateway, $reason );
 			}
 			// translators: 1: Unscheduled token.
-			$order->add_order_note( sprintf( __( 'Recurring token: %s', 'swedbank-pay-woocommerce-paymentmenu' ), $unscheduled_token ) );
+			$order->add_order_note( sprintf( __( 'Recurring token: %s', 'swedbank-pay-payment-menu' ), $unscheduled_token ) );
 
 			$order->update_meta_data( self::UNSCHEDULED_TOKEN, $unscheduled_token );
 			$order->save();
@@ -616,11 +616,11 @@ class Swedbank_Pay_Subscription {
 			return;
 		}
 
-		$reason = __( 'The payment method was changed by the customer.', 'swedbank-pay-woocommerce-paymentmenu' );
+		$reason = __( 'The payment method was changed by the customer.', 'swedbank-pay-payment-menu' );
 		$result = $this->save_subscription_token( $subscription, $gateway, true, $reason );
 		if ( is_wp_error( $result ) && function_exists( 'wc_print_notice' ) ) {
 			// translators: Error message.
-			wc_print_notice( sprintf( __( 'Failed to update payment method. Reason: %s', 'swedbank-pay-woocommerce-paymentmenu' ), $result->get_error_message() ), 'error' );
+			wc_print_notice( sprintf( __( 'Failed to update payment method. Reason: %s', 'swedbank-pay-payment-menu' ), $result->get_error_message() ), 'error' );
 		}
 	}
 
@@ -789,7 +789,7 @@ class Swedbank_Pay_Subscription {
 				$order->add_order_note(
 					sprintf(
 					// translators: 1: User's name, 2: Existing token, 3: New token.
-						__( '%1$s updated the subscription token from "%2$s" to "%3$s". Note: the previous token must be manually canceled if you do not intend to reuse it.', 'swedbank-pay-woocommerce-paymentmenu' ),
+						__( '%1$s updated the subscription token from "%2$s" to "%3$s". Note: the previous token must be manually canceled if you do not intend to reuse it.', 'swedbank-pay-payment-menu' ),
 						ucfirst( wp_get_current_user()->display_name ),
 						$existing_token,
 						$payment_token
@@ -825,7 +825,7 @@ class Swedbank_Pay_Subscription {
 				woocommerce_wp_text_input(
 					array(
 						'id'            => self::UNSCHEDULED_TOKEN,
-						'label'         => __( 'Subscription token', 'swedbank-pay-woocommerce-paymentmenu' ),
+						'label'         => __( 'Subscription token', 'swedbank-pay-payment-menu' ),
 						'wrapper_class' => '_billing_company_field',
 						'value'         => $subscription_token,
 					)

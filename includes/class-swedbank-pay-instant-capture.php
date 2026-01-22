@@ -306,7 +306,7 @@ class Swedbank_Pay_Instant_Capture {
 			$discount_with_tax = abs( $order->get_total_discount( false ) );
 			$tax               = $discount_with_tax - $discount;
 			$tax_percent       = ( $tax > 0 ) ? round( 100 / ( $discount / $tax ) ) : 0;
-			$name              = __( 'Discount', 'swedbank-pay-woocommerce-paymentmenu' );
+			$name              = __( 'Discount', 'swedbank-pay-payment-menu' );
 
 			$items[] = array(
 				Swedbank_Pay_Order_Item::FIELD_REFERENCE   => 'discount',

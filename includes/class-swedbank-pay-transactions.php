@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 
 		if ( false === $result ) {
 			throw new Exception(
-				esc_html__( 'Failed to install the transaction table.', 'swedbank-pay-woocommerce-paymentmenu' )
+				esc_html__( 'Failed to install the transaction table.', 'swedbank-pay-payment-menu' )
 			);
 		}
 	}
@@ -121,7 +121,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 
 		return new WP_Error(
 			'insert_failed',
-			__( 'Failed to insert the transaction to the table.', 'swedbank-pay-woocommerce-paymentmenu' )
+			__( 'Failed to insert the transaction to the table.', 'swedbank-pay-payment-menu' )
 		);
 	}
 
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 		if ( false === $result ) {
 			return new WP_Error(
 				'delete_failed',
-				__( 'Failed to delete the transaction from the table.', 'swedbank-pay-woocommerce-paymentmenu' )
+				__( 'Failed to delete the transaction from the table.', 'swedbank-pay-payment-menu' )
 			);
 		}
 
@@ -177,7 +177,7 @@ CREATE TABLE IF NOT EXISTS `" . esc_sql( $wpdb->prefix ) . "payex_transactions` 
 		if ( false === $result ) {
 			return new WP_Error(
 				'update_failed',
-				__( 'Failed to update the transaction in the table.', 'swedbank-pay-woocommerce-paymentmenu' )
+				__( 'Failed to update the transaction in the table.', 'swedbank-pay-payment-menu' )
 			);
 		}
 

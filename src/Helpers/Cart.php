@@ -212,7 +212,7 @@ class Cart extends PaymentDataHelper {
 					'swedbank_pay_payment_description',
 					sprintf(
 						/* translators: 1: order id */
-						__( 'Order #%1$s', 'swedbank-pay-woocommerce-paymentmenu' ),
+						__( 'Order #%1$s', 'swedbank-pay-payment-menu' ),
 						self::get_payee_reference()
 					)
 				)
