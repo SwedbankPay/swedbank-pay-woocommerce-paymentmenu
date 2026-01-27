@@ -7,10 +7,16 @@ output.log
 .eslintignore
 .distignore
 .jshintrc
+
 .gitignore
 .git
 .gitattributes
 .github
+.git/
+.git/**/*
+.github/
+.github/**/*
+
 .kernlignore
 .prettierignore
 .travis.yml
