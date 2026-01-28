@@ -710,21 +710,6 @@ class Swedbank_Pay_Subscription {
 	}
 
 	/**
-	 * Whether the cart contains only free trial subscriptions.
-	 *
-	 * If invoked from anywhere but the checkout page, this will return FALSE.
-	 *
-	 * @return boolean
-	 */
-	public static function cart_has_only_free_trial() {
-		if ( ! is_checkout() ) {
-			return false;
-		}
-
-		return ( class_exists( 'WC_Subscriptions_Cart' ) ) ? \WC_Subscriptions_Cart::all_cart_items_have_free_trial() : false;
-	}
-
-	/**
 	 * Checks if the cart contains a zero order subscription.
 	 *
 	 * A zero order subscription is defined as a subscription that has an initial value,

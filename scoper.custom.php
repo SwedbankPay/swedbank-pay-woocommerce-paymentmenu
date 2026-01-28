@@ -18,7 +18,6 @@ function customize_php_scoper_config( array $config ): array {
 		'swedbank_pay_get_payment_method',
 		'swedbank_pay_get_order_lines',
 		'swedbank_pay_get_available_line_items_for_refund',
-		'swedbank_pay_get_last_refund',
 		'swedbank_pay_generate_payee_reference',
 	);
 

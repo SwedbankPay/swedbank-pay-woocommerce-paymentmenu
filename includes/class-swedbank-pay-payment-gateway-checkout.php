@@ -6,11 +6,9 @@ use Krokedil\Swedbank\Pay\Utility\BlocksUtility;
 defined( 'ABSPATH' ) || exit;
 
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Transactions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Instant_Capture;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Payment_Actions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Scheduler;
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use Krokedil\Swedbank\Pay\CheckoutFlow\CheckoutFlow;
 
 /**
@@ -28,11 +26,6 @@ use Krokedil\Swedbank\Pay\CheckoutFlow\CheckoutFlow;
  * @SuppressWarnings(PHPMD.CouplingBetweenObjects)
  */
 class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
-	/**
-	 * @var Swedbank_Pay_Transactions
-	 */
-	public $transactions;
-
 	/**
 	 * Access Token
 	 *
@@ -124,8 +117,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @SuppressWarnings(PHPMD.NPathComplexity)
 	 */
 	public function __construct() {
-		$this->transactions = Swedbank_Pay_Transactions::instance();
-
 		$this->id                 = 'payex_checkout';
 		$this->has_fields         = true;
 		$this->method_title       = __( 'Swedbank Pay Payment Menu', 'swedbank-pay-payment-menu' );

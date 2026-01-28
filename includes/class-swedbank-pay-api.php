@@ -13,12 +13,10 @@ use WC_Payment_Gateway;
 use Swedbank_Pay_Payment_Gateway_Checkout;
 use Krokedil\Swedbank\Pay\Helpers\Order;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Response;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCaptureV3;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCancelV3;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionReversalV3;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\Transaction as TransactionData;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
@@ -140,7 +138,7 @@ class Swedbank_Pay_Api {
 		return array_values( array_unique( $result ) );
 	}
 
-		/**
+	/**
 		 * Get the Swedbank Pay client.
 		 *
 		 * This method creates a new Client instance, sets the access token, payee ID, mode (test or production),
@@ -392,33 +390,12 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
-	 * Fetch Payment Info.
+	 * Check if payment is captured.
 	 *
-	 * @param string      $payment_id_url
-	 * @param string|null $expand
+	 * @param string $payment_id_url
 	 *
-	 * @return Response
-	 * @deprecated Use request()
+	 * @return bool
 	 */
-	public function fetch_payment_info( $payment_id_url, $expand = null ) {
-		if ( $expand ) {
-			$payment_id_url .= '?$expand=' . $expand;
-		}
-
-		$result = $this->request( 'GET', $payment_id_url );
-		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-			/** @var \WP_Error $result */
-			Swedbank_Pay()->logger()->debug(
-				sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() )
-			);
-
-			return $result;
-		}
-
-		return $result;
-	}
-
-	// @todo Check if captured fully
 	public function is_captured( $payment_id_url ) {
 		// Fetch transactions list
 		$result           = $this->request( 'GET', $payment_id_url . '/financialtransactions' );
@@ -934,8 +911,6 @@ class Swedbank_Pay_Api {
 
 			// Save transaction.
 			$transaction = $result['capture']['transaction'];
-			$gateway     = swedbank_pay_get_payment_method( $order );
-			$gateway->transactions->import( $transaction, $order->get_id() );
 
 			$this->process_transaction( $order, $transaction );
 
@@ -996,9 +971,6 @@ class Swedbank_Pay_Api {
 			// Save transaction.
 			$transaction = $result['cancellation']['transaction'];
 
-			$gateway = swedbank_pay_get_payment_method( $order );
-			$gateway->transactions->import( $transaction, $order->get_id() );
-
 			$this->process_transaction( $order, $transaction );
 
 			return $result;
@@ -1056,9 +1028,6 @@ class Swedbank_Pay_Api {
 
 			// Save transaction.
 			$transaction = $result['reversal']['transaction'];
-
-			$gateway = swedbank_pay_get_payment_method( $order );
-			$gateway->transactions->import( $transaction, $order->get_id() );
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1119,9 +1088,6 @@ class Swedbank_Pay_Api {
 
 			// Save transaction.
 			$transaction = $result['reversal']['transaction'];
-
-			$gateway = swedbank_pay_get_payment_method( $order );
-			$gateway->transactions->import( $transaction, $order->get_id() );
 
 			$this->process_transaction( $order, $transaction );
 

@@ -164,19 +164,6 @@ class Swedbank_Pay_Plugin {
 	}
 
 	/**
-	 * Install
-	 */
-	public function install() {
-		// Install Schema.
-		Swedbank_Pay_Transactions::instance()->install_schema();
-
-		// Set Version.
-		if ( ! get_option( self::DB_VERSION_SLUG ) ) {
-			add_option( self::DB_VERSION_SLUG, self::DB_VERSION );
-		}
-	}
-
-	/**
 	 * Add relevant links to plugins page
 	 *
 	 * @param array $links
@@ -208,38 +195,6 @@ class Swedbank_Pay_Plugin {
 	}
 
 	/**
-	 * Register payment gateway
-	 *
-	 * @param string $class_name
-	 */
-	public static function register_gateway( $class_name ) {
-		global $swedbank_pay_gateways;
-
-		if ( ! $swedbank_pay_gateways ) {
-			$swedbank_pay_gateways = array();
-		}
-
-		if ( ! isset( $swedbank_pay_gateways[ $class_name ] ) ) {
-			// Initialize instance
-			$gateway = new $class_name();
-
-			if ( $gateway ) {
-				$swedbank_pay_gateways[] = $class_name;
-
-				// Register gateway instance
-				add_filter(
-					'woocommerce_payment_gateways',
-					function ( $methods ) use ( $gateway ) {
-						$methods[] = $gateway;
-
-						return $methods;
-					}
-				);
-			}
-		}
-	}
-
-	/**
 	 * Generate UUID
 	 *
 	 * @param $node
@@ -248,49 +203,6 @@ class Swedbank_Pay_Plugin {
 	 */
 	public function generate_uuid( $node ) {
 		return Uuid::uuid5( Uuid::NAMESPACE_OID, $node )->toString();
-	}
-
-	/**
-	 * Billing phone.
-	 *
-	 * @param string   $billing_phone
-	 * @param WC_Order $order
-	 *
-	 * @return string
-	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
-	 * @SuppressWarnings(PHPMD.NPathComplexity)
-	 */
-	public static function billing_phone( $billing_phone, $order ) {
-		$billing_country = $order->get_billing_country();
-		$billing_phone   = preg_replace( '/[^0-9\+]/', '', $billing_phone );
-
-		if ( ! preg_match( '/^((00|\+)([1-9][1-9])|0([1-9]))(\d*)/', $billing_phone, $matches ) ) {
-			return null;
-		}
-
-		switch ( $billing_country ) {
-			case 'SE':
-				$country_code = '46';
-				break;
-			case 'NO':
-				$country_code = '47';
-				break;
-			case 'DK':
-				$country_code = '45';
-				break;
-			default:
-				return '+' . ltrim( $billing_phone, '+' );
-		}
-
-		if ( isset( $matches[3] ) && isset( $matches[5] ) ) { // country code present
-			$billing_phone = $matches[3] . $matches[5];
-		}
-
-		if ( isset( $matches[4] ) && isset( $matches[5] ) ) { // no country code present. removing leading 0
-			$billing_phone = $country_code . $matches[4] . $matches[5];
-		}
-
-		return strlen( $billing_phone ) > 7 && strlen( $billing_phone ) < 16 ? '+' . $billing_phone : null;
 	}
 
 	/**
@@ -479,7 +391,6 @@ class Swedbank_Pay_Plugin {
 		<?php
 	}
 
-
 	/**
 	 * Handle a custom '_payex_paymentorder_id' query var to get orders with the '_payex_paymentorder_id' meta.
 	 *
@@ -515,27 +426,5 @@ class Swedbank_Pay_Plugin {
 				}
 			);
 		}
-	}
-
-	/**
-	 * Get log files.
-	 *
-	 * @return string[]
-	 */
-	private static function get_log_files() {
-		$result = array();
-		$files  = \WC_Log_Handler_File::get_log_files();
-		foreach ( $files as $file ) {
-			foreach ( self::PAYMENT_METHODS as $payment_method ) {
-				if ( strpos( $file, $payment_method ) !== false ||
-					 strpos( $file, 'swedbank' ) !== false ||  //phpcs:ignore
-					 strpos( $file, 'fatal-errors' ) !== false  //phpcs:ignore
-				) {
-					$result[] = $file;
-				}
-			}
-		}
-
-		return $result;
 	}
 }
