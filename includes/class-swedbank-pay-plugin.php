@@ -4,9 +4,6 @@ namespace SwedbankPay\Checkout\WooCommerce;
 
 defined( 'ABSPATH' ) || exit;
 
-use WC_Order;
-use Automattic\Jetpack\Constants;
-use Exception;
 use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
 use KrokedilSwedbankPayDeps\Ramsey\Uuid\Uuid;
 /**
@@ -101,7 +98,6 @@ class Swedbank_Pay_Plugin {
 
 		require_once __DIR__ . '/functions.php';
 		require_once __DIR__ . '/interface-swedbank-pay-order-item.php';
-		require_once __DIR__ . '/class-swedbank-pay-transactions.php';
 		require_once __DIR__ . '/class-swedbank-pay-api.php';
 		require_once __DIR__ . '/class-swedbank-pay-instant-capture.php';
 		require_once __DIR__ . '/class-swedbank-pay-payment-actions.php';
