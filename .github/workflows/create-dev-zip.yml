@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PLUGIN_SLUG: swedbank-pay-woocommerce-paymentmenu
+      PLUGIN_SLUG: swedbank-pay-payment-menu
 
     steps:
     - name: Checkout repository
