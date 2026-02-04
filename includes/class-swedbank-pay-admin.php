@@ -263,7 +263,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = filter_input( INPUT_REQUEST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
+		$order_id = filter_input( INPUT_POST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
@@ -292,7 +292,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = filter_input( INPUT_REQUEST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
+		$order_id = filter_input( INPUT_POST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
@@ -321,7 +321,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = filter_input( INPUT_REQUEST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
+		$order_id = filter_input( INPUT_POST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		$order    = wc_get_order( $order_id );
 		$gateway  = swedbank_pay_get_payment_method( $order );
 		if ( ! $gateway ) {
@@ -362,7 +362,7 @@ class Swedbank_Pay_Admin {
 	public function ajax_swedbank_pay_get_refund_mode() {
 		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
-		$order_id = filter_input( INPUT_REQUEST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
+		$order_id = filter_input( INPUT_GET, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		if ( ! $order_id ) {
 			wp_send_json_success(
 				array(
