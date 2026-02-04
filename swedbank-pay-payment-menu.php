@@ -151,9 +151,6 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
 
-		// Activation.
-		register_activation_hook( __FILE__, array( $this, 'install' ) );
-
 		// Declare feature compatibility. Anonymous function is OK in this case, since this should not be easily removable.
 		add_action(
 			'before_woocommerce_init',
