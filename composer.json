@@ -4,7 +4,6 @@
     "homepage": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-paymentmenu",
     "type": "wordpress-plugin",
     "license": "Apache-2.0",
-    "prefer-stable": true,
     "require": {
         "php": ">=7.4"
     },
@@ -46,5 +45,6 @@
         "phpcs": "@php ./vendor/bin/phpcs --standard=phpcs.xml **/*.php",
         "phpcbf": "@php ./vendor/bin/phpcbf --standard=phpcs.xml **/*.php"
     },
-    "minimum-stability": "dev"
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }
