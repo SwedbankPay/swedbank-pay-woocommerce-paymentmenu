@@ -13,12 +13,10 @@ use WC_Payment_Gateway;
 use Swedbank_Pay_Payment_Gateway_Checkout;
 use Krokedil\Swedbank\Pay\Helpers\Order;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Response;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCaptureV3;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCancelV3;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionReversalV3;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\Transaction as TransactionData;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
@@ -140,7 +138,7 @@ class Swedbank_Pay_Api {
 		return array_values( array_unique( $result ) );
 	}
 
-		/**
+	/**
 		 * Get the Swedbank Pay client.
 		 *
 		 * This method creates a new Client instance, sets the access token, payee ID, mode (test or production),
@@ -392,33 +390,12 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
-	 * Fetch Payment Info.
+	 * Check if payment is captured.
 	 *
-	 * @param string      $payment_id_url
-	 * @param string|null $expand
+	 * @param string $payment_id_url
 	 *
-	 * @return Response
-	 * @deprecated Use request()
+	 * @return bool
 	 */
-	public function fetch_payment_info( $payment_id_url, $expand = null ) {
-		if ( $expand ) {
-			$payment_id_url .= '?$expand=' . $expand;
-		}
-
-		$result = $this->request( 'GET', $payment_id_url );
-		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-			/** @var \WP_Error $result */
-			Swedbank_Pay()->logger()->debug(
-				sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() )
-			);
-
-			return $result;
-		}
-
-		return $result;
-	}
-
-	// @todo Check if captured fully
 	public function is_captured( $payment_id_url ) {
 		// Fetch transactions list
 		$result           = $this->request( 'GET', $payment_id_url . '/financialtransactions' );
@@ -499,8 +476,8 @@ class Swedbank_Pay_Api {
 
 			$transaction = array(
 				'id'             => $payment_order_id . '/financialtransactions/' . uniqid( 'fake' ),
-				'created'        => date( 'Y-m-d H:i:s' ),
-				'updated'        => date( 'Y-m-d H:i:s' ),
+				'created'        => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
+				'updated'        => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
 				'type'           => $data['paid']['transactionType'] ?? '',
 				'number'         => $transaction_number,
 				'amount'         => $data['paid']['amount'] ?? 0,
@@ -570,11 +547,11 @@ class Swedbank_Pay_Api {
 					// List of different messages based on the transaction type.
 					$messages = array(
 						// translators: 1: transaction ID.
-						self::TYPE_SALE          => __( 'Payment has been completed. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ),
+						self::TYPE_SALE          => __( 'Payment has been completed. Transaction: %s', 'swedbank-pay-payment-menu' ),
 						// translators: 1: transaction ID.
-						self::TYPE_AUTHORIZATION => __( 'Payment has been authorized. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ),
+						self::TYPE_AUTHORIZATION => __( 'Payment has been authorized. Transaction: %s', 'swedbank-pay-payment-menu' ),
 						// translators: 1: transaction ID.
-						self::TYPE_VERIFICATION  => __( 'Payment has been verified. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ),
+						self::TYPE_VERIFICATION  => __( 'Payment has been verified. Transaction: %s', 'swedbank-pay-payment-menu' ),
 					);
 					$message  = sprintf( $messages[ $transaction['type'] ], $transaction_id );
 					$order->payment_complete( $transaction_id );
@@ -607,7 +584,7 @@ class Swedbank_Pay_Api {
 				if ( $is_full_capture ) {
 					$message = sprintf(
 						// translators: 1: transaction ID, 2: transaction amount.
-						__( 'Payment has been fully captured. Transaction: %1$s. Amount: %2$s', 'swedbank-pay-woocommerce-checkout' ),
+						__( 'Payment has been fully captured. Transaction: %1$s. Amount: %2$s', 'swedbank-pay-payment-menu' ),
 						$transaction_id,
 						$captured_amount
 					);
@@ -617,7 +594,7 @@ class Swedbank_Pay_Api {
 					$price            = wc_price( $remaining_amount, array( 'currency' => $order->get_currency() ) );
 					$message          = sprintf(
 						// translators: 1: transaction ID, 2: transaction amount, 3: remaining amount.
-						__( 'Payment has been partially captured: Transaction: %1$s. Amount: %2$s. Remaining amount: %3$s', 'swedbank-pay-woocommerce-checkout' ),
+						__( 'Payment has been partially captured: Transaction: %1$s. Amount: %2$s. Remaining amount: %3$s', 'swedbank-pay-payment-menu' ),
 						$transaction_id,
 						$captured_amount,
 						$price
@@ -631,7 +608,7 @@ class Swedbank_Pay_Api {
 					'cancelled',
 					$transaction_id,
 					// translators: 1: transaction ID.
-					sprintf( __( 'Payment has been cancelled. Transaction: %s', 'swedbank-pay-woocommerce-checkout' ), $transaction_id )
+					sprintf( __( 'Payment has been cancelled. Transaction: %s', 'swedbank-pay-payment-menu' ), $transaction_id )
 				);
 
 				break;
@@ -774,7 +751,7 @@ class Swedbank_Pay_Api {
 				} else {
 					$order->update_status(
 						apply_filters(
-							'woocommerce_payment_complete_order_status',
+							'woocommerce_payment_complete_order_status', // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 							$status,
 							$order->get_id(),
 							$order
@@ -934,8 +911,6 @@ class Swedbank_Pay_Api {
 
 			// Save transaction.
 			$transaction = $result['capture']['transaction'];
-			$gateway     = swedbank_pay_get_payment_method( $order );
-			$gateway->transactions->import( $transaction, $order->get_id() );
 
 			$this->process_transaction( $order, $transaction );
 
@@ -996,9 +971,6 @@ class Swedbank_Pay_Api {
 			// Save transaction.
 			$transaction = $result['cancellation']['transaction'];
 
-			$gateway = swedbank_pay_get_payment_method( $order );
-			$gateway->transactions->import( $transaction, $order->get_id() );
-
 			$this->process_transaction( $order, $transaction );
 
 			return $result;
@@ -1056,9 +1028,6 @@ class Swedbank_Pay_Api {
 
 			// Save transaction.
 			$transaction = $result['reversal']['transaction'];
-
-			$gateway = swedbank_pay_get_payment_method( $order );
-			$gateway->transactions->import( $transaction, $order->get_id() );
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1119,9 +1088,6 @@ class Swedbank_Pay_Api {
 
 			// Save transaction.
 			$transaction = $result['reversal']['transaction'];
-
-			$gateway = swedbank_pay_get_payment_method( $order );
-			$gateway->transactions->import( $transaction, $order->get_id() );
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1217,7 +1183,7 @@ class Swedbank_Pay_Api {
 		}
 
 		if ( empty( $message ) ) {
-			$message = ! empty( $err_msg ) ? $err_msg : __( 'Error', 'woocommerce' );
+			$message = ! empty( $err_msg ) ? $err_msg : __( 'Error', 'woocommerce' ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 		}
 
 		return $message;

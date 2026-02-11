@@ -14,12 +14,10 @@ function customize_php_scoper_config( array $config ): array {
 
 	$functions = array(
 		'swedbank_pay_is_hpos_enabled',
-		'swedbank_pay_get_post_id_by_meta',
 		'swedbank_pay_get_order',
 		'swedbank_pay_get_payment_method',
 		'swedbank_pay_get_order_lines',
 		'swedbank_pay_get_available_line_items_for_refund',
-		'swedbank_pay_get_last_refund',
 		'swedbank_pay_generate_payee_reference',
 	);
 

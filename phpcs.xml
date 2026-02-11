@@ -21,7 +21,8 @@
     <rule ref="WordPress.WP.I18n">
         <properties>
             <property name="text_domain" type="array">
-                <element value="swedbank-pay-woocommerce-checkout" />
+                <element value="swedbank-pay-payment-menu" />
+                <element value="woocommerce" />
             </property>
         </properties>
     </rule>

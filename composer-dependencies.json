@@ -16,6 +16,6 @@
       "url": "git@github.com:krokedil/support.git"
     }
   ],
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
   "prefer-stable": true
 }
