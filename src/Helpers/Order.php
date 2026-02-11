@@ -183,7 +183,7 @@ class Order extends PaymentDataHelper {
 				->setFirstName( $this->order->get_billing_first_name() )
 				->setLastName( $this->order->get_billing_last_name() )
 				->setEmail( $this->order->get_billing_email() )
-				->setMsisdn( str_replace( ' ', '', $this->order->get_billing_phone() ) );
+				->setMsisdn( self::format_phone_number( $this->order->get_billing_phone(), $this->order->get_billing_country() ) );
 
 		$needs_shipping = false;
 		foreach ( $this->order->get_items() as $order_item ) {

@@ -594,6 +594,7 @@
                 "type": "git",
                 "url": "https://github.com/PHPCSStandards/PHPCSUtils.git",
                 "reference": "c216317e96c8b3f5932808f9b0f1f7a14e3bbf55"
+                "reference": "c216317e96c8b3f5932808f9b0f1f7a14e3bbf55"
             },
             "dist": {
                 "type": "zip",
@@ -2488,7 +2489,7 @@
     "platform": {
         "php": ">=7.4"
     },
-    "platform-dev": {},
+    "platform-dev": [],
     "platform-overrides": {
         "php": "7.4"
     },
