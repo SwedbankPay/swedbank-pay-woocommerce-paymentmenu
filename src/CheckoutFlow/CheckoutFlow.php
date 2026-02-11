@@ -6,6 +6,8 @@ use Krokedil\Swedbank\Pay\Utility\SettingsUtility;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Abstract class for processing different checkout flows.
  */
@@ -69,7 +71,7 @@ abstract class CheckoutFlow {
 			$order = wc_get_order( $order_id );
 
 			if ( ! $order ) {
-				throw new \Exception( __( 'Invalid order ID.', 'swedbank-pay-woocommerce-checkout' ) );
+				throw new \Exception( __( 'Invalid order ID.', 'swedbank-pay-payment-menu' ) );
 			}
 			$handler = self::get_handler( $order );
 
@@ -156,7 +158,7 @@ abstract class CheckoutFlow {
 	public static function error_response( $error_message = null ) {
 		return array(
 			'result'   => 'error',
-			'messages' => $error_message ?? __( 'There was an error processing your payment. Please try again.', 'swedbank-pay-woocommerce-checkout' ),
+			'messages' => $error_message ?? __( 'There was an error processing your payment. Please try again.', 'swedbank-pay-payment-menu' ),
 		);
 	}
 

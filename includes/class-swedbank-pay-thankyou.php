@@ -100,7 +100,7 @@ class Swedbank_Thankyou {
 				'ajax_url'      => admin_url( 'admin-ajax.php' ),
 				'check_message' => __(
 					"Please wait. We're checking the order status.",
-					'swedbank-pay-woocommerce-checkout'
+					'swedbank-pay-payment-menu'
 				),
 			)
 		);

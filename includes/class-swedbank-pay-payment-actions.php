@@ -121,7 +121,7 @@ class Swedbank_Pay_Payment_Actions {
 		}
 
 		$order->update_meta_data( '_payex_captured_items', $current_items );
-		$order->add_order_note( __( 'Order captured through metabox action.', 'swedbank-pay-woocommerce-checkout' ) );
+		$order->add_order_note( __( 'Order captured through metabox action.', 'swedbank-pay-payment-menu' ) );
 		$order->save_meta_data();
 
 		return $result;
@@ -396,7 +396,7 @@ class Swedbank_Pay_Payment_Actions {
 			sprintf(
 			/* translators: 1: transaction 2: state 3: reason */                __(
 				'Refund process has been executed from order admin. Transaction ID: %1$s. State: %2$s. Reason: %3$s', //phpcs:ignore
-				'swedbank-pay-woocommerce-checkout' //phpcs:ignore
+				'swedbank-pay-payment-menu' //phpcs:ignore
 			), //phpcs:ignore
 				$transaction_id,
 				$result['state'],
@@ -455,7 +455,7 @@ class Swedbank_Pay_Payment_Actions {
 				/** @var WC_Order_Item $item */
 				$item = $order->get_item( $item_id );
 				if ( ! $item ) {
-					throw new \Exception( 'Unable to retrieve order item: ' . $item_id );
+					throw new \Exception( 'Unable to retrieve order item: ' . absint( $item_id ) );
 				}
 
 				$qty = (int) $line['qty'];
@@ -478,10 +478,12 @@ class Swedbank_Pay_Payment_Actions {
 								$qty > $order_item[ Swedbank_Pay_Order_Item::FIELD_QTY ]
 							) {
 								throw new \Exception(
-									sprintf(
-										'Product "%s" with quantity "%s" is not able to be captured.',
-										$sku,
-										$qty
+									esc_html(
+										sprintf(
+											'Product "%s" with quantity "%s" is not able to be captured.',
+											$sku,
+											$qty
+										)
 									)
 								);
 							}
@@ -500,10 +502,12 @@ class Swedbank_Pay_Payment_Actions {
 
 						if ( ! $isCaptured ) {
 							throw new \Exception(
-								sprintf(
-									'Order item "%s" with quantity "%s" is not able to be captured.',
-									$item->get_name(),
-									$qty
+								esc_html(
+									sprintf(
+										'Order item "%s" with quantity "%s" is not able to be captured.',
+										$item->get_name(),
+										$qty
+									)
 								)
 							);
 						}
@@ -521,10 +525,12 @@ class Swedbank_Pay_Payment_Actions {
 
 						if ( ! $isCaptured ) {
 							throw new \Exception(
-								sprintf(
-									'Order item "%s" with quantity "%s" is not able to be captured.',
-									$item->get_name(),
-									$qty
+								esc_html(
+									sprintf(
+										'Order item "%s" with quantity "%s" is not able to be captured.',
+										$item->get_name(),
+										$qty
+									)
 								)
 							);
 						}

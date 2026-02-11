@@ -9,9 +9,7 @@ namespace Krokedil\Swedbank\Pay\Helpers;
 
 use Automattic\WooCommerce\Utilities\OrderUtil;
 
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Class HPOS.

@@ -11,6 +11,8 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Class OrderManagement
  */
@@ -62,7 +64,7 @@ class OrderManagement {
 		}
 
 		if ( $this->is_captured( $order ) ) {
-			$order->add_order_note( __( 'Payment already captured.', 'swedbank-pay-woocommerce-checkout' ) );
+			$order->add_order_note( __( 'Payment already captured.', 'swedbank-pay-payment-menu' ) );
 			return;
 		}
 
@@ -76,7 +78,7 @@ class OrderManagement {
 		$captured_amount = wc_price( $result['amount'] / 100, array( 'currency' => $order->get_currency() ) );
 
 		// Translators: %1$s is the transaction number, %2$s is the captured amount.
-		$order->add_order_note( sprintf( __( 'Payment has been captured. Transaction: %1$s. Amount: %2$s.', 'swedbank-pay-woocommerce-checkout' ), $result['number'], $captured_amount ) );
+		$order->add_order_note( sprintf( __( 'Payment has been captured. Transaction: %1$s. Amount: %2$s.', 'swedbank-pay-payment-menu' ), $result['number'], $captured_amount ) );
 	}
 
 	/**

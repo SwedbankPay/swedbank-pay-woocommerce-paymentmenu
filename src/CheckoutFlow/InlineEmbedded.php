@@ -6,6 +6,7 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Reques
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use WP_Error;
 
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Class for processing the inline embedded checkout flow on the shortcode checkout page.
@@ -34,7 +35,7 @@ class InlineEmbedded extends CheckoutFlow {
 		}
 
 		// If we did not have it in the GET params, check the POST data. Needed to handle potential ajax requests.
-		$post_data = isset( $_POST['post_data'] ) ? sanitize_text_field( wp_unslash( $_POST['post_data'] ) ) : null;
+		$post_data = isset( $_POST['post_data'] ) ? sanitize_text_field( wp_unslash( $_POST['post_data'] ) ) : null; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		wp_parse_str( $post_data, $post_data_array );
 		if ( isset( $post_data_array['swedbank_pay_payee_reference'] ) && isset( $post_data_array['swedbank_pay_payment_complete'] ) ) {
 			$this->is_payment_complete = true;
@@ -71,7 +72,7 @@ class InlineEmbedded extends CheckoutFlow {
 		$script_src = WC()->session->get( 'swedbank_pay_view_checkout_url' );
 
 		if ( empty( $script_src ) ) {
-			wc_add_notice( __( 'Failed to get the payment session URL.', 'swedbank-pay-woocommerce-checkout' ), 'error' );
+			wc_add_notice( __( 'Failed to get the payment session URL.', 'swedbank-pay-payment-menu' ), 'error' );
 			return;
 		}
 
@@ -232,8 +233,8 @@ class InlineEmbedded extends CheckoutFlow {
 		if ( is_wp_error( $result ) ) {
 			$code = \is_int( $result->get_error_code() ) ? \intval( $result->get_error_code() ) : 500;
 			throw new \Exception(
-				$result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-woocommerce-checkout' ),
-				$code
+				esc_html( $result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-payment-menu' ) ),
+				absint( $code )
 			);
 		}
 
@@ -266,10 +267,10 @@ class InlineEmbedded extends CheckoutFlow {
 	 */
 	private function process_subscription( $order ) {
 		if ( Swedbank_Pay_Subscription::cart_has_zero_order() ) {
-			$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-woocommerce-checkout' ) );
+			$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-payment-menu' ) );
 			Swedbank_Pay_Subscription::set_skip_om( $order, gmdate( 'Y-m-d\TH:i:s\Z' ) );
 		} else {
-			$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-woocommerce-checkout' ) );
+			$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-payment-menu' ) );
 		}
 	}
 
@@ -292,7 +293,7 @@ class InlineEmbedded extends CheckoutFlow {
 			// Get any potential problems from the payment response.
 			$problem = $get_purchase_result['problem'] ?? null;
 			if ( ! empty( $problem ) ) {
-				$message = $problem['detail'] ?? __( 'An unknown error occurred during the payment process.', 'swedbank-pay-woocommerce-checkout' );
+				$message = $problem['detail'] ?? __( 'An unknown error occurred during the payment process.', 'swedbank-pay-payment-menu' );
 				throw new \Exception( $message );
 			}
 		} catch( \Exception $e ) {

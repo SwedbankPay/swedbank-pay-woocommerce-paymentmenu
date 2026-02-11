@@ -4,7 +4,6 @@
     "homepage": "https://github.com/SwedbankPay/swedbank-pay-woocommerce-paymentmenu",
     "type": "wordpress-plugin",
     "license": "Apache-2.0",
-    "prefer-stable": true,
     "require": {
         "php": ">=7.4"
     },
@@ -32,17 +31,20 @@
     "extra": {
         "wpify-scoper": {
             "prefix": "KrokedilSwedbankPayDeps",
-            "folder": "dependencies",
+            "folder": "vendor/dependencies",
             "autorun": true,
             "globals": [
                 "wordpress",
                 "woocommerce"
-            ]
+            ],
+            "composerjson": "composer-dependencies.json",
+            "composerlock": "composer-dependencies.lock"
         }
     },
     "scripts": {
         "phpcs": "@php ./vendor/bin/phpcs --standard=phpcs.xml **/*.php",
         "phpcbf": "@php ./vendor/bin/phpcbf --standard=phpcs.xml **/*.php"
     },
-    "minimum-stability": "dev"
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }

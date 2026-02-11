@@ -119,7 +119,7 @@ class Swedbank_Pay_Admin {
 
 					add_meta_box(
 						'swedbank_payment_actions',
-						__( 'Swedbank Pay Payments Actions', 'swedbank-pay-woocommerce-checkout' ),
+						__( 'Swedbank Pay Payments Actions', 'swedbank-pay-payment-menu' ),
 						__CLASS__ . '::order_meta_box_payment_actions',
 						$screen,
 						'side',
@@ -237,7 +237,7 @@ class Swedbank_Pay_Admin {
 			// Localize the script.
 			$translation_array = array(
 				'ajax_url'  => admin_url( 'admin-ajax.php' ),
-				'text_wait' => __( 'Please wait...', 'swedbank-pay-woocommerce-checkout' ),
+				'text_wait' => __( 'Please wait...', 'swedbank-pay-payment-menu' ),
 				'nonce'     => wp_create_nonce( 'swedbank_pay' ),
 				'order_id'  => $order_id,
 			);
@@ -255,10 +255,7 @@ class Swedbank_Pay_Admin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_capture() {
-		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
-		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
-			exit( 'No naughty business' );
-		}
+		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
 		remove_action(
 			'woocommerce_order_status_changed',
@@ -266,7 +263,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
+		$order_id = filter_input( INPUT_POST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
@@ -277,7 +274,7 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
-		wp_send_json_success( __( 'Capture success.', 'swedbank-pay-woocommerce-checkout' ) );
+		wp_send_json_success( __( 'Capture success.', 'swedbank-pay-payment-menu' ) );
 	}
 
 	/**
@@ -287,10 +284,7 @@ class Swedbank_Pay_Admin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_cancel() {
-		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
-		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
-			exit( 'No naughty business' );
-		}
+		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
 		remove_action(
 			'woocommerce_order_status_changed',
@@ -298,7 +292,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
+		$order_id = filter_input( INPUT_POST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		$order    = wc_get_order( $order_id );
 
 		// Get Payment Gateway
@@ -309,7 +303,7 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
-		wp_send_json_success( __( 'Cancel success.', 'swedbank-pay-woocommerce-checkout' ) );
+		wp_send_json_success( __( 'Cancel success.', 'swedbank-pay-payment-menu' ) );
 	}
 
 	/**
@@ -319,10 +313,7 @@ class Swedbank_Pay_Admin {
 	 * @SuppressWarnings(PHPMD.ExitExpression)
 	 */
 	public function ajax_swedbank_pay_refund() {
-		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
-		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
-			exit( 'No naughty business' );
-		}
+		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
 		remove_action(
 			'woocommerce_order_status_changed',
@@ -330,7 +321,7 @@ class Swedbank_Pay_Admin {
 			0
 		);
 
-		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
+		$order_id = filter_input( INPUT_POST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		$order    = wc_get_order( $order_id );
 		$gateway  = swedbank_pay_get_payment_method( $order );
 		if ( ! $gateway ) {
@@ -341,7 +332,7 @@ class Swedbank_Pay_Admin {
 		$result = $gateway->payment_actions_handler->refund_payment(
 			$order,
 			swedbank_pay_get_available_line_items_for_refund( $order ),
-			__( 'Full refund.', 'swedbank-pay-woocommerce-checkout' ),
+			__( 'Full refund.', 'swedbank-pay-payment-menu' ),
 			true
 		);
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
@@ -354,7 +345,7 @@ class Swedbank_Pay_Admin {
 		// @todo Create credit memo with order lines
 
 		// Refund will be created on transaction processing
-		wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-woocommerce-checkout' ) );
+		wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-payment-menu' ) );
 	}
 
 	/**
@@ -369,12 +360,9 @@ class Swedbank_Pay_Admin {
 	 * @global array $_REQUEST The request data.
 	 */
 	public function ajax_swedbank_pay_get_refund_mode() {
-		$nonce = sanitize_text_field( wp_unslash( $_REQUEST['nonce'] ?? '' ) ); // WPCS: input var ok, CSRF ok.
-		if ( ! wp_verify_nonce( $nonce, 'swedbank_pay' ) ) {
-			exit( 'No naughty business' );
-		}
+		check_ajax_referer( 'swedbank_pay', 'nonce' );
 
-		$order_id = (int) $_REQUEST['order_id']; // WPCS: input var ok, CSRF ok.
+		$order_id = filter_input( INPUT_GET, 'order_id', FILTER_SANITIZE_NUMBER_INT );
 		if ( ! $order_id ) {
 			wp_send_json_success(
 				array(
@@ -424,7 +412,7 @@ class Swedbank_Pay_Admin {
 			}
 
 			foreach ( $order_gift_cards as $code => $amount ) {
-				$amount = apply_filters( 'ywgc_gift_card_amount_order_total_item', $amount, YITH_YWGC()->get_gift_card_by_code( $code ) );
+				$amount = apply_filters( 'ywgc_gift_card_amount_order_total_item', $amount, YITH_YWGC()->get_gift_card_by_code( $code ) ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound
 				if ( $amount > 0 ) {
 					$gift_amount += $amount;
 				}
@@ -528,7 +516,7 @@ class Swedbank_Pay_Admin {
 					}
 
 					$order->add_order_note(
-						__( 'Payment has been captured by order status change.', 'swedbank-pay-woocommerce-checkout' )
+						__( 'Payment has been captured by order status change.', 'swedbank-pay-payment-menu' )
 					);
 
 					break;
@@ -541,7 +529,7 @@ class Swedbank_Pay_Admin {
 					}
 
 					$order->add_order_note(
-						__( 'Payment has been cancelled by order status change.', 'swedbank-pay-woocommerce-checkout' )
+						__( 'Payment has been cancelled by order status change.', 'swedbank-pay-payment-menu' )
 					);
 
 					break;
@@ -558,7 +546,7 @@ class Swedbank_Pay_Admin {
 					$result = $gateway->payment_actions_handler->refund_payment(
 						$order,
 						$lines,
-						__( 'Order status changed to refunded.', 'swedbank-pay-woocommerce-checkout' ),
+						__( 'Order status changed to refunded.', 'swedbank-pay-payment-menu' ),
 						true
 					);
 					if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
@@ -567,7 +555,7 @@ class Swedbank_Pay_Admin {
 					}
 
 					$order->add_order_note(
-						__( 'Payment has been refunded by order status change.', 'swedbank-pay-woocommerce-checkout' )
+						__( 'Payment has been refunded by order status change.', 'swedbank-pay-payment-menu' )
 					);
 
 					break;

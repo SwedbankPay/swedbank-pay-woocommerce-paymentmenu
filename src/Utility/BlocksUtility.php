@@ -1,6 +1,8 @@
 <?php
 namespace Krokedil\Swedbank\Pay\Utility;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Utility class for helper functions related to blocks.
  */

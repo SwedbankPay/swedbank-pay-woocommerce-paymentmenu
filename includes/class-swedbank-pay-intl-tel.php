@@ -35,10 +35,10 @@ class Swedbank_Intl_Tel {
 	 */
 	public function add_settings( $form_fields ) {
 		$form_fields['enable_intl_tel'] = array(
-			'title'       => __( 'Enable International Telephone Input', 'swedbank-pay-woocommerce-checkout' ),
-			'label'       => __( 'Enable International Telephone Input', 'swedbank-pay-woocommerce-checkout' ),
+			'title'       => __( 'Enable International Telephone Input', 'swedbank-pay-payment-menu' ),
+			'label'       => __( 'Enable International Telephone Input', 'swedbank-pay-payment-menu' ),
 			'type'        => 'checkbox',
-			'description' => __( 'Improves phone field using International Telephone Input. A JavaScript plugin for entering and validating international telephone numbers. It adds a flag dropdown to any input, detects the user\'s country, displays a relevant placeholder and provides formatting/validation methods.', 'swedbank-pay-woocommerce-checkout' ),
+			'description' => __( 'Improves phone field using International Telephone Input. A JavaScript plugin for entering and validating international telephone numbers. It adds a flag dropdown to any input, detects the user\'s country, displays a relevant placeholder and provides formatting/validation methods.', 'swedbank-pay-payment-menu' ),
 			'desc_tip'    => true,
 			'default'     => 'no',
 		);
@@ -87,7 +87,7 @@ class Swedbank_Intl_Tel {
 			array(
 				'swedbank-intl-tel-js',
 			),
-			false,
+			SWEDBANK_PAY_VERSION,
 			true
 		);
 

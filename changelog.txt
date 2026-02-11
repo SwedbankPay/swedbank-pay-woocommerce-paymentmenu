@@ -1,3 +1,8 @@
+Version 4.3.2
+* Enhancement - Updated the code to be inline with WordPress coding standards.
+* Enhancement - Removed the custom database table for transactions, since it was not being used for any functionality other then storing data.
+* Fix         - Fixed an issue where the phonenumber was not correctly formatted correctly when paying for an existing order.
+
 Version 4.3.1
 * Reduced the amount of requests made to Swedbank Pay when the customer gets to the thankyou page for an order that could happen in some cases.
 * Fixed an issue where some payments would automatically be set to Completed in WooCommerce when the callback from Swedbank Pay was processed for some payment methods.

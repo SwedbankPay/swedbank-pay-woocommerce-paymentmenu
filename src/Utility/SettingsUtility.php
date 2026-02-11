@@ -3,6 +3,8 @@ namespace Krokedil\Swedbank\Pay\Utility;
 
 use Swedbank_Pay_Payment_Gateway_Checkout;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Utility class for helper functions related to plugin settings.
  */

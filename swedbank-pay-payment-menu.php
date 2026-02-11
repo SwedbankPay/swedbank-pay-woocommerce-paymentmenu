@@ -7,12 +7,12 @@
  * Author URI: https://profiles.wordpress.org/swedbankpay/
  * License: Apache License 2.0
  * License URI: http://www.apache.org/licenses/LICENSE-2.0
- * Version: 4.3.1
- * Text Domain: swedbank-pay-woocommerce-checkout
+ * Version: 4.3.2
+ * Text Domain: swedbank-pay-payment-menu
  * Domain Path: /languages
  *
  * WC requires at least: 5.5.1
- * WC tested up to: 10.3.6
+ * WC tested up to: 10.5.1
  * Requires Plugins: woocommerce
  *
  * @package SwedbankPay
@@ -25,7 +25,7 @@ use KrokedilSwedbankPayDeps\Krokedil\Support\SystemReport;
 
 
 defined( 'ABSPATH' ) || exit;
-define( 'SWEDBANK_PAY_VERSION', '4.3.1' );
+define( 'SWEDBANK_PAY_VERSION', '4.3.2' );
 define( 'SWEDBANK_PAY_MAIN_FILE', __FILE__ );
 define( 'SWEDBANK_PAY_PLUGIN_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
 define( 'SWEDBANK_PAY_PLUGIN_URL', untrailingslashit( plugin_dir_url( __FILE__ ) ) );
@@ -45,7 +45,7 @@ require_once __DIR__ . '/includes/class-swedbank-pay-plugin.php';
  * @SuppressWarnings(PHPMD.StaticAccess)
  */
 class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
-	public const TEXT_DOMAIN = 'swedbank-pay-woocommerce-checkout';
+	public const TEXT_DOMAIN = 'swedbank-pay-payment-menu';
 
 	/**
 	 * Order Management.
@@ -96,7 +96,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @return void
 	 */
 	private function __clone() {
-		wc_doing_it_wrong( __FUNCTION__, __( 'Nope' ), '1.0' );
+		wc_doing_it_wrong( __FUNCTION__, __( 'Nope', 'swedbank-pay-payment-menu' ), '1.0' );
 	}
 
 	/**
@@ -106,7 +106,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @return void
 	 */
 	public function __wakeup() {
-		wc_doing_it_wrong( __FUNCTION__, __( 'Nope' ), '1.0' );
+		wc_doing_it_wrong( __FUNCTION__, __( 'Nope', 'swedbank-pay-payment-menu' ), '1.0' );
 	}
 
 	/**
@@ -151,12 +151,6 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
 
-		// Activation.
-		register_activation_hook( __FILE__, array( $this, 'install' ) );
-
-		// Actions.
-		add_action( 'init', array( $this, 'load_textdomain' ) );
-
 		// Declare feature compatibility. Anonymous function is OK in this case, since this should not be easily removable.
 		add_action(
 			'before_woocommerce_init',
@@ -200,7 +194,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 			),
 			array(
 				'type'    => 'text',
-				'exclude' => array(
+				'exclude' => array( // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_exclude -- Not used for a query.
 					'title' => 'Access Token',
 				),
 			),
@@ -224,36 +218,23 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	}
 
 	/**
-	 * Load the plugin text domain for translation.
-	 *
-	 * @return void
-	 */
-	public function load_textdomain() {
-		load_plugin_textdomain(
-			'swedbank-pay-woocommerce-checkout',
-			false,
-			SWEDBANK_PAY_PLUGIN_PATH . '/languages'
-		);
-	}
-
-	/**
 	 * Check if WooCommerce is missing, and deactivate the plugin if needs
 	 */
 	public static function missing_woocommerce_notice() {
 		?>
 		<div id="message" class="error">
 			<p class="main">
-				<strong><?php echo esc_html__( 'WooCommerce is inactive or missing.', 'swedbank-pay-woocommerce-checkout' ); ?></strong>
+				<strong><?php echo esc_html__( 'WooCommerce is inactive or missing.', 'swedbank-pay-payment-menu' ); ?></strong>
 			</p>
 			<p>
 				<?php
-				echo esc_html__( 'WooCommerce plugin is inactive or missing. Please install and active it.', 'swedbank-pay-woocommerce-checkout' );
+				echo esc_html__( 'WooCommerce plugin is inactive or missing. Please install and active it.', 'swedbank-pay-payment-menu' );
 				echo '<br />';
 				printf(
 				/* translators: 1: plugin name */
 					esc_html__(
 						'%1$s will be deactivated.',
-						'swedbank-pay-woocommerce-checkout'
+						'swedbank-pay-payment-menu'
 					),
 					self::PLUGIN_NAME //phpcs:ignore
 				);

@@ -1,12 +1,12 @@
 === Swedbank Pay Payment Menu ===
 Contributors: swedbankpay
-Tags: ecommerce, e-commerce, commerce, woothemes, wordpress ecommerce, swedbank, payex, payment gateway, woocommerce
+Tags: ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
 Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 10.3.6
-Stable tag: 4.3.1
+WC tested up to: 10.5.1
+Stable tag: 4.3.2
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,11 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.02.11    - version 4.3.2 =
+* Enhancement   - Updated the code to be inline with WordPress coding standards.
+* Enhancement   - Removed the custom database table for transactions, since it was not being used for any functionality other then storing data.
+* Fix           - Fixed an issue where the phonenumber was not correctly formatted correctly when paying for an existing order.
+
 = 2025.12.10    - version 4.3.1 =
 * Enhancement   - Reduced the amount of requests made to Swedbank Pay when the customer gets to the thankyou page for an order that could happen in some cases.
 * Fix           - Fixed an issue where some payments would automatically be set to Completed in WooCommerce when the callback from Swedbank Pay was processed for some payment methods.

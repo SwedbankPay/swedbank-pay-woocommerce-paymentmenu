@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			type="button" class="button button-primary"
 			data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"
 			data-order-id="<?php echo esc_html( $order->get_id() ); ?>">
-		<?php _e( 'Capture Payment', 'swedbank-pay-woocommerce-checkout' ); ?>
+		<?php esc_html_e( 'Capture Payment', 'swedbank-pay-payment-menu' ); ?>
 	</button>
 <?php endif; ?>
 
@@ -22,6 +22,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 			type="button" class="button button-primary"
 			data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"
 			data-order-id="<?php echo esc_html( $order->get_id() ); ?>">
-		<?php _e( 'Cancel Payment', 'swedbank-pay-woocommerce-checkout' ); ?>
+		<?php esc_html_e( 'Cancel Payment', 'swedbank-pay-payment-menu' ); ?>
 	</button>
 <?php endif; ?>
