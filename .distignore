@@ -53,3 +53,5 @@ gruntfile.js
 tsconfig.json
 
 .changelogs
+
+build-phar.sh
