@@ -3,7 +3,7 @@ namespace Krokedil\Swedbank\Pay\Helpers;
 
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\OrderItemsCollection;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\Item\OrderItem;
-use SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 
 defined( 'ABSPATH' ) || exit;
