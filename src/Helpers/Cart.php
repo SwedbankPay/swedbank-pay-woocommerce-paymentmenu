@@ -255,6 +255,9 @@ class Cart extends PaymentDataHelper {
 		}
 
 		$payment_order->setPayer( $this->get_payer() );
+
+		self::set_client_information( $payment_order ); // Set the client information.
+
 		return apply_filters( 'swedbank_pay_payment_order', $payment_order, $this );
 	}
 
@@ -291,6 +294,8 @@ class Cart extends PaymentDataHelper {
 				)
 			)
 			->setOrderItems( $this->get_order_items() );
+
+		self::set_client_information( $payment_order ); // Set the client information.
 
 		return apply_filters( 'swedbank_pay_update_payment_order', $payment_order, $this );
 	}
