@@ -26,11 +26,16 @@ class InlineEmbedded extends CheckoutFlow {
 	 */
 	protected $payee_reference = null;
 
+	/**
+	 * Set flags when the request indicates the payment has completed.
+	 *
+	 * @return void
+	 */
 	protected function set_is_payment_complete() {
 		$payment_complete = filter_input( INPUT_GET, 'payex-payment-complete', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
 		if ( ! empty( $payment_complete ) ) {
 			$this->is_payment_complete = true;
-			$this->payee_reference = sanitize_text_field( wp_unslash( $payment_complete ) );
+			$this->payee_reference     = sanitize_text_field( wp_unslash( $payment_complete ) );
 			return;
 		}
 
@@ -82,7 +87,7 @@ class InlineEmbedded extends CheckoutFlow {
 		);
 
 		if ( $this->is_payment_complete ) {
-			$order = swedbank_pay_get_order_by_payee_reference( $this->payee_reference );
+			$order                     = swedbank_pay_get_order_by_payee_reference( $this->payee_reference );
 			$params['thankyou_url']    = $this->gateway->get_return_url( $order );
 			$params['payee_reference'] = $this->payee_reference;
 		}
@@ -231,9 +236,10 @@ class InlineEmbedded extends CheckoutFlow {
 		// Initiate Payment Order.
 		$result = $this->api->get_embedded_purchase();
 		if ( is_wp_error( $result ) ) {
-			$code = \is_int( $result->get_error_code() ) ? \intval( $result->get_error_code() ) : 500;
+			$code    = \is_int( $result->get_error_code() ) ? \intval( $result->get_error_code() ) : 500;
+			$message = ! empty( $result->get_error_message() ) ? $result->get_error_message() : __( 'The payment could not be initiated.', 'swedbank-pay-payment-menu' );
 			throw new \Exception(
-				esc_html( $result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-payment-menu' ) ),
+				esc_html( $message ),
 				absint( $code )
 			);
 		}
@@ -281,7 +287,7 @@ class InlineEmbedded extends CheckoutFlow {
 	 * @return void
 	 */
 	protected function process_payment_complete_return() {
-		try{
+		try {
 			// Get the payment to verify its status.
 			$get_purchase_result = $this->api->get_embedded_purchase();
 
@@ -296,7 +302,7 @@ class InlineEmbedded extends CheckoutFlow {
 				$message = $problem['detail'] ?? __( 'An unknown error occurred during the payment process.', 'swedbank-pay-payment-menu' );
 				throw new \Exception( $message );
 			}
-		} catch( \Exception $e ) {
+		} catch ( \Exception $e ) {
 			self::unset_embedded_session_data();
 			wc_add_notice( $e->getMessage(), 'error' );
 			wp_safe_redirect( wc_get_checkout_url() );
