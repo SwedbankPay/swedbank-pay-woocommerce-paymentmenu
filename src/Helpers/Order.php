@@ -49,7 +49,12 @@ class Order extends PaymentDataHelper {
 
 		// If the payment method id starts with 'swedbank_pay_', we should instead change it to be the main gateway instead.
 		if ( 0 === strpos( (string) $this->gateway->id, 'swedbank_pay_' ) ) {
-			$this->gateway = swedbank_pay_get_payment_method_by_id();
+			$base_gateway = swedbank_pay_get_payment_method_by_id();
+
+			// If we got the base gateway successfully, we can use it instead to get the correct settings for the order, especially for the payee info.
+			if ( ! empty( $base_gateway ) ) {
+				$this->gateway = $base_gateway;
+			}
 		}
 
 		$this->user_agent = $order->get_customer_user_agent();
