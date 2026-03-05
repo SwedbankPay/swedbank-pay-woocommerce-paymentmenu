@@ -98,6 +98,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	/**
 	 * @var bool
 	 */
+	public $separate_instruments_enabled = false;
+
+	/**
+	 * @var bool
+	 */
 	public $exclude_order_lines = false;
 
 	/**
@@ -150,21 +155,23 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		// Define user set variables.
-		$this->enabled                = $this->settings['enabled'] ?? 'yes';
-		$this->title                  = $this->settings['title'] ?? '';
-		$this->description            = $this->settings['description'] ?? '';
-		$this->access_token           = $this->settings['access_token'] ?? $this->access_token;
-		$this->payee_id               = $this->settings['payee_id'] ?? $this->payee_id;
-		$this->testmode               = $this->settings['testmode'] ?? $this->testmode;
-		$this->culture                = $this->settings['culture'] ?? $this->culture;
-		$this->logo_url               = $this->settings['logo_url'] ?? $this->logo_url;
-		$this->instant_capture        = $this->settings['instant_capture'] ?? $this->instant_capture;
-		$this->terms_url              = $this->settings['terms_url'] ?? get_site_url();
-		$this->autocomplete           = $this->settings['autocomplete'] ?? 'no';
-		$this->exclude_order_lines    = wc_string_to_bool( $this->settings['exclude_order_lines'] ?? false );
-		$this->block_checkout_enabled = BlocksUtility::is_checkout_block_enabled();
-		$this->checkout_flow          = $this->block_checkout_enabled ?
-			( $this->settings['checkout_flow'] ?? 'redirect' ) : 'redirect'; // Use the setting only if the block checkout is enabled, otherwise force 'redirect'.
+		$this->enabled                      = $this->settings['enabled'] ?? 'yes';
+		$this->title                        = $this->settings['title'] ?? '';
+		$this->description                  = $this->settings['description'] ?? '';
+		$this->access_token                 = $this->settings['access_token'] ?? $this->access_token;
+		$this->payee_id                     = $this->settings['payee_id'] ?? $this->payee_id;
+		$this->testmode                     = $this->settings['testmode'] ?? $this->testmode;
+		$this->culture                      = $this->settings['culture'] ?? $this->culture;
+		$this->logo_url                     = $this->settings['logo_url'] ?? $this->logo_url;
+		$this->instant_capture              = $this->settings['instant_capture'] ?? $this->instant_capture;
+		$this->terms_url                    = $this->settings['terms_url'] ?? get_site_url();
+		$this->autocomplete                 = $this->settings['autocomplete'] ?? 'no';
+		$this->exclude_order_lines          = wc_string_to_bool( $this->settings['exclude_order_lines'] ?? false );
+		$this->block_checkout_enabled       = BlocksUtility::is_checkout_block_enabled();
+		$this->checkout_flow                = ! $this->block_checkout_enabled ?
+			( $this->settings['checkout_flow'] ?? 'redirect' ) : 'redirect'; // Use the setting only if the block checkout is not enabled, otherwise force 'redirect'.
+		$this->separate_instruments_enabled = ( $this->checkout_flow === 'redirect' ) ?
+			wc_string_to_bool( $this->settings['enable_separate_instruments'] ?? 'no' ) : false; // Only allow separate instruments if the checkout flow is redirect.
 
 		// TermsOfServiceUrl contains unsupported scheme value http in Only https supported.
 		if ( ! filter_var( $this->terms_url, FILTER_VALIDATE_URL ) ) {
@@ -249,7 +256,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			'payee_id'             => array(
 				'title'             => __( 'Payee Id', 'swedbank-pay-payment-menu' ),
 				'type'              => 'text',
-				'description'       => /* translators: 1: url */                        sprintf( __( 'Your Payee ID can be found in our Merchant-portal <a href="%1$s" target="_blank">here</a>', 'swedbank-pay-payment-menu' ), $portal_url ),
+				'description'       => /* translators: 1: url */ sprintf( __( 'Your Payee ID can be found in our Merchant-portal <a href="%1$s" target="_blank">here</a>', 'swedbank-pay-payment-menu' ), $portal_url ),
 				'default'           => $this->payee_id,
 				'custom_attributes' => array(
 					'required' => 'required',
@@ -265,7 +272,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			'access_token'         => array(
 				'title'             => __( 'Access Token', 'swedbank-pay-payment-menu' ),
 				'type'              => 'text',
-				'description'       => /* translators: 1: url */                        sprintf( __( 'Your Access Token can be found in our Merchant-portal <a href="%1$s" target="_blank">here</a>', 'swedbank-pay-payment-menu' ), $portal_url ),
+				'description'       => /* translators: 1: url */ sprintf( __( 'Your Access Token can be found in our Merchant-portal <a href="%1$s" target="_blank">here</a>', 'swedbank-pay-payment-menu' ), $portal_url ),
 				'default'           => $this->access_token,
 				'custom_attributes' => array(
 					'required' => 'required',
@@ -445,8 +452,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @return bool
 	 */
 	private function check_availability() {
-		// If the split instruments setting is enabled, the main gateway should not be available.
-		if ( wc_string_to_bool( SettingsUtility::get_setting( 'enable_separate_instruments', 'no' ) ) ) {
+		// If the split instruments setting is enabled, the main gateway should not be available in the checkout.
+		if ( $this->separate_instruments_enabled ) {
 			return false;
 		}
 
