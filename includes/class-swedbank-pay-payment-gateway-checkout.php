@@ -1,7 +1,7 @@
 <?php
 
 use Krokedil\Swedbank\Pay\CheckoutFlow\InlineEmbedded;
-use Krokedil\Swedbank\Pay\Utility\{BlocksUtility, InstrumentsUtility};
+use Krokedil\Swedbank\Pay\Utility\{BlocksUtility, InstrumentsUtility, SettingsUtility};
 
 defined( 'ABSPATH' ) || exit;
 
@@ -383,12 +383,14 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'title' => __( 'Separate Instruments', 'swedbank-pay-payment-menu' ),
 				'type'  => 'title',
 			),
+
 			// TODO: Place this somewhere more logical before release. And add JS to hide/show the individual instrument settings based on the main setting.
 			'enable_separate_instruments' => array(
 				'title'   => __( 'Enable separate instruments', 'swedbank-pay-payment-menu' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Enable separate instruments/payment methods instead of payment menu', 'swedbank-pay-payment-menu' ),
 				'default' => 'no',
+				'class'   => 'instrument-setting-separate-instruments',
 			),
 		);
 
@@ -398,6 +400,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'type'    => 'checkbox',
 				'label'   => sprintf( __( 'Enable %s in the payment menu', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
 				'default' => 'no',
+				'class'   => 'instrument-setting instrument-setting-' . $key,
 			);
 		}
 
@@ -453,7 +456,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 */
 	private function check_availability() {
 		// If the split instruments setting is enabled, the main gateway should not be available in the checkout.
-		if ( $this->separate_instruments_enabled ) {
+		if ( SettingsUtility::is_separate_instruments_enabled() ) {
 			return false;
 		}
 
