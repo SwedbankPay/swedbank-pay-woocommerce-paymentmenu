@@ -1,7 +1,7 @@
 <?php
 
 use Krokedil\Swedbank\Pay\CheckoutFlow\InlineEmbedded;
-use Krokedil\Swedbank\Pay\Utility\BlocksUtility;
+use Krokedil\Swedbank\Pay\Utility\{BlocksUtility, InstrumentsUtility, SettingsUtility};
 
 defined( 'ABSPATH' ) || exit;
 
@@ -372,10 +372,34 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'default' => 'yes',
 			),
 
+			'separate_instruments'     => array(
+				'title' => __( 'Separate Instruments', 'swedbank-pay-payment-menu' ),
+				'type'  => 'title',
+			),
+			// TODO: Place this somewhere more logical before release. And add JS to hide/show the individual instrument settings based on the main setting.
+			'enable_separate_instruments' => array(
+				'title'   => __( 'Enable separate instruments', 'swedbank-pay-payment-menu' ),
+				'type'    => 'checkbox',
+				'label'   => __( 'Enable separate instruments/payment methods instead of payment menu', 'swedbank-pay-payment-menu' ),
+				'default' => 'no',
+			),
 		);
+
+		foreach( InstrumentsUtility::$instruments as $key => $instrument ) {
+			$this->form_fields[ "enable_instrument_$key" ] = array(
+				'title'   => sprintf( __( 'Enable %s', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
+				'type'    => 'checkbox',
+				'label'   => sprintf( __( 'Enable %s in the payment menu', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
+				'default' => 'no',
+			);
+		}
 
 		// Extend with settings with logging option.
 		$this->form_fields = Swedbank_Pay()->logger()->add_settings_fields( $this->form_fields );
+	}
+
+	public static function is_instrument_enabled( $gateway, $instrument_key ) {
+		return isset( $gateway->settings[ "enable_instrument_$instrument_key" ] ) && 'yes' === $gateway->settings[ "enable_instrument_$instrument_key" ];
 	}
 
 	/**
@@ -421,6 +445,11 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @return bool
 	 */
 	private function check_availability() {
+		// If the split instruments setting is enabled, the main gateway should not be available.
+		if ( wc_string_to_bool( SettingsUtility::get_setting( 'enable_separate_instruments', 'no' ) ) ) {
+			return false;
+		}
+
 		return wc_string_to_bool( $this->enabled );
 	}
 
