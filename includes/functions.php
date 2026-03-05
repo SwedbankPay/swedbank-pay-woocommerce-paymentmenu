@@ -52,10 +52,11 @@ function swedbank_pay_get_order( $paymentOrderId ) {
  * Get Payment Method.
  *
  * @param WC_Order $order
+ * @param bool $use_base_gateway Whether to return the base gateway for split instruments or the specific split instrument gateway. Default: true.
  *
  * @return null|\WC_Payment_Gateway|\Swedbank_Pay_Payment_Gateway_Checkout
  */
-function swedbank_pay_get_payment_method( WC_Order $order ) {
+function swedbank_pay_get_payment_method( WC_Order $order, bool $use_base_gateway = true ) {
 	// Get Payment Gateway
 	$gateways = WC()->payment_gateways()->payment_gateways();
 	if ( ! isset( $gateways[ $order->get_payment_method() ] ) ) {
@@ -63,7 +64,13 @@ function swedbank_pay_get_payment_method( WC_Order $order ) {
 	}
 
 	/** @var \WC_Payment_Gateway $gateway */
-	return $gateways[ $order->get_payment_method() ];
+	$gateway = $gateways[ $order->get_payment_method() ];
+
+	if ( $use_base_gateway && strpos( $gateway->id, 'swedbank_pay_' ) === 0 ) {
+		$gateway = swedbank_pay_get_payment_method_by_id();
+	}
+
+	return $gateway;
 }
 
 /**
