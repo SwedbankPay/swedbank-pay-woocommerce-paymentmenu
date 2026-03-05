@@ -4,7 +4,7 @@ namespace Krokedil\Swedbank\Pay\Utility;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Utility class for helper functions related to blocks.
+ * Utility class for helper functions related to the instruments and separate payment methods.
  */
 class InstrumentsUtility {
 	public static array $instruments = array(
