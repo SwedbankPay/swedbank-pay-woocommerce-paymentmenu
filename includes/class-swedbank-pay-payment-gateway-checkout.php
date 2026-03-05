@@ -1,7 +1,7 @@
 <?php
 
 use Krokedil\Swedbank\Pay\CheckoutFlow\InlineEmbedded;
-use Krokedil\Swedbank\Pay\Utility\{BlocksUtility, InstrumentsUtility, SettingsUtility};
+use Krokedil\Swedbank\Pay\Utility\{BlocksUtility, InstrumentsUtility};
 
 defined( 'ABSPATH' ) || exit;
 
