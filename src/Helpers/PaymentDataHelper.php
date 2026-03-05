@@ -3,6 +3,7 @@ namespace Krokedil\Swedbank\Pay\Helpers;
 
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\OrderItemsCollection;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Collection\Item\OrderItem;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 
 defined( 'ABSPATH' ) || exit;
@@ -180,5 +181,21 @@ abstract class PaymentDataHelper {
 		$phone_number = str_replace( ' ', '', $phone_number );
 
 		return $phone_number;
+	}
+
+	/**
+	 * Set the client information with the platform name, integration version and name to the payment order.
+	 *
+	 * @param Paymentorder $payment_order The payment order to set the client information on.
+	 *
+	 * @return Paymentorder
+	 */
+	public static function set_client_information( $payment_order ) {
+		$payment_order->getClientInfo()
+			->setPlatformName( 'WooCommerce' ) // The name of the platform. Can be set to different values.
+			->setIntegrationModuleName( 'WOOCOMMERCE' ) // Needs to be set to WOOCOMMERCE only.
+			->setIntegrationModuleVersion( SWEDBANK_PAY_VERSION ); // The plugin version from the plugin constants.
+
+		return $payment_order;
 	}
 }
