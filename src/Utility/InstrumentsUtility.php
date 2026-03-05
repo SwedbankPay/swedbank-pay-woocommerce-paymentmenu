@@ -11,6 +11,20 @@ class InstrumentsUtility {
 		'credit_card' => array(
 			'instrument' => 'CreditCard',
 			'name' => 'Credit Card',
+			'supports' => array(
+				'products',
+				'refunds',
+				'subscriptions',
+				'subscription_cancellation',
+				'subscription_suspension',
+				'subscription_reactivation',
+				'subscription_amount_changes',
+				'subscription_date_changes',
+				'subscription_payment_method_change_customer',
+				'subscription_payment_method_change_admin',
+				'subscription_payment_method_change',
+				'multiple_subscriptions',
+			),
 		),
 		'invoice_payex_financing_se' => array(
 			'instrument' => 'Invoice-PayExFinancingSe',
@@ -44,6 +58,10 @@ class InstrumentsUtility {
 			'instrument' => 'ClickToPay',
 			'name' => 'Click To Pay',
 		),
+		'vipps' => array(
+			'instrument' => 'Vipps',
+			'name' => 'Vipps'
+		),
 	);
 
 	/**
@@ -54,14 +72,8 @@ class InstrumentsUtility {
 	 * @return bool True if the instrument is enabled, false otherwise.
 	 */
 	public static function is_instrument_enabled( $instrument_key ) {
-		// If the flow is not set to redirect, separate instruments are not supported, so we can return false directly.
-		// This is only temporary until we have support for separate instruments in the embedded flow, then this check should be removed and the setting should be available for all flows.
-		if ( ! SettingsUtility::is_redirect_flow() ) {
-			return false;
-		}
-
-		// If the general setting for separate instruments is not enabled, we can return false directly.
-		if ( ! wc_string_to_bool( SettingsUtility::get_setting( 'enable_separate_instruments', 'no' ) ) ) {
+		// If separate instruments are not enabled at all, we can return false directly.
+		if ( ! SettingsUtility::is_separate_instruments_enabled() ) {
 			return false;
 		}
 
@@ -74,14 +86,8 @@ class InstrumentsUtility {
 	 * @return array An array of enabled instruments, each instrument is an array with 'instrument' and 'name' keys.
 	 */
 	public static function get_enabled_instruments() {
-		// If the flow is not set to redirect, separate instruments are not supported, so we can return an empty array directly.
-		// This is only temporary until we have support for separate instruments in the embedded flow, then this check should be removed and the setting should be available for all flows.
-		if ( ! SettingsUtility::is_redirect_flow() ) {
-			return array();
-		}
-
-		// If the general setting for separate instruments is not enabled, we can return an empty array directly.
-		if ( ! wc_string_to_bool( SettingsUtility::get_setting( 'enable_separate_instruments', 'no' ) ) ) {
+		// If separate instruments are not enabled at all, we can return an empty array directly.
+		if ( ! SettingsUtility::is_separate_instruments_enabled() ) {
 			return array();
 		}
 

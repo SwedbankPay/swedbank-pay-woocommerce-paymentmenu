@@ -61,7 +61,6 @@ class Swedbank_Pay_Plugin {
 			'plugin_action_links_' . constant( __NAMESPACE__ . '\PLUGIN_PATH' ),
 			__CLASS__ . '::plugin_action_links'
 		);
-		add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
 		add_action( 'woocommerce_init', array( $this, 'woocommerce_init' ) );
 
 		// Filters.

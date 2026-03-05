@@ -23,13 +23,11 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 	 * Class constructor.
 	 *
 	 * @param string $id The ID of the gateway, e.g. 'credit_card'.
-	 * @param string $instrument_id The id of the instrument for Swedbanks API, e.g. 'CreditCard'.
-	 * @param string $name The name of the gateway, e.g. 'Credit Card'. This is used as the display title for the gateway in the admin pages,
-	 * 					   and will be the default title shown to users in the checkout if not set otherwise in the settings.
+	 * @param array $instrument The instrument details for Swedbanks API, e.g. array('instrument' => 'CreditCard', 'name' => 'Credit Card').
 	 *
 	 * @return void
 	 */
-	public function __construct( $id, $instrument_id, $name = '' ) {
+	public function __construct( $id, $instrument ) {
 		// If the Id is empty, we cannot continue.
 		if ( empty( $id ) ) {
 			wc_doing_it_wrong( __METHOD__, __( 'When creating a split instrument gateway, the ID cannot be empty.', 'swedbank-pay-payment-menu' ), '1.0.0' );
@@ -37,11 +35,11 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 		}
 
 		$this->id            = "swedbank_pay_$id";
-		$this->instrument_id = $instrument_id;
+		$this->instrument_id = $instrument['instrument'];
 		// translators: %s the name of the payment method.
-		$this->method_title = sprintf( __( 'Swedbank Pay %s', 'swedbank-pay-payment-menu' ), $name );
+		$this->method_title = sprintf( __( 'Swedbank Pay %s', 'swedbank-pay-payment-menu' ), $instrument['name'] );
 		// translators: %s the description of the payment method.
-		$this->method_description = sprintf( __( 'Take payments with %s via Swedbank Pay', 'swedbank-pay-payment-menu' ), $name );
+		$this->method_description = sprintf( __( 'Take payments with %s via Swedbank Pay', 'swedbank-pay-payment-menu' ), $instrument['name'] );
 
 		$this->init_form_fields();
 		$this->init_settings();
@@ -50,24 +48,8 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 		$this->title       = $this->settings['title'] ?? $this->method_title;
 		$this->description = $this->settings['description'] ?? '';
 
-
-		$this->has_fields = true;
-		$this->supports   = array(
-			'products',
-			'refunds',
-			'subscriptions',
-			'subscription_cancellation',
-			'subscription_suspension',
-			'subscription_reactivation',
-			'subscription_amount_changes',
-			'subscription_date_changes',
-			'subscription_payment_method_change_customer',
-			'subscription_payment_method_change_admin',
-			'subscription_payment_method_change',
-			'multiple_subscriptions',
-		);
-
-		//parent::__construct();
+		$this->supports   = $instrument['supports'] ?? array( 'products', 'refunds' );
+		$this->has_fields = false; // False for now. Once we add support for embedded version, we will need to set this to true.
 	}
 
 	/**
@@ -123,7 +105,12 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 	 * @return bool True if the refund was successful, false otherwise.
 	 */
 	public function process_refund( $order_id, $amount = null, $reason = '' ) {
-		return true;
+		// Get the base gateway and use its refund method instead.
+		$base_gateway = swedbank_pay_get_payment_method_by_id();
+		if ( empty( $base_gateway ) || ! method_exists( $base_gateway, 'process_refund' ) ) {
+			return false;
+		}
+		return $base_gateway->process_refund( $order_id, $amount, $reason );
 	}
 
 	/**
@@ -133,6 +120,25 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 	 */
 	public function payment_fields() {
 		CheckoutFlow::payment_fields( $this->id );
+	}
+
+	/**
+	 * If the payment method is available or not.
+	 * Checks if the gateway is enabled, and applies a filter to allow modification of the availability.
+	 *
+	 * @return bool True if the gateway is available, false otherwise.
+	 */
+	public function is_available() {
+		/**
+		 * Filter the availability of the split instrument gateway.
+		 *
+		 * @param bool $is_available Whether the gateway is available or not in general.
+		 * @param string $gateway_id The ID of the gateway being checked, e.g. 'swedbank_pay_credit_card'.
+		 * @param SplitInstrumentGateway $gateway_instance The instance of the gateway being checked.
+		 *
+		 * @return bool Whether the gateway should be available or not.
+		 */
+		return apply_filters( 'swedbank_pay_split_instrument_gateway_is_available', parent::is_available(), $this->id, $this );
 	}
 
 	/**
@@ -152,15 +158,15 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 	 * @return array
 	 */
 	public static function register_split_instrument_gateways( $gateways ) {
-		$available_instruments = InstrumentsUtility::get_enabled_instruments();
+		$enabled_instruments = InstrumentsUtility::get_enabled_instruments();
 		// If the array is empty, we don't need to register any gateways.
-		if ( empty( $available_instruments ) ) {
+		if ( empty( $enabled_instruments ) ) {
 			return $gateways;
 		}
 
 		// Register a gateway for each enabled instrument.
-		foreach ( $available_instruments as $id => $instrument ) {
-			$gateways[] = new self( $id, $instrument['instrument'], $instrument['name'] );
+		foreach ( $enabled_instruments as $id => $instrument ) {
+			$gateways[] = new self( $id, $instrument );
 		}
 
 		return $gateways;
