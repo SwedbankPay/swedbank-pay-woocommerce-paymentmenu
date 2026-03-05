@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "82e92bc7380d692e8a6518b6bd74677a",
+    "content-hash": "5f03b7cedd3507d0fd491aac898b4587",
     "packages": [
         {
             "name": "krokedil/support",
@@ -214,16 +214,16 @@
         },
         {
             "name": "swedbank-pay/swedbank-pay-sdk-php",
-            "version": "6.1.0",
+            "version": "6.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/SwedbankPay/swedbank-pay-sdk-php.git",
-                "reference": "93c0f01bacfd73027f4198760f7544826ad94b95"
+                "reference": "402001245649d45d362783fbd07acd814921c0a0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/SwedbankPay/swedbank-pay-sdk-php/zipball/93c0f01bacfd73027f4198760f7544826ad94b95",
-                "reference": "93c0f01bacfd73027f4198760f7544826ad94b95",
+                "url": "https://api.github.com/repos/SwedbankPay/swedbank-pay-sdk-php/zipball/402001245649d45d362783fbd07acd814921c0a0",
+                "reference": "402001245649d45d362783fbd07acd814921c0a0",
                 "shasum": ""
             },
             "require": {
@@ -279,9 +279,9 @@
             ],
             "support": {
                 "issues": "https://github.com/SwedbankPay/swedbank-pay-sdk-php/issues",
-                "source": "https://github.com/SwedbankPay/swedbank-pay-sdk-php/tree/v6.1.0"
+                "source": "https://github.com/SwedbankPay/swedbank-pay-sdk-php/tree/v6.2.0"
             },
-            "time": "2024-03-23T10:55:03+00:00"
+            "time": "2026-03-05T12:18:19+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -376,7 +376,7 @@
     "platform": {
         "php": ">=7.4"
     },
-    "platform-dev": [],
+    "platform-dev": {},
     "platform-overrides": {
         "php": "7.4"
     },
