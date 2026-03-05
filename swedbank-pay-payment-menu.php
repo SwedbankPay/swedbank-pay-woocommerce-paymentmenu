@@ -205,7 +205,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 
 		// Register the split instruments for the gateway as soon as possible.
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateways' ) );
-		add_action( 'woocommerce_payment_gateways', SplitInstrumentGateway::class . '::register_split_instrument_gateways' );
+		add_filter( 'woocommerce_payment_gateways', SplitInstrumentGateway::class . '::register_split_instrument_gateways', 20, 1 );
 	}
 
 	/**
