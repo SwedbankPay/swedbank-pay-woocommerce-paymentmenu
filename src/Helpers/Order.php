@@ -47,6 +47,11 @@ class Order extends PaymentDataHelper {
 		}
 		$this->gateway = swedbank_pay_get_payment_method( $order );
 
+		// If the payment method id starts with 'swedbank_pay_', we should instead change it to be the main gateway instead.
+		if ( str_starts_with( $this->gateway->id, 'swedbank_pay_' ) ) {
+			$this->gateway = swedbank_pay_get_payment_method_by_id();
+		}
+
 		$this->user_agent = $order->get_customer_user_agent();
 		if ( empty( $this->user_agent ) ) {
 			$this->user_agent = 'WooCommerce/' . WC()->version;

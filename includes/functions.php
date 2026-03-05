@@ -67,6 +67,24 @@ function swedbank_pay_get_payment_method( WC_Order $order ) {
 }
 
 /**
+ * Get Payment Method.
+ *
+ * @param string $id The ID of the payment method in WooCommerce. Default: 'payex_checkout'.
+ *
+ * @return null|\WC_Payment_Gateway|\Swedbank_Pay_Payment_Gateway_Checkout
+ */
+function swedbank_pay_get_payment_method_by_id( string $id = 'payex_checkout' ) {
+	// Get Payment Gateway
+	$gateways = WC()->payment_gateways()->payment_gateways();
+	if ( ! isset( $gateways[ $id ] ) ) {
+		return null;
+	}
+
+	/** @var \WC_Payment_Gateway $gateway */
+	return $gateways[ $id ];
+}
+
+/**
  * Get Order Lines.
  *
  * @param WC_Order|WC_Order_Refund $order The order object to retrieve the items from.
