@@ -54,6 +54,12 @@ class InstrumentsUtility {
 	 * @return bool True if the instrument is enabled, false otherwise.
 	 */
 	public static function is_instrument_enabled( $instrument_key ) {
+		// If the flow is not set to redirect, separate instruments are not supported, so we can return false directly.
+		// This is only temporary until we have support for separate instruments in the embedded flow, then this check should be removed and the setting should be available for all flows.
+		if ( ! SettingsUtility::is_redirect_flow() ) {
+			return false;
+		}
+
 		// If the general setting for separate instruments is not enabled, we can return false directly.
 		if ( ! wc_string_to_bool( SettingsUtility::get_setting( 'enable_separate_instruments', 'no' ) ) ) {
 			return false;
@@ -68,6 +74,12 @@ class InstrumentsUtility {
 	 * @return array An array of enabled instruments, each instrument is an array with 'instrument' and 'name' keys.
 	 */
 	public static function get_enabled_instruments() {
+		// If the flow is not set to redirect, separate instruments are not supported, so we can return an empty array directly.
+		// This is only temporary until we have support for separate instruments in the embedded flow, then this check should be removed and the setting should be available for all flows.
+		if ( ! SettingsUtility::is_redirect_flow() ) {
+			return array();
+		}
+
 		// If the general setting for separate instruments is not enabled, we can return an empty array directly.
 		if ( ! wc_string_to_bool( SettingsUtility::get_setting( 'enable_separate_instruments', 'no' ) ) ) {
 			return array();
