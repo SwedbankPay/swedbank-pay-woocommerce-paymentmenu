@@ -278,6 +278,8 @@ class Order extends PaymentDataHelper {
 			}
 		}
 
+		self::set_client_information( $payment_order ); // Set the client information.
+
 		$payment_order->setPayer( $this->get_payer() );
 		return apply_filters( 'swedbank_pay_payment_order', $payment_order, $this );
 	}
