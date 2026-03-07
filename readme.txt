@@ -5,8 +5,8 @@ Requires at least: 5.3
 Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 10.5.1
-Stable tag: 4.3.2
+WC tested up to: 10.5.3
+Stable tag: 4.3.3
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,13 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.03.09    - version 4.3.3 =
+* Enhancement   - Client information is now sent with payment orders to set platform name, integration module name and version for the payment.
+* Enhancement   - Improved error handling by allowing exceptions to propagate to WooCommerce.
+* Fix           - Resolved a fatal error that could occur on the 'thank you' page.
+* Fix           - When a customer cancels payment for a 'pay for order' order, they are now correctly redirected back to the order payment page.
+* Tweak         - Enabled editing of orders that include WooCommerce Subscriptions.
+
 = 2026.02.11    - version 4.3.2 =
 * Enhancement   - Updated the code to be inline with WordPress coding standards.
 * Enhancement   - Removed the custom database table for transactions, since it was not being used for any functionality other then storing data.
