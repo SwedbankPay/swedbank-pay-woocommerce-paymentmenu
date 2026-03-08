@@ -170,7 +170,7 @@ abstract class PaymentDataHelper {
 	public static function format_phone_number( $phone_number, $country_code ) {
 		// Ensure the string is not empty, and does not already start with a '+'.
 		if ( ! empty( $phone_number ) && strpos( $phone_number, '+' ) !== 0 ) {
-			$country_calling_code  = WC()->countries->get_country_calling_code( $country_code );
+			$country_calling_code = WC()->countries->get_country_calling_code( $country_code );
 			if ( ! empty( $country_calling_code ) ) {
 				// Remove leading zeros and prepend the country calling code.
 				$phone_number = $country_calling_code . ltrim( $phone_number, '0' );
@@ -180,7 +180,7 @@ abstract class PaymentDataHelper {
 		// Remove any spaces from the phone number.
 		$phone_number = str_replace( ' ', '', $phone_number );
 
-		return $phone_number;
+		return wc_sanitize_phone_number( $phone_number );
 	}
 
 	/**
