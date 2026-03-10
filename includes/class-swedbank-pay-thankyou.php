@@ -68,11 +68,19 @@ class Swedbank_Thankyou {
 		$order_key = filter_input( INPUT_GET, 'key', FILTER_SANITIZE_FULL_SPECIAL_CHARS );
 
 		$order = wc_get_order( $order_id );
-		if ( empty( $order ) || ! $order->get_id() || ! $order->key_is_valid( $order_key ) ) {
+		if ( empty( $order ) ) {
 			return;
 		}
 
 		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+			return;
+		}
+
+		if ( empty( $order_key ) || ! $order->key_is_valid( $order_key ) ) {
+			global $wp;
+			$current_url = home_url( add_query_arg( $_GET, $wp->request ) );
+			Swedbank_Pay()->logger()->log( "Invalid order key on thank you page for order #{$order->get_order_number()}. URL: {$current_url}" );
+
 			return;
 		}
 

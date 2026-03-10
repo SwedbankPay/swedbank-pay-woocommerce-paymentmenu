@@ -1,3 +1,10 @@
+Version 4.3.3
+* Enhancement   - Client information is now sent with payment orders to set platform name, integration module name and version for the payment.
+* Enhancement   - Improved error handling by allowing exceptions to propagate to WooCommerce.
+* Fix           - Resolved a fatal error that could occur on the 'thank you' page.
+* Fix           - When a customer cancels payment for a 'pay for order' order, they are now correctly redirected back to the order payment page.
+* Tweak         - Enabled editing of orders that include WooCommerce Subscriptions.
+
 Version 4.3.2
 * Enhancement - Updated the code to be inline with WordPress coding standards.
 * Enhancement - Removed the custom database table for transactions, since it was not being used for any functionality other then storing data.
