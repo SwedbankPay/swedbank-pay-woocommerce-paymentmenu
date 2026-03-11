@@ -518,8 +518,8 @@ class Swedbank_Pay_Admin {
 					}
 					$result = $gateway->payment_actions_handler->capture_payment( $order );
 					if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-						/** @var \WP_Error $result */
-						// TODO: For consistency sake, log an error message instead of relying on the request log.
+						$context['error'] = join( '; ', $result->get_error_messages() );
+						Swedbank_Pay()->logger()->error( "[ORDER MANAGEMENT]: Failed to capture #{$order->get_order_number()}", $context );
 						throw new Exception( $result->get_error_message() );
 					}
 

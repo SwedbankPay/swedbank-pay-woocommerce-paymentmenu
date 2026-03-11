@@ -8,8 +8,6 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
-use WC_Logger;
-
 defined( 'ABSPATH' ) || exit;
 
 
