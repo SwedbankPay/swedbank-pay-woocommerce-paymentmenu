@@ -394,7 +394,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			),
 		);
 
-		foreach( InstrumentsUtility::$instruments as $key => $instrument ) {
+		foreach( InstrumentsUtility::get_instruments() as $key => $instrument ) {
 			$this->form_fields[ "enable_instrument_$key" ] = array(
 				'title'   => sprintf( __( 'Enable %s', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
 				'type'    => 'checkbox',

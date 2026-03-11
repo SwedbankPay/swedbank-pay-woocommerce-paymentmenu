@@ -110,7 +110,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			}
 
 			// Check the payment method ID
-			if ( ! in_array( $task[0]['payment_method_id'], Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) { //phpcs:ignore
+			if ( ! swedbank_pay_is_payment_swedbank_method( $task[0]['payment_method_id'] ) ) { //phpcs:ignore
 				// Try with another queue processor
 				continue;
 			}
@@ -213,7 +213,8 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			}
 
 			if ( ! property_exists( $gateway, 'api' ) ||
-				! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+				! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() )
+			) {
 				$this->log(
 					sprintf(
 						'[ERROR]: Order #%s has not been paid with the swedbank pay. Payment method: %s',

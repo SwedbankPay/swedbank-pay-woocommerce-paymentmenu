@@ -119,7 +119,8 @@ class Swedbank_Pay_Scheduler {
 			}
 
 			if ( ! property_exists( $gateway, 'api' ) ||
-				! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+				! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() )
+			) {
 				$this->log( "[ERROR]: Order {$order->get_id()} has not been paid with the swedbank pay. Payment method: {$order->get_payment_method()}" );
 
 				return false;

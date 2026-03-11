@@ -65,9 +65,8 @@ class Swedbank_Pay_Admin {
 	}
 
 	public function prevent_online_refund( $order_id, $refund_id ) {
-		$order          = wc_get_order( $order_id );
-		$payment_method = $order->get_payment_method();
-		if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+		$order = wc_get_order( $order_id );
+		if ( swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			// Prevent online refund when order status changed to "refunded"
 			set_transient(
 				'sb_refund_prevent_online_refund_' . $order_id,
@@ -86,8 +85,7 @@ class Swedbank_Pay_Admin {
 	 * @return array
 	 */
 	public function add_valid_order_statuses( $statuses, $order ) {
-		$payment_method = $order->get_payment_method();
-		if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			$statuses = array_merge(
 				$statuses,
 				array(
@@ -110,9 +108,8 @@ class Swedbank_Pay_Admin {
 	public static function add_meta_boxes( $screen_id, $order ) {
 		$hook_to_check = swedbank_pay_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'shop_order';
 		if ( $hook_to_check === $screen_id ) {
-			$order          = wc_get_order( $order );
-			$payment_method = $order->get_payment_method();
-			if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) || strpos( $payment_method, 'swedbank_pay_' ) === 0 ) {
+			$order = wc_get_order( $order );
+			if ( swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 				$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 				if ( ! empty( $payment_order_id ) ) {
 					$screen = swedbank_pay_is_hpos_enabled() ? wc_get_page_screen_id( 'shop-order' ) : 'shop_order';
@@ -144,8 +141,7 @@ class Swedbank_Pay_Admin {
 		}
 
 		// Get Payment Gateway
-		$payment_method = $order->get_payment_method();
-		if ( ! in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) && strpos( $payment_method, 'swedbank_pay_' ) !== 0 ) {
+		if ( ! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			return;
 		}
 
@@ -186,8 +182,7 @@ class Swedbank_Pay_Admin {
 		}
 
 		// Get Payment Gateway
-		$payment_method = $order->get_payment_method();
-		if ( in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) || strpos( $payment_method, 'swedbank_pay_' ) === 0 ) {
+		if ( swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			// Get Payment Gateway
 			$gateway = swedbank_pay_get_payment_method( $order );
 			if ( ! $gateway ) {
@@ -220,7 +215,7 @@ class Swedbank_Pay_Admin {
 			$order_id = HPOS::get_the_ID();
 			$order    = wc_get_order( $order_id );
 
-			if ( empty( $order ) || ( 'payex_checkout' !== $order->get_payment_method() && strpos( $order->get_payment_method(), 'swedbank_pay_' ) !== 0 ) ) {
+			if ( empty( $order ) || ! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 				return;
 			}
 
@@ -469,7 +464,7 @@ class Swedbank_Pay_Admin {
 	 */
 	public static function order_status_changed_transaction( $order_id, $old_status, $new_status ) {
 		$order = wc_get_order( $order_id );
-		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( ! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			return;
 		}
 
@@ -597,7 +592,7 @@ class Swedbank_Pay_Admin {
 			return;
 		}
 
-		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( ! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			return;
 		}
 
@@ -635,7 +630,7 @@ class Swedbank_Pay_Admin {
 	 * @return bool
 	 */
 	public function order_should_render_refunds( $should_render, $order_id, $order ) {
-		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( ! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			return $should_render;
 		}
 
