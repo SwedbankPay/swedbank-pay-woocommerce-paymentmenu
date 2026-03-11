@@ -44,7 +44,7 @@ class SplitInstrumentBlockSupport extends AbstractPaymentMethodType {
 			'wc-swedbank-pay-blocks-split-instrument',
 			SWEDBANK_PAY_PLUGIN_URL . '/assets/js/split-instruments-blocks' . $suffix . '.js',
 			array( 'wp-hooks', 'wc-settings', 'wc-blocks-registry' ),
-			'1.0.0',
+			SWEDBANK_PAY_VERSION,
 			true
 		);
 

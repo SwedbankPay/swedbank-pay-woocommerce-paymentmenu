@@ -25,12 +25,15 @@ class Assets {
 	 * @return void
 	 */
 	public function register_assets() {
+		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
+
+
 		// Register the admin settings script.
 		wp_register_script(
 			'swedbank-pay-admin-settings',
-			SWEDBANK_PAY_PLUGIN_URL . '/assets/js/admin-settings.js',
+			SWEDBANK_PAY_PLUGIN_URL . "/assets/js/admin-settings{$suffix}.js",
 			array( 'jquery' ),
-			'1.0.0',
+			SWEDBANK_PAY_VERSION,
 			true
 		);
 	}
