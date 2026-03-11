@@ -68,15 +68,21 @@ class Swedbank_Pay_Instant_Capture {
 			return;
 		}
 
+		$context = array(
+			'action'         => 'maybe_capture_instantly',
+			'order_id'       => $order_id,
+			'order_number'   => $order->get_order_number(),
+			'amount'         => $order->get_total(),
+			'transaction_id' => $order->get_transaction_id(),
+		);
+
 		// Capture if possible.
 		if ( ! $this->gateway->api->is_captured( $payment_order_id ) ) {
 			try {
 				$this->instant_capture( $order );
 			} catch ( \Exception $e ) {
-				$this->gateway->api->log(
-					WC_Log_Levels::INFO,
-					sprintf( '%s: Warning: %s', __METHOD__, $e->getMessage() )
-				);
+				$context['error'] = sprintf( '%s: Warning: %s', __METHOD__, $e->getMessage() );
+				Swedbank_Pay()->logger()->error( "[INSTANT CAPTURE]: Failed to capture order #{$order->get_order_number()}. Error: {$e->getMessage()}", $context );
 			}
 		}
 	}
@@ -96,13 +102,25 @@ class Swedbank_Pay_Instant_Capture {
 			0
 		);
 
-		$items = $this->get_instant_capture_items( $order );
-		$this->gateway->api->log( WC_Log_Levels::INFO, __METHOD__, array( $items ) );
+		$context = array(
+			'action'         => 'instant_capture',
+			'order_id'       => $order->get_id(),
+			'order_number'   => $order->get_order_number(),
+			'amount'         => $order->get_total(),
+			'transaction_id' => $order->get_transaction_id(),
+		);
+
+		$items            = $this->get_instant_capture_items( $order );
+		$context['items'] = wp_json_encode( $items, JSON_PRETTY_PRINT );
+		Swedbank_Pay()->logger()->info( "[INSTANT CAPTURE]: Attempting to capture order #{$order->get_order_number()} with items: {$context['items']}.", $context );
 		if ( count( $items ) > 0 ) {
 			if ( ! Swedbank_Pay_Subscription::should_skip_order_management( $order ) ) {
 
 				$result = $this->gateway->api->capture_checkout( $order, $items );
 				if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+					$context['error'] = join( '; ', $result->get_error_messages() );
+					Swedbank_Pay()->logger()->error( "[INSTANT CAPTURE]: Failed to capture order #{$order->get_order_number()}. Error: {$context['error']}", $context );
+
 					/** @var \WP_Error $result */
 					throw new \Exception( esc_html( $result->get_error_message() ) );
 				}
@@ -120,6 +138,8 @@ class Swedbank_Pay_Instant_Capture {
 			$order->update_meta_data( '_payex_captured_items', $captured );
 			$order->save_meta_data();
 		}
+
+		Swedbank_Pay()->logger()->info( "[INSTANT CAPTURE]: Successfully captured order #{$order->get_order_number()} with items: {$context['items']}.", $context );
 	}
 
 	/**
@@ -354,7 +374,7 @@ class Swedbank_Pay_Instant_Capture {
 					$discount_with_tax = -1 * $amount;
 					$discount          = round( -1 * ( $amount / ( 1 + (float) $rate_aux ) ), 2 );
 					// translators: Gift card code.
-					$name              = sprintf( __( 'Gift card: %s', 'yith-woocommerce-gift-cards' ), $code ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
+					$name = sprintf( __( 'Gift card: %s', 'yith-woocommerce-gift-cards' ), $code ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 
 					$items[] = array(
 						Swedbank_Pay_Order_Item::FIELD_REFERENCE => 'gift_card_' . esc_html( $code ),

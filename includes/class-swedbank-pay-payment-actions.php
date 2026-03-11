@@ -186,10 +186,10 @@ class Swedbank_Pay_Payment_Actions {
 	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
 	 */
 	public function refund_payment( $order, $lines, $reason, $create_credit_memo ) {
-		// Verify the captured
+		// Verify the captured.
 		$this->validate_items( $order, $lines );
 
-		// Filter items
+		// Filter items.
 		foreach ( $lines as $item_id => $line ) {
 			$qty          = (int) $line['qty'];
 			$refund_total = (float) $line['refund_total'];
@@ -198,8 +198,8 @@ class Swedbank_Pay_Payment_Actions {
 			}
 		}
 
-		// Refund with specific items
-		// Build order items list
+		// Refund with specific items.
+		// Build order items list.
 		$items = array();
 		foreach ( $lines as $item_id => $line ) {
 			/** @var WC_Order_Item $item */
@@ -236,20 +236,27 @@ class Swedbank_Pay_Payment_Actions {
 			}
 
 			if ( empty( $refund_total ) ) {
-				// Skip zero items
+				// Skip zero items.
 				continue;
 			}
 
-			$this->gateway->api->log(
-				WC_Log_Levels::INFO,
+			$context = array(
+				'action'           => 'refund_payment',
+				'order_id'         => $order->get_id(),
+				'order_number'     => $order->get_order_number(),
+				'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
+			);
+
+			Swedbank_Pay()->logger()->info(
 				sprintf(
-					'Refund item %s. qty: %s, total: %s. tax: %s. amount: %s',
+					'[REFUND]: Refund item %s. qty: %s, total: %s. tax: %s. amount: %s',
 					$item_id,
 					$qty,
 					$refund_total,
 					$refund_tax,
 					$refund_amount
-				)
+				),
+				$context
 			);
 
 			$order_item = array(
@@ -424,6 +431,15 @@ class Swedbank_Pay_Payment_Actions {
 				)
 			);
 			if ( is_wp_error( $refund ) ) {
+				$context['error'] = join( '; ', $refund->get_error_messages() );
+				Swedbank_Pay()->logger()->error(
+					sprintf(
+						'Refund could not be created. Error: %s',
+						join( '; ', $refund->get_error_messages() )
+					),
+					$context
+				);
+
 				$order->add_order_note(
 					sprintf(
 						'Refund could not be created. Error: %s',

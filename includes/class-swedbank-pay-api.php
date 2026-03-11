@@ -755,15 +755,15 @@ class Swedbank_Pay_Api {
 
 		$order_id = $order->get_id();
 
-		$this->log(
-			WC_Log_Levels::INFO,
-			sprintf(
-				'Update order status #%s to %s. Transaction ID: %s',
-				$order_id,
-				$status,
-				$transaction_id
-			)
+		$context = array(
+			'action'         => 'update_order_status',
+			'order_id'       => $order_id,
+			'order_number'   => $order->get_order_number(),
+			'transaction_id' => $transaction_id,
+			'status'         => $status,
 		);
+
+		Swedbank_Pay()->logger()->info( "[UPDATE STATUS]: Update order #{$context['order_number']} status to '{$context['status']} with transaction ID: {$context['transaction_id']}'", $context );
 
 		switch ( $status ) {
 			case 'checkout-draft':
@@ -1210,40 +1210,6 @@ class Swedbank_Pay_Api {
 				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
-	}
-
-	/**
-	 * Log a message.
-	 *
-	 * @param $level
-	 * @param $message
-	 * @param array $context
-	 *
-	 * @see WC_Log_Levels
-	 */
-	public function log( $level, $message, array $context = array() ) {
-		$logger = wc_get_logger();
-
-		if ( ! is_string( $message ) ) {
-			$message = wp_json_encode( $message );
-		}
-
-		$logger->log(
-			$level,
-			sprintf(
-				'[%s] %s [%s]',
-				$level,
-				$message,
-				count( $context ) > 0 ? wp_json_encode( $context ) : ''
-			),
-			array_merge(
-				$context,
-				array(
-					'source'  => 'payex_checkout',
-					'_legacy' => true,
-				)
-			)
-		);
 	}
 
 	/**

@@ -491,7 +491,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return;
 		}
 
-		$this->api->log( WC_Log_Levels::INFO, __METHOD__, array( $order_id ) );
+		$context = array(
+			'action'       => 'thankyou_page',
+			'order_id'     => $order_id,
+			'order_number' => $order->get_order_number(),
+		);
+
+		Swedbank_Pay()->logger()->info( "[THANK YOU]: Processing thank you page for order #{$context['order_number']}.", $context );
 		$is_finalized = $order->get_meta( '_payex_finalized' ); // Checks if the order has already been processed.
 		if ( ! empty( $is_finalized ) ) {
 			return;
@@ -573,10 +579,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public function return_handler() {
 		$raw_body = wp_kses_post( sanitize_text_field( file_get_contents( 'php://input' ) ) );  // WPCS: input var ok, CSRF ok.
 
-		$this->api->log(
-			WC_Log_Levels::INFO,
-			sprintf( 'Incoming Callback. Post data: %s', wp_json_encode( $raw_body ) )
-		);
+		Swedbank_Pay()->logger()->info( "[IPN]: Incoming Callback. Post data: {$raw_body}" );
 
 		// Decode raw body.
 		$data = json_decode( $raw_body, true );
@@ -614,6 +617,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				throw new \Exception( 'Error: Invalid transaction number' );
 			}
 
+			$context = array(
+				'order_id'       => $order->get_id(),
+				'order_number'   => $order->get_order_number(),
+				'transaction_id' => $data['transaction']['number'],
+			);
+
 			// Schedule the payment for later processing.
 			$schedule_id = as_schedule_single_action(
 				time() + 30,
@@ -625,20 +634,14 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			);
 
 			if ( 0 === $schedule_id ) {
-				$this->api->log(
-					WC_Log_Levels::ERROR,
-					sprintf( 'Error: Unable to schedule a task for %s', $this->id )
-				);
+				Swedbank_Pay()->logger()->error( "[IPN]: Failed to schedule a task for processing the payment. Order #{$context['order_number']}, Transaction ID: {$context['transaction_id']}.", $context );
 				throw new \Exception( 'Unable to schedule a task.' );
 			}
 
-			$this->api->log(
-				WC_Log_Levels::INFO,
-				sprintf( 'Incoming Callback: payment scheduled as %s. Transaction ID: %s', $schedule_id, $data['transaction']['number'] )
-			);
+			Swedbank_Pay()->logger()->info( "[IPN]: Callback scheduled for processing. Order #{$context['order_number']}, Transaction ID: {$context['transaction_id']}, Schedule ID: {$schedule_id}.", $context );
 		} catch ( \Exception $e ) {
-			$this->api->log( WC_Log_Levels::INFO, sprintf( 'Incoming Callback: %s', $e->getMessage() ) );
-
+			$context['error'] = $e->getMessage();
+			Swedbank_Pay()->logger()->error( "[IPN]: Callback processing failed. Order #{$context['order_number']}, Transaction ID: {$context['transaction_id']}. Error: {$context['error']}", $context );
 			return;
 		}
 	}

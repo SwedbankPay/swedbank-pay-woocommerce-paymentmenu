@@ -81,7 +81,7 @@ class Swedbank_Thankyou {
 		if ( empty( $order_key ) || ! $order->key_is_valid( $order_key ) ) {
 			global $wp;
 			$current_url = home_url( add_query_arg( $_GET, $wp->request ) );
-			Swedbank_Pay()->logger()->log( "[THANK YOU]: Invalid order key on thank you page for order #{$order->get_order_number()}. URL: {$current_url}" );
+			Swedbank_Pay()->logger()->warning( "[THANK YOU]: Invalid order key on thank you page for order #{$order->get_order_number()}. URL: {$current_url}" );
 
 			return;
 		}
