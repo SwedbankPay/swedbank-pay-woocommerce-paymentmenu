@@ -8,6 +8,7 @@
 namespace SwedbankPay\Checkout\WooCommerce;
 
 use Krokedil\Swedbank\Pay\Helpers\PaymentDataHelper;
+use Krokedil\Swedbank\Pay\Utility\LogUtility;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\UnscheduledPurchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Verify;
@@ -214,15 +215,17 @@ class Swedbank_Pay_Subscription {
 
 		try {
 			$response_service = $purchase_request->send();
-			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
+			LogUtility::log_request( "[SUBSCRIPTION]: customer charged for renewal for order {$order->get_order_number()}", $purchase_request );
 
 			return $response_service;
 		} catch ( Exception $e ) {
 
-			Swedbank_Pay()->logger()->error( $purchase_request->getClient()->getDebugInfo() );
-			Swedbank_Pay()->logger()->error(
-				sprintf( '[SUBSCRIPTION RENEWAL] %s: API Exception: %s', __METHOD__, $e->getMessage() ),
+			LogUtility::log_request(
+				"[SUBSCRIPTION]: failed to charge customer for renewal for order {$order->get_order_number()}",
+				$purchase_request,
+				\WC_Log_Levels::ERROR,
 				array(
+					'error'    => "API Exception: {$e->getMessage()}",
 					'order_id' => $order->get_id(),
 					'token'    => $token,
 				)
@@ -268,19 +271,25 @@ class Swedbank_Pay_Subscription {
 		$verify_request = new Verify( $payment_order_object );
 		$verify_request->setClient( Swedbank_Pay_Api::get_client() );
 
+		$context = array(
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
+		);
+
 		try {
 			$response_service = $verify_request->send();
-			Swedbank_Pay()->logger()->debug( $verify_request->getClient()->getDebugInfo() );
+			LogUtility::log_request( "[SUBSCRIPTION]: approve for renewal for order {$order->get_order_number()}", $verify_request->getClient(), \WC_Log_Levels::DEBUG, $context );
 
 			return $response_service;
 		} catch ( Exception $e ) {
 
-			Swedbank_Pay()->logger()->error( $verify_request->getClient()->getDebugInfo() );
-			Swedbank_Pay()->logger()->error(
-				sprintf( '[VERIFY] %s: API Exception: %s', __METHOD__, $e->getMessage() ),
-				array(
-					'order_id' => $order->get_id(),
-				)
+			$context['error'] = sprintf( '[VERIFY] %s: API Exception: %s', __METHOD__, $e->getMessage() );
+			LogUtility::log_request(
+				"[SUBSCRIPTION]: approve for renewal for order {$order->get_order_number()}",
+				$verify_request->getClient(),
+				\WC_Log_Levels::ERROR,
+				$context
 			);
 
 			$error_body = json_decode( $verify_request->getClient()->getResponseBody(), true );
@@ -319,7 +328,8 @@ class Swedbank_Pay_Subscription {
 	 * @return WP_Error|ResponseInterface
 	 */
 	public static function cancel_unscheduled_token( $token, $subscription, $gateway, $reason = null ) {
-		$response = $gateway->api->request(
+		LogUtility::$title = "[SUBSCRIPTION]: Cancel unscheduled token for subscription #{$subscription->get_order_number()}";
+		$response          = $gateway->api->request(
 			'PATCH',
 			"/psp/paymentorders/unscheduledTokens/{$token}",
 			array(
@@ -328,8 +338,19 @@ class Swedbank_Pay_Subscription {
 			)
 		);
 
+		$context = array(
+			'order_id'     => $subscription->get_id(),
+			'order_number' => $subscription->get_order_number(),
+			'token'        => $token,
+			'reason'       => $reason,
+		);
+
 		if ( ! is_wp_error( $response ) ) {
-			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Cancelled unscheduled token: {$token} in subscription: {$subscription->get_order_number()}" );
+			Swedbank_Pay()->logger()->debug(
+				"[SUBSCRIPTION]: Cancelled unscheduled token: {$token} in subscription: {$subscription->get_order_number()}",
+				$context
+			);
+
 			$history           = (array) $subscription->get_meta( self::CANCELED_TOKEN_HISTORY );
 			$history[ $token ] = gmdate( 'Y-m-d H:i:s' );
 			$subscription->update_meta_data( self::CANCELED_TOKEN_HISTORY, $history );
@@ -340,13 +361,10 @@ class Swedbank_Pay_Subscription {
 			);
 
 		} else {
+			$context['error'] = sprintf( '[SUBSCRIPTION] %s: API Exception: %s', __METHOD__, $response->get_error_message() );
 			Swedbank_Pay()->logger()->error(
-				sprintf( '[CANCEL TOKEN] %s: API Exception: %s', __METHOD__, $response->get_error_message() ),
-				array(
-					'subscription' => $subscription->get_order_number(),
-					'token'        => $token,
-					'reason'       => $reason,
-				)
+				"[SUBSCRIPTION] Failed to cancel unscheduled token: {$token} in subscription: {$subscription->get_order_number()}. Error: {$response->get_error_message()}",
+				$context
 			);
 
 			$subscription->add_order_note(
@@ -372,8 +390,20 @@ class Swedbank_Pay_Subscription {
 	 */
 	private function save_subscription_token( $order, $gateway, $overwrite_existing = false, $reason = null ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		$action_urls      = $gateway->api->request( 'GET', $payment_order_id );
-		$paid_response    = ! is_wp_error( $action_urls ) ? $gateway->api->request( 'GET', $action_urls['paymentOrder']['paid']['id'] ) : $action_urls;
+		$context          = array(
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $payment_order_id,
+		);
+
+		LogUtility::$title = "[SUBSCRIPTION]: Retrieve unscheduled token for order #{$order->get_order_number()}";
+		$action_urls       = $gateway->api->request( 'GET', $payment_order_id );
+		if ( ! is_wp_error( $action_urls ) ) {
+			LogUtility::$title = "[SUBSCRIPTION]: Fetch payment info for order #{$order->get_order_number()}";
+			$paid_response     = $gateway->api->request( 'GET', $action_urls['paymentOrder']['paid']['id'] );
+		} else {
+			$paid_response = $action_urls;
+		}
 
 		if ( ! is_wp_error( $paid_response ) ) {
 			$paid              = $paid_response['paid'];
@@ -403,14 +433,11 @@ class Swedbank_Pay_Subscription {
 			$order->update_meta_data( self::UNSCHEDULED_TOKEN, $unscheduled_token );
 			$order->save();
 
-			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Retrieved unscheduled token for order #{$order->get_id()}. Token: {$unscheduled_token}" );
+			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Retrieved unscheduled token for order #{$order->get_id()}. Token: {$unscheduled_token}", $context );
 		} else {
 			Swedbank_Pay()->logger()->error(
 				"[SUBSCRIPTIONS]: Failed to retrieve unscheduled token for order #{$order->get_id()}. Error: {$paid_response->get_error_message()}",
-				array(
-					'payment_order_id' => $payment_order_id,
-					'order_id'         => $order->get_id(),
-				)
+				$context
 			);
 
 		}

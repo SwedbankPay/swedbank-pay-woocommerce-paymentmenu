@@ -10,6 +10,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Instant_Capture;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Payment_Actions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Scheduler;
 use Krokedil\Swedbank\Pay\CheckoutFlow\CheckoutFlow;
+use Krokedil\Swedbank\Pay\Utility\LogUtility;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -514,7 +515,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$order->save();
 
 		} else {
-			$response = $gateway->api->request( 'GET', "$payment_order_id/paid" );
+			LogUtility::$title = "[THANK YOU]: Fetch payment info for finalizing order #{$order->get_order_number()}";
+			$response          = $gateway->api->request( 'GET', "$payment_order_id/paid" );
 			if ( ! is_wp_error( $response ) ) {
 				$order->payment_complete( $response['paid']['number'] );
 				$order->add_order_note( __( 'Payment completed successfully.', 'swedbank-pay-payment-menu' ) );
@@ -779,7 +781,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 			if ( ! empty( $payment_order_id ) ) {
 				// Fetch payment info.
-				$result = $this->api->request( 'GET', $payment_order_id . '/paid' );
+				LogUtility::$title = "[GATEWAY]: Fetch payment info for payment method title #{$order->get_order_number()}";
+				$result            = $this->api->request( 'GET', $payment_order_id . '/paid' );
 				if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 					// Request failed.
 					return $value;

@@ -7,6 +7,7 @@
 
 namespace Krokedil\Swedbank\Pay;
 
+use Krokedil\Swedbank\Pay\Utility\LogUtility;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
@@ -49,7 +50,16 @@ class OrderManagement {
 			return;
 		}
 
+		$context = array(
+			'action'         => 'capture_order',
+			'order_id'       => $order_id,
+			'order_number'   => $order->get_order_number(),
+			'amount'         => $order->get_total(),
+			'transaction_id' => $order->get_transaction_id(),
+		);
+
 		if ( Swedbank_Pay_Subscription::should_skip_order_management( $order ) ) {
+			Swedbank_Pay()->logger()->info( "[ORDER MANAGEMENT]: Skipping order management for subscription renewal order {$order->get_order_number()}.", $context );
 			return;
 		}
 
@@ -63,22 +73,29 @@ class OrderManagement {
 			throw new \Exception( 'Swedbank Pay gateway not found' );
 		}
 
+		Swedbank_Pay()->logger()->info( "[ORDER MANAGEMENT]: Attempting to capture order #{$order->get_order_number()}.", $context );
+
 		if ( $this->is_captured( $order ) ) {
+			Swedbank_Pay()->logger()->info( "[ORDER MANAGEMENT]: Order #{$order->get_order_number()} is already captured.", $context );
 			$order->add_order_note( __( 'Payment already captured.', 'swedbank-pay-payment-menu' ) );
 			return;
 		}
 
 		$result = $gateway->api->capture_checkout( $order );
 		if ( is_wp_error( $result ) ) {
+			Swedbank_Pay()->logger()->error( "[ORDER MANAGEMENT]: Failed to capture order #{$order->get_order_number()}. Error: {$result->get_error_message()}", $context );
 			throw new \Exception( esc_html( $result->get_error_message() ) );
 		} else {
 			$this->save_captured_items( $order );
 		}
 
-		$captured_amount = wc_price( $result['amount'] / 100, array( 'currency' => $order->get_currency() ) );
+		$captured_amount            = wc_price( $result['amount'] / 100, array( 'currency' => $order->get_currency() ) );
+		$context['captured_amount'] = $captured_amount;
+		$context['transaction_id']  = $result['number'];
 
 		// Translators: %1$s is the transaction number, %2$s is the captured amount.
 		$order->add_order_note( sprintf( __( 'Payment has been captured. Transaction: %1$s. Amount: %2$s.', 'swedbank-pay-payment-menu' ), $result['number'], $captured_amount ) );
+		Swedbank_Pay()->logger()->info( "[ORDER MANAGEMENT]: Successfully captured order #{$order->get_order_number()}.", $context );
 	}
 
 	/**
@@ -106,7 +123,8 @@ class OrderManagement {
 			return false;
 		}
 
-		$result = $gateway->api->request( 'GET', $payment_id . '/financialtransactions' );
+		LogUtility::$title = "[ORDER MANAGEMENT]: Checking if order #{$order->get_order_number()} is captured.";
+		$result            = $gateway->api->request( 'GET', "{$payment_id}/financialtransactions" );
 		if ( is_wp_error( $result ) ) {
 			return false;
 		}
