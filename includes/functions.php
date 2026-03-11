@@ -1,7 +1,7 @@
 <?php
 
 use Automattic\WooCommerce\Utilities\OrderUtil;
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
+use SwedbankPay\Checkout\WooCommerce\{Swedbank_Pay_Order_Item, Swedbank_Pay_Plugin};
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 
 defined( 'ABSPATH' ) || exit;
@@ -89,6 +89,17 @@ function swedbank_pay_get_payment_method_by_id( string $id = 'payex_checkout' ) 
 
 	/** @var \WC_Payment_Gateway $gateway */
 	return $gateways[ $id ];
+}
+
+/**
+ * Test if the payment method is a Swedbank Pay payment method.
+ *
+ * @param string $payment_method_id The payment method ID to test.
+ *
+ * @return bool True if the payment method is a Swedbank Pay payment method, false otherwise.
+ */
+function swedbank_pay_is_payment_swedbank_method( string $payment_method_id ) {
+	return in_array( $payment_method_id, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) || strpos( $payment_method_id, 'swedbank_pay_' ) === 0;
 }
 
 /**
