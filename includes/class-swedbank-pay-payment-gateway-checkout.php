@@ -223,19 +223,19 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		$this->form_fields = array(
-			'enabled'              => array(
+			'enabled'                     => array(
 				'title'   => __( 'Enable/Disable', 'swedbank-pay-payment-menu' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Enable plugin', 'swedbank-pay-payment-menu' ),
 				'default' => 'yes',
 			),
-			'testmode'             => array(
+			'testmode'                    => array(
 				'title'   => __( 'Test Mode', 'swedbank-pay-payment-menu' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Enable Swedbank Pay Test Mode', 'swedbank-pay-payment-menu' ),
 				'default' => $this->testmode,
 			),
-			'title'                => array(
+			'title'                       => array(
 				'title'       => __( 'Title', 'swedbank-pay-payment-menu' ),
 				'type'        => 'text',
 				'description' => __(
@@ -244,7 +244,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				),
 				'default'     => __( 'Swedbank Pay', 'swedbank-pay-payment-menu' ),
 			),
-			'description'          => array(
+			'description'                 => array(
 				'title'       => __( 'Description', 'swedbank-pay-payment-menu' ),
 				'type'        => 'text',
 				'description' => __(
@@ -253,7 +253,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				),
 				'default'     => __( 'Swedbank Pay', 'swedbank-pay-payment-menu' ),
 			),
-			'payee_id'             => array(
+			'payee_id'                    => array(
 				'title'             => __( 'Payee Id', 'swedbank-pay-payment-menu' ),
 				'type'              => 'text',
 				'description'       => /* translators: 1: url */ sprintf( __( 'Your Payee ID can be found in our Merchant-portal <a href="%1$s" target="_blank">here</a>', 'swedbank-pay-payment-menu' ), $portal_url ),
@@ -269,7 +269,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					return $value;
 				},
 			),
-			'access_token'         => array(
+			'access_token'                => array(
 				'title'             => __( 'Access Token', 'swedbank-pay-payment-menu' ),
 				'type'              => 'text',
 				'description'       => /* translators: 1: url */ sprintf( __( 'Your Access Token can be found in our Merchant-portal <a href="%1$s" target="_blank">here</a>', 'swedbank-pay-payment-menu' ), $portal_url ),
@@ -285,7 +285,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					return $value;
 				},
 			),
-			'culture'              => array(
+			'culture'                     => array(
 				'title'       => __( 'Language', 'swedbank-pay-payment-menu' ),
 				'type'        => 'select',
 				'options'     => array(
@@ -301,7 +301,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				),
 				'default'     => $this->culture,
 			),
-			'instant_capture'      => array(
+			'instant_capture'             => array(
 				'title'          => __( 'Instant Capture', 'swedbank-pay-payment-menu' ),
 				'description'    => __( 'Capture payment automatically depends on the product type. It\'s working when Auto Capture Intent is off.', 'swedbank-pay-payment-menu' ),
 				'type'           => 'multiselect',
@@ -314,13 +314,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'select_buttons' => true,
 				'default'        => $this->instant_capture,
 			),
-			'terms_url'            => array(
+			'terms_url'                   => array(
 				'title'       => __( 'Terms & Conditions Url', 'swedbank-pay-payment-menu' ),
 				'type'        => 'text',
 				'description' => __( 'Terms & Conditions Url. HTTPS is required.', 'swedbank-pay-payment-menu' ),
 				'default'     => get_site_url(),
 			),
-			'logo_url'             => array(
+			'logo_url'                    => array(
 				'title'             => __( 'Logo Url', 'swedbank-pay-payment-menu' ),
 				'type'              => 'text',
 				'description'       => __( 'The URL that will be used for showing the customer logo. Must be a picture with maximum 50px height and 400px width. Require https.', 'swedbank-pay-payment-menu' ),
@@ -338,20 +338,20 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					return $value;
 				},
 			),
-			'autocomplete'         => array(
+			'autocomplete'                => array(
 				'title'   => __( 'Automatic order status', 'swedbank-pay-payment-menu' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Set order in completed status immediately after payment', 'swedbank-pay-payment-menu' ),
 				'default' => $this->autocomplete,
 			),
-			'exclude_order_lines'  => array(
+			'exclude_order_lines'         => array(
 				'title'       => __( 'Exclude Order Lines', 'swedbank-pay-payment-menu' ),
 				'type'        => 'checkbox',
 				'label'       => __( 'Exclude order lines from the payment request', 'swedbank-pay-payment-menu' ),
 				'description' => __( 'Enable this setting to prevent order line data from being sent.', 'swedbank-pay-payment-menu' ),
 				'default'     => 'no',
 			),
-			'checkout_flow'        => array(
+			'checkout_flow'               => array(
 				'title'       => __( 'Checkout Flow', 'swedbank-pay-payment-menu' ),
 				'type'        => 'select',
 				'options'     => $flow_options,
@@ -362,24 +362,24 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'default'     => 'redirect',
 				'disabled'    => $this->block_checkout_enabled,
 			),
-			'order_management'     => array(
+			'order_management'            => array(
 				'title' => __( 'Order management', 'swedbank-pay-payment-menu' ),
 				'type'  => 'title',
 			),
-			'enable_order_capture' => array(
+			'enable_order_capture'        => array(
 				'title'   => __( 'Capture on status change', 'swedbank-pay-payment-menu' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Capture payment on order status change to Completed', 'swedbank-pay-payment-menu' ),
 				'default' => 'yes',
 			),
-			'enable_order_cancel'  => array(
+			'enable_order_cancel'         => array(
 				'title'   => __( 'Cancel on status change', 'swedbank-pay-payment-menu' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Cancel payment on order status change to Cancelled', 'swedbank-pay-payment-menu' ),
 				'default' => 'yes',
 			),
 
-			'separate_instruments'     => array(
+			'separate_instruments'        => array(
 				'title' => __( 'Separate Instruments', 'swedbank-pay-payment-menu' ),
 				'type'  => 'title',
 			),
@@ -394,7 +394,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			),
 		);
 
-		foreach( InstrumentsUtility::get_instruments() as $key => $instrument ) {
+		foreach ( InstrumentsUtility::get_instruments() as $key => $instrument ) {
 			$this->form_fields[ "enable_instrument_$key" ] = array(
 				'title'   => sprintf( __( 'Enable %s', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
 				'type'    => 'checkbox',

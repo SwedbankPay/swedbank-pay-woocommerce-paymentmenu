@@ -27,7 +27,6 @@ class Assets {
 	public function register_assets() {
 		$suffix = defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ? '' : '.min';
 
-
 		// Register the admin settings script.
 		wp_register_script(
 			'swedbank-pay-admin-settings',
@@ -46,12 +45,14 @@ class Assets {
 	 */
 	public function enqueue_admin_assets( $hook ) {
 		// If we are on the settings page for the Swedbank Pay plugin, enqueue the admin settings script.
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- No form submission, just enqueueing script.
 		if ( 'woocommerce_page_wc-settings' === $hook
 			&& isset( $_GET['tab'] )
 			&& 'checkout' === $_GET['tab']
 			&& isset( $_GET['section'] )
 			&& 'payex_checkout' === $_GET['section']
 		) {
+			// phpcs:enable
 			$settings_params = array();
 			wp_localize_script(
 				'swedbank-pay-admin-settings',

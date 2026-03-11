@@ -52,7 +52,7 @@ function swedbank_pay_get_order( $paymentOrderId ) {
  * Get Payment Method.
  *
  * @param WC_Order $order
- * @param bool $use_base_gateway Whether to return the base gateway for split instruments or the specific split instrument gateway. Default: true.
+ * @param bool     $use_base_gateway Whether to return the base gateway for split instruments or the specific split instrument gateway. Default: true.
  *
  * @return null|\WC_Payment_Gateway|\Swedbank_Pay_Payment_Gateway_Checkout
  */

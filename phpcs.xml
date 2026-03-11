@@ -46,4 +46,14 @@
     <rule ref="Squiz.Commenting.FileComment.Missing">
         <exclude-pattern>src/</exclude-pattern>
     </rule>
+
+    <!-- Add custom capabilities that are added by WooCommerce. -->
+    <rule ref="WordPress.WP.Capabilities">
+        <properties>
+            <property name="custom_capabilities" type="array">
+                <element value="edit_shop_orders" />
+                <element value="manage_woocommerce" />
+            </property>
+        </properties>
+    </rule>
 </ruleset>

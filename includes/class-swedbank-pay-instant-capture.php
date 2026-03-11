@@ -353,7 +353,7 @@ class Swedbank_Pay_Instant_Capture {
 					$discount_with_tax = -1 * $amount;
 					$discount          = round( -1 * ( $amount / ( 1 + (float) $rate_aux ) ), 2 );
 					// translators: Gift card code.
-					$name              = sprintf( __( 'Gift card: %s', 'yith-woocommerce-gift-cards' ), $code ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
+					$name = sprintf( __( 'Gift card: %s', 'yith-woocommerce-gift-cards' ), $code ); // phpcs:ignore WordPress.WP.I18n.TextDomainMismatch
 
 					$items[] = array(
 						Swedbank_Pay_Order_Item::FIELD_REFERENCE => 'gift_card_' . esc_html( $code ),

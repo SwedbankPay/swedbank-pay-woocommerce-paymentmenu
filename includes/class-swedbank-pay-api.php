@@ -139,14 +139,14 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
-		 * Get the Swedbank Pay client.
-		 *
-		 * This method creates a new Client instance, sets the access token, payee ID, mode (test or production),
-		 * and user agent. It also applies a filter to allow modification of the client.
-		 *
-		 * @hook swedbank_pay_client
-		 * @return Client
-		 */
+	 * Get the Swedbank Pay client.
+	 *
+	 * This method creates a new Client instance, sets the access token, payee ID, mode (test or production),
+	 * and user agent. It also applies a filter to allow modification of the client.
+	 *
+	 * @hook swedbank_pay_client
+	 * @return Client
+	 */
 	public static function get_client() {
 		$client = new Client();
 
@@ -167,7 +167,7 @@ class Swedbank_Pay_Api {
 	/**
 	 * Create a Client for payment.
 	 *
-	 * @param WC_Order $order WC Order.
+	 * @param WC_Order    $order WC Order.
 	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
 	 *
 	 * @return WP_Error|ResponseServiceInterface
