@@ -492,9 +492,10 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		$context = array(
-			'action'       => 'thankyou_page',
-			'order_id'     => $order_id,
-			'order_number' => $order->get_order_number(),
+			'action'           => 'thankyou_page',
+			'order_id'         => $order_id,
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
 		);
 
 		Swedbank_Pay()->logger()->info( "[THANK YOU]: Processing thank you page for order #{$context['order_number']}.", $context );
@@ -618,9 +619,10 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			}
 
 			$context = array(
-				'order_id'       => $order->get_id(),
-				'order_number'   => $order->get_order_number(),
-				'transaction_id' => $data['transaction']['number'],
+				'order_id'         => $order->get_id(),
+				'order_number'     => $order->get_order_number(),
+				'payment_order_id' => $data['paymentOrder']['id'] ?? $order->get_meta( '_payex_paymentorder_id' ),
+				'transaction_id'   => $data['transaction']['number'],
 			);
 
 			// Schedule the payment for later processing.

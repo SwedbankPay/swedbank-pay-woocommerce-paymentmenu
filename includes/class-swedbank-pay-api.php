@@ -756,11 +756,12 @@ class Swedbank_Pay_Api {
 		$order_id = $order->get_id();
 
 		$context = array(
-			'action'         => 'update_order_status',
-			'order_id'       => $order_id,
-			'order_number'   => $order->get_order_number(),
-			'transaction_id' => $transaction_id,
-			'status'         => $status,
+			'action'           => 'update_order_status',
+			'order_id'         => $order_id,
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
+			'transaction_id'   => $transaction_id,
+			'status'           => $status,
 		);
 
 		Swedbank_Pay()->logger()->info( "[UPDATE STATUS]: Update order #{$context['order_number']} status to '{$context['status']} with transaction ID: {$context['transaction_id']}'", $context );

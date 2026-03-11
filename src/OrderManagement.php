@@ -51,11 +51,12 @@ class OrderManagement {
 		}
 
 		$context = array(
-			'action'         => 'capture_order',
-			'order_id'       => $order_id,
-			'order_number'   => $order->get_order_number(),
-			'amount'         => $order->get_total(),
-			'transaction_id' => $order->get_transaction_id(),
+			'action'           => 'capture_order',
+			'order_id'         => $order_id,
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
+			'transaction_id'   => $order->get_transaction_id(),
+			'amount'           => $order->get_total(),
 		);
 
 		if ( Swedbank_Pay_Subscription::should_skip_order_management( $order ) ) {

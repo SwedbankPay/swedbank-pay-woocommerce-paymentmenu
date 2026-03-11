@@ -69,11 +69,12 @@ class Swedbank_Pay_Instant_Capture {
 		}
 
 		$context = array(
-			'action'         => 'maybe_capture_instantly',
-			'order_id'       => $order_id,
-			'order_number'   => $order->get_order_number(),
-			'amount'         => $order->get_total(),
-			'transaction_id' => $order->get_transaction_id(),
+			'action'           => 'maybe_capture_instantly',
+			'order_id'         => $order_id,
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $payment_order_id,
+			'amount'           => $order->get_total(),
+			'transaction_id'   => $order->get_transaction_id(),
 		);
 
 		// Capture if possible.
@@ -103,11 +104,12 @@ class Swedbank_Pay_Instant_Capture {
 		);
 
 		$context = array(
-			'action'         => 'instant_capture',
-			'order_id'       => $order->get_id(),
-			'order_number'   => $order->get_order_number(),
-			'amount'         => $order->get_total(),
-			'transaction_id' => $order->get_transaction_id(),
+			'action'           => 'instant_capture',
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
+			'amount'           => $order->get_total(),
+			'transaction_id'   => $order->get_transaction_id(),
 		);
 
 		$items            = $this->get_instant_capture_items( $order );

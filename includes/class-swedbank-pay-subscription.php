@@ -339,10 +339,11 @@ class Swedbank_Pay_Subscription {
 		);
 
 		$context = array(
-			'order_id'     => $subscription->get_id(),
-			'order_number' => $subscription->get_order_number(),
-			'token'        => $token,
-			'reason'       => $reason,
+			'order_id'         => $subscription->get_id(),
+			'order_number'     => $subscription->get_order_number(),
+			'payment_order_id' => $subscription->get_meta( '_payex_paymentorder_id' ),
+			'token'            => $token,
+			'reason'           => $reason,
 		);
 
 		if ( ! is_wp_error( $response ) ) {
