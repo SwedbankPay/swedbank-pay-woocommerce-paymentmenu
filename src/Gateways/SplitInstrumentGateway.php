@@ -37,16 +37,16 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 		$this->id            = "swedbank_pay_$id";
 		$this->instrument_id = $instrument['instrument'];
 		// translators: %s the name of the payment method.
-		$this->method_title = sprintf( __( 'Swedbank Pay %s', 'swedbank-pay-payment-menu' ), $instrument['name'] );
+		$this->method_title = sprintf( __( 'Swedbank Pay - %s', 'swedbank-pay-payment-menu' ), $instrument['name'] );
 		// translators: %s the description of the payment method.
 		$this->method_description = sprintf( __( 'Take payments with %s via Swedbank Pay', 'swedbank-pay-payment-menu' ), $instrument['name'] );
 
 		$this->init_form_fields();
 		$this->init_settings();
 
-		$this->enabled     = $this->settings['enabled'] ?? 'yes';
-		$this->title       = $this->settings['title'] ?? $this->method_title;
-		$this->description = $this->settings['description'] ?? '';
+		$this->enabled     = $this->get_option( 'enabled', 'yes' );
+		$this->title       = $this->get_option( 'title', $instrument['name'] );
+		$this->description = $this->get_option( 'description', '' );
 
 		$this->supports   = $instrument['supports'] ?? array( 'products', 'refunds' );
 		$this->has_fields = false; // False for now. Once we add support for embedded version, we will need to set this to true.
@@ -59,17 +59,17 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 	 */
 	public function init_form_fields() {
 		$this->form_fields = array(
-			'enabled' => array(
+			'enabled'     => array(
 				'title'   => __( 'Enable/Disable', 'swedbank-pay-payment-menu' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Enable this payment method', 'swedbank-pay-payment-menu' ),
 				'default' => 'yes',
 			),
-			'title'   => array(
+			'title'       => array(
 				'title'       => __( 'Title', 'swedbank-pay-payment-menu' ),
 				'type'        => 'text',
 				'description' => __( 'This controls the title which the user sees during checkout.', 'swedbank-pay-payment-menu' ),
-				'default'     => $this->method_title,
+				'default'     => $this->title,
 				'desc_tip'    => true,
 				'placeholder' => __( 'Enter the title of the payment method to show in the checkout', 'swedbank-pay-payment-menu' ),
 			),
