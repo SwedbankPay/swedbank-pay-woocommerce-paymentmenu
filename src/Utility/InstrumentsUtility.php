@@ -7,62 +7,73 @@ defined( 'ABSPATH' ) || exit;
  * Utility class for helper functions related to the instruments and separate payment methods.
  */
 class InstrumentsUtility {
-	public static array $instruments = array(
-		'credit_card' => array(
-			'instrument' => 'CreditCard',
-			'name' => 'Credit Card',
-			'supports' => array(
-				'products',
-				'refunds',
-				'subscriptions',
-				'subscription_cancellation',
-				'subscription_suspension',
-				'subscription_reactivation',
-				'subscription_amount_changes',
-				'subscription_date_changes',
-				'subscription_payment_method_change_customer',
-				'subscription_payment_method_change_admin',
-				'subscription_payment_method_change',
-				'multiple_subscriptions',
+	/**
+	 * Get all the instruments for Swedbank pay.
+	 *
+	 * @return array{string: array{instrument: string, name: string, supports: string[] } }
+	 */
+	public static function get_instruments() {
+		return array(
+			'credit_card'                      => array(
+				'instrument' => 'CreditCard',
+				'name'       => __( 'Card', 'swedbank-pay-payment-menu' ),
+				'supports'   => array(
+					'products',
+					'refunds',
+					'subscriptions',
+					'subscription_cancellation',
+					'subscription_suspension',
+					'subscription_reactivation',
+					'subscription_amount_changes',
+					'subscription_date_changes',
+					'subscription_payment_method_change_customer',
+					'subscription_payment_method_change_admin',
+					'subscription_payment_method_change',
+					'multiple_subscriptions',
+				),
 			),
-		),
-		'invoice_payex_financing_se' => array(
-			'instrument' => 'Invoice-PayExFinancingSe',
-			'name' => 'Invoice PayEx Financing SE',
-		),
-		'swish' => array(
-			'instrument' => 'Swish',
-			'name' => 'Swish',
-		),
-		'credit_account_credit_account_se' => array(
-			'instrument' => 'CreditAccount-CreditAccountSe',
-			'name' => 'Credit Account SE',
-		),
-		'trustly' => array(
-			'instrument' => 'Trustly',
-			'name' => 'Trustly',
-		),
-		'mobile_pay' => array(
-			'instrument' => 'MobilePay',
-			'name' => 'Mobile Pay',
-		),
-		'apple_pay' => array(
-			'instrument' => 'ApplePay',
-			'name' => 'Apple Pay',
-		),
-		'google_pay' => array(
-			'instrument' => 'GooglePay',
-			'name' => 'Google Pay',
-		),
-		'click_to_pay' => array(
-			'instrument' => 'ClickToPay',
-			'name' => 'Click To Pay',
-		),
-		'vipps' => array(
-			'instrument' => 'Vipps',
-			'name' => 'Vipps'
-		),
-	);
+			'invoice_payex_financing_se'       => array(
+				'instrument' => 'Invoice-PayExFinancingSe',
+				'name'       => __( 'Invoice', 'swedbank-pay-payment-menu' ),
+			),
+			'swish'                            => array(
+				'instrument' => 'Swish',
+				'name'       => __( 'Swish', 'swedbank-pay-payment-menu' ),
+			),
+			'credit_account_credit_account_se' => array(
+				'instrument' => 'CreditAccount-CreditAccountSe',
+				'name'       => __( 'Installment account', 'swedbank-pay-payment-menu' ),
+			),
+			'trustly'                          => array(
+				'instrument' => 'Trustly',
+				'name'       => __( 'Pay by bank', 'swedbank-pay-payment-menu' ),
+			),
+			'mobile_pay'                       => array(
+				'instrument' => 'MobilePay',
+				'name'       => __( 'MobilePay', 'swedbank-pay-payment-menu' ),
+			),
+			'apple_pay'                        => array(
+				'instrument' => 'ApplePay',
+				'name'       => __( 'Apple Pay', 'swedbank-pay-payment-menu' ),
+			),
+			'google_pay'                       => array(
+				'instrument' => 'GooglePay',
+				'name'       => __( 'Google Pay', 'swedbank-pay-payment-menu' ),
+			),
+			'click_to_pay'                     => array(
+				'instrument' => 'ClickToPay',
+				'name'       => __( 'Click to Pay', 'swedbank-pay-payment-menu' ),
+			),
+			'vipps'                            => array(
+				'instrument' => 'Vipps',
+				'name'       => __( 'Vipps', 'swedbank-pay-payment-menu' ),
+			),
+			'bank_link'                        => array(
+				'instrument' => 'BankLink',
+				'name'       => __( 'Pay by bank', 'swedbank-pay-payment-menu' ),
+			),
+		);
+	}
 
 	/**
 	 * See if the given instrument is enabled in the settings or not.
@@ -93,7 +104,7 @@ class InstrumentsUtility {
 
 		$enabled_instruments = array();
 
-		foreach ( self::$instruments as $key => $instrument ) {
+		foreach ( self::get_instruments() as $key => $instrument ) {
 			if ( self::is_instrument_enabled( $key ) ) {
 				$enabled_instruments[ $key ] = $instrument;
 			}
@@ -112,7 +123,7 @@ class InstrumentsUtility {
 	public static function get_instrument_id_by_method_id( $method_id ) {
 		$instrument = str_replace( 'swedbank_pay_', '', $method_id );
 
-		return self::$instruments[ $instrument ]['instrument'] ?? null;
+		return self::get_instruments()[ $instrument ]['instrument'] ?? null;
 	}
 
 }
