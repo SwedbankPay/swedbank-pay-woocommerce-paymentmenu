@@ -227,7 +227,6 @@ class Swedbank_Pay_Subscription {
 				array(
 					'error'    => "API Exception: {$e->getMessage()}",
 					'order_id' => $order->get_id(),
-					'token'    => $token,
 				)
 			);
 
@@ -434,7 +433,7 @@ class Swedbank_Pay_Subscription {
 			$order->update_meta_data( self::UNSCHEDULED_TOKEN, $unscheduled_token );
 			$order->save();
 
-			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Retrieved unscheduled token for order #{$order->get_id()}. Token: {$unscheduled_token}", $context );
+			Swedbank_Pay()->logger()->debug( "[SUBSCRIPTIONS]: Retrieved unscheduled token for order #{$order->get_id()}.", $context );
 		} else {
 			Swedbank_Pay()->logger()->error(
 				"[SUBSCRIPTIONS]: Failed to retrieve unscheduled token for order #{$order->get_id()}. Error: {$paid_response->get_error_message()}",
