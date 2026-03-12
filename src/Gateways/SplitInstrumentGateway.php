@@ -69,7 +69,6 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 				'title'       => __( 'Title', 'swedbank-pay-payment-menu' ),
 				'type'        => 'text',
 				'description' => __( 'This controls the title which the user sees during checkout.', 'swedbank-pay-payment-menu' ),
-				'default'     => $this->title,
 				'desc_tip'    => true,
 				'placeholder' => __( 'Enter the title of the payment method to show in the checkout', 'swedbank-pay-payment-menu' ),
 			),
