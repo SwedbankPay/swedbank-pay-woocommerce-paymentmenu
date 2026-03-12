@@ -2,7 +2,6 @@
 namespace Krokedil\Swedbank\Pay\Utility;
 
 use WC_Log_Levels;
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Resource\Client;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Request;
 
@@ -47,13 +46,7 @@ class LogUtility {
 	 * @return array
 	 */
 	public static function format_request_log( $title, $request ) {
-		if ( $request instanceof Client ) {
-			$client = $request;
-		} elseif ( $request instanceof Request ) {
-			$client = $request->getClient();
-		} else {
-			$client = Swedbank_Pay_Api::get_client();
-		}
+		$client = $request instanceof Client ? $request : $request->getClient();
 
 		$log = array(
 			'type'           => $client->getMethod(),
