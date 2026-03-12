@@ -389,7 +389,8 @@ class Swedbank_Pay_Api {
 				$time,
 				self::get_client()->getDebugInfo()
 			);
-			LogUtility::log_request( '', empty( $client ) ? self::get_client() : $client, WC_Log_Levels::ERROR, $context );
+			$client           = empty( $client ) ? self::get_client() : $client;
+			LogUtility::log_request( '', $client, WC_Log_Levels::ERROR, $context );
 
 			// https://tools.ietf.org/html/rfc7807
 			$response_body = self::get_client()->getResponseBody() ?? '{}';
