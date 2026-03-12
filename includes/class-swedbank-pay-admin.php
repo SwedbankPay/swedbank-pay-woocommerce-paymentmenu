@@ -532,7 +532,7 @@ class Swedbank_Pay_Admin {
 					Swedbank_Pay()->logger()->info( "[ORDER MANAGEMENT]: Trying to cancel #{$order->get_order_number()}", $context );
 					$result = $gateway->payment_actions_handler->cancel_payment( $order );
 					if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-						$error['error'] = join( '; ', $result->get_error_messages() );
+						$context['error'] = join( '; ', $result->get_error_messages() );
 						Swedbank_Pay()->logger()->error( "[ORDER MANAGEMENT]: Failed to cancel #{$order->get_order_number()}", $context );
 						/** @var \WP_Error $result */
 						throw new Exception( $result->get_error_message() );
