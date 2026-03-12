@@ -386,11 +386,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 			// TODO: Place this somewhere more logical before release. And add JS to hide/show the individual instrument settings based on the main setting.
 			'enable_separate_instruments' => array(
-				'title'   => __( 'Enable separate instruments', 'swedbank-pay-payment-menu' ),
-				'type'    => 'checkbox',
-				'label'   => __( 'Enable separate instruments/payment methods instead of payment menu', 'swedbank-pay-payment-menu' ),
-				'default' => 'no',
-				'class'   => 'instrument-setting-separate-instruments',
+				'title'       => __( 'Enable separate instruments', 'swedbank-pay-payment-menu' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Enable separate instruments/payment methods instead of payment menu', 'swedbank-pay-payment-menu' ),
+				'description' => __( 'Ensure the instruments selected below are also active in the Swedbank Pay Merchant Portal. If a payment method is enabled here but not in your Swedbank Pay account, customers will encounter an error at checkout.', 'swedbank-pay-payment-menu' ),
+				'default'     => 'no',
+				'class'       => 'instrument-setting-separate-instruments',
 			),
 		);
 
@@ -398,7 +399,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$this->form_fields[ "enable_instrument_$key" ] = array(
 				'title'   => sprintf( __( 'Enable %s', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
 				'type'    => 'checkbox',
-				'label'   => sprintf( __( 'Enable %s in the payment menu', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
+				'label'   => sprintf( __( 'Enable %s as a separate payment method', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
 				'default' => 'no',
 				'class'   => 'instrument-setting instrument-setting-' . $key,
 			);
