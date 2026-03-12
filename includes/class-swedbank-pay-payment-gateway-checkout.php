@@ -643,7 +643,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			Swedbank_Pay()->logger()->info( "[IPN]: Callback scheduled for processing. Order #{$context['order_number']}, Transaction ID: {$context['transaction_id']}, Schedule ID: {$schedule_id}.", $context );
 		} catch ( \Exception $e ) {
 			$context['error'] = $e->getMessage();
-			Swedbank_Pay()->logger()->error( "[IPN]: Callback processing failed. Order #{$context['order_number']}, Transaction ID: {$context['transaction_id']}. Error: {$context['error']}", $context );
+			Swedbank_Pay()->logger()->error( sprintf( '[IPN]: Callback processing failed. Order %s, Transaction ID: %s. Error: %s', $context['order_number'] ?? 'N/A', $context['transaction_id'] ?? 'N/A', $context['error'] ), $context );
 			return;
 		}
 	}
