@@ -184,7 +184,7 @@ class Swedbank_Pay_Api {
 		try {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $purchase_request->send();
-			LogUtility::log_request( '[CHECKOUT]: Initiate purchase', $purchase_request );
+			LogUtility::log_request( '[CHECKOUT]: Initiate purchase', $purchase_request, WC_Log_Levels::DEBUG );
 
 			return $response_service;
 		} catch ( ClientException $e ) {
@@ -764,7 +764,7 @@ class Swedbank_Pay_Api {
 			'status'           => $status,
 		);
 
-		Swedbank_Pay()->logger()->info( "[UPDATE STATUS]: Update order #{$context['order_number']} status to '{$context['status']} with transaction ID: {$context['transaction_id']}'", $context );
+		Swedbank_Pay()->logger()->info( "[UPDATE STATUS]: Update order #{$context['order_number']} status to '{$context['status']}' with transaction ID: {$context['transaction_id']}'", $context );
 
 		switch ( $status ) {
 			case 'checkout-draft':
