@@ -284,7 +284,10 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'options'     => array(
 					'da-DK' => 'Danish',
 					'en-US' => 'English',
+					'et-EE' => 'Estonian',
 					'fi-FI' => 'Finnish',
+					'lt-LT' => 'Lithuanian',
+					'lv-LV' => 'Latvian',
 					'nb-NO' => 'Norway',
 					'sv-SE' => 'Swedish',
 				),
