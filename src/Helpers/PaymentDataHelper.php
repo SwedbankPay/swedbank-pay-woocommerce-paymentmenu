@@ -177,9 +177,6 @@ abstract class PaymentDataHelper {
 			}
 		}
 
-		// Remove any spaces from the phone number.
-		$phone_number = str_replace( ' ', '', $phone_number );
-
 		return wc_sanitize_phone_number( $phone_number );
 	}
 
