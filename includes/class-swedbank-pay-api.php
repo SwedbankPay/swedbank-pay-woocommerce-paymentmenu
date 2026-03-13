@@ -1174,7 +1174,7 @@ class Swedbank_Pay_Api {
 			'order_id'         => $order->get_id(),
 			'order_number'     => $order->get_order_number(),
 			'payment_order_id' => $payment_order_id,
-			'action'           => 'refund_amount',
+			'action'           => 'refund_payment',
 			'amount'           => $amount,
 		);
 

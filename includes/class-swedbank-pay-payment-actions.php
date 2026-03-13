@@ -179,13 +179,20 @@ class Swedbank_Pay_Payment_Actions {
 	 * @param array     $items
 	 * @param $reason
 	 *
-	 * @return \WP_Error|array
+	 * @return \WP_Error|true
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
 	 * @SuppressWarnings(PHPMD.NPathComplexity)
 	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
 	 */
 	public function refund_payment( $order, $lines, $reason, $create_credit_memo ) {
+		$context = array(
+			'action'           => 'refund_payment',
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
+		);
+
 		// Verify the captured.
 		$this->validate_items( $order, $lines );
 
@@ -240,13 +247,6 @@ class Swedbank_Pay_Payment_Actions {
 				continue;
 			}
 
-			$context = array(
-				'action'           => 'refund_payment',
-				'order_id'         => $order->get_id(),
-				'order_number'     => $order->get_order_number(),
-				'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
-			);
-
 			Swedbank_Pay()->logger()->info(
 				sprintf(
 					'[REFUND]: Refund item %s. qty: %s, total: %s. tax: %s. amount: %s',
@@ -291,13 +291,13 @@ class Swedbank_Pay_Payment_Actions {
 							)
 						);
 
-						// Get Product image
+						// Get Product image.
 						$image = wp_get_attachment_image_src( $product->get_image_id(), 'full' );
 						if ( $image ) {
 							$image = array_shift( $image );
 						}
 
-						// Get Product Class
+						// Get Product Class.
 						$product_class = $product->get_meta( '_swedbank_pay_product_class' );
 
 						if ( empty( $product_class ) ) {
@@ -323,7 +323,7 @@ class Swedbank_Pay_Payment_Actions {
 						$image = wp_guess_url() . $image;
 					}
 
-					// The field Reference must match the regular expression '[\\w-]*'
+					// The field Reference must match the regular expression '[\\w-]*'.
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = $reference;
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_PRODUCT;
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = $product_class;
@@ -413,7 +413,7 @@ class Swedbank_Pay_Payment_Actions {
 
 		$this->save_refunded_items( $order, $lines );
 
-		// Create Credit Memo
+		// Create Credit Memo.
 		if ( $create_credit_memo ) {
 			$amount = 0;
 			foreach ( $items as $item ) {
@@ -449,7 +449,7 @@ class Swedbank_Pay_Payment_Actions {
 			}
 		}
 
-		return null;
+		return true;
 	}
 
 	/**
