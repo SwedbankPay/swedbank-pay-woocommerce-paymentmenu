@@ -434,7 +434,7 @@ class Swedbank_Pay_Payment_Actions {
 				$context['error'] = join( '; ', $refund->get_error_messages() );
 				Swedbank_Pay()->logger()->error(
 					sprintf(
-						'Refund could not be created. Error: %s',
+						'[REFUND]: Refund could not be created. Error: %s',
 						join( '; ', $refund->get_error_messages() )
 					),
 					$context
