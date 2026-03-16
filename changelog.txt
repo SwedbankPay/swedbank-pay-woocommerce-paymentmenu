@@ -1,3 +1,8 @@
+Version 4.3.4
+* Enhancement   - Added support for Estonian, Latvian, and Lithuanian.
+* Enhancement   - Improved and extended logging, including support for custom log titles, making entries easier to identify.
+* Fix           - Phone number input at checkout is now properly sanitized.
+
 Version 4.3.3
 * Enhancement   - Client information is now sent with payment orders to set platform name, integration module name and version for the payment.
 * Enhancement   - Improved error handling by allowing exceptions to propagate to WooCommerce.

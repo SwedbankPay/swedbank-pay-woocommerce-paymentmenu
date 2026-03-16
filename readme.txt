@@ -5,8 +5,8 @@ Requires at least: 5.3
 Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 10.5.3
-Stable tag: 4.3.3
+WC tested up to: 10.6.1
+Stable tag: 4.3.4
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,11 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.03.16    - version 4.3.4 =
+* Enhancement   - Added support for Estonian, Latvian, and Lithuanian.
+* Enhancement   - Improved and extended logging, including support for custom log titles, making entries easier to identify.
+* Fix           - Phone number input at checkout is now properly sanitized.
+
 = 2026.03.09    - version 4.3.3 =
 * Enhancement   - Client information is now sent with payment orders to set platform name, integration module name and version for the payment.
 * Enhancement   - Improved error handling by allowing exceptions to propagate to WooCommerce.
