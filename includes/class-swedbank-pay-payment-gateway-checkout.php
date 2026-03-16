@@ -10,6 +10,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Instant_Capture;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Payment_Actions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Scheduler;
 use Krokedil\Swedbank\Pay\CheckoutFlow\CheckoutFlow;
+use Krokedil\Swedbank\Pay\Utility\LogUtility;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -493,7 +494,14 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return;
 		}
 
-		$this->api->log( WC_Log_Levels::INFO, __METHOD__, array( $order_id ) );
+		$context = array(
+			'action'           => 'thankyou_page',
+			'order_id'         => $order_id,
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
+		);
+
+		Swedbank_Pay()->logger()->info( "[THANK YOU]: Processing thank you page for order #{$context['order_number']}.", $context );
 		$is_finalized = $order->get_meta( '_payex_finalized' ); // Checks if the order has already been processed.
 		if ( ! empty( $is_finalized ) ) {
 			return;
@@ -517,7 +525,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$order->save();
 
 		} else {
-			$response = $gateway->api->request( 'GET', "$payment_order_id/paid" );
+			LogUtility::$title = "[THANK YOU]: Fetch payment info for finalizing order #{$order->get_order_number()}";
+			$response          = $gateway->api->request( 'GET', "$payment_order_id/paid" );
 			if ( ! is_wp_error( $response ) ) {
 				$order->payment_complete( $response['paid']['number'] );
 				$order->add_order_note( __( 'Payment completed successfully.', 'swedbank-pay-payment-menu' ) );
@@ -574,10 +583,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	public function return_handler() {
 		$raw_body = wp_kses_post( sanitize_text_field( file_get_contents( 'php://input' ) ) );  // WPCS: input var ok, CSRF ok.
 
-		$this->api->log(
-			WC_Log_Levels::INFO,
-			sprintf( 'Incoming Callback. Post data: %s', wp_json_encode( $raw_body ) )
-		);
+		Swedbank_Pay()->logger()->info( "[IPN]: Incoming Callback. Post data: {$raw_body}" );
 
 		// Decode raw body.
 		$data = json_decode( $raw_body, true );
@@ -615,6 +621,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				throw new \Exception( 'Error: Invalid transaction number' );
 			}
 
+			$context = array(
+				'order_id'         => $order->get_id(),
+				'order_number'     => $order->get_order_number(),
+				'payment_order_id' => $data['paymentOrder']['id'] ?? $order->get_meta( '_payex_paymentorder_id' ),
+				'transaction_id'   => $data['transaction']['number'],
+			);
+
 			// Schedule the payment for later processing.
 			$schedule_id = as_schedule_single_action(
 				time() + 30,
@@ -626,20 +639,14 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			);
 
 			if ( 0 === $schedule_id ) {
-				$this->api->log(
-					WC_Log_Levels::ERROR,
-					sprintf( 'Error: Unable to schedule a task for %s', $this->id )
-				);
+				Swedbank_Pay()->logger()->error( "[IPN]: Failed to schedule a task for processing the payment. Order #{$context['order_number']}, Transaction ID: {$context['transaction_id']}.", $context );
 				throw new \Exception( 'Unable to schedule a task.' );
 			}
 
-			$this->api->log(
-				WC_Log_Levels::INFO,
-				sprintf( 'Incoming Callback: payment scheduled as %s. Transaction ID: %s', $schedule_id, $data['transaction']['number'] )
-			);
+			Swedbank_Pay()->logger()->info( "[IPN]: Callback scheduled for processing. Order #{$context['order_number']}, Transaction ID: {$context['transaction_id']}, Schedule ID: {$schedule_id}.", $context );
 		} catch ( \Exception $e ) {
-			$this->api->log( WC_Log_Levels::INFO, sprintf( 'Incoming Callback: %s', $e->getMessage() ) );
-
+			$context['error'] = $e->getMessage();
+			Swedbank_Pay()->logger()->error( sprintf( '[IPN]: Callback processing failed. Order %s, Transaction ID: %s. Error: %s', $context['order_number'] ?? 'N/A', $context['transaction_id'] ?? 'N/A', $context['error'] ), $context );
 			return;
 		}
 	}
@@ -782,7 +789,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 			if ( ! empty( $payment_order_id ) ) {
 				// Fetch payment info.
-				$result = $this->api->request( 'GET', $payment_order_id . '/paid' );
+				LogUtility::$title = "[GATEWAY]: Fetch payment info for payment method title #{$order->get_order_number()}";
+				$result            = $this->api->request( 'GET', $payment_order_id . '/paid' );
 				if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 					// Request failed.
 					return $value;
