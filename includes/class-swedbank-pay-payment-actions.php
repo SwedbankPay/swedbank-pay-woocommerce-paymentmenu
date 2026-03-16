@@ -179,17 +179,24 @@ class Swedbank_Pay_Payment_Actions {
 	 * @param array     $items
 	 * @param $reason
 	 *
-	 * @return \WP_Error|array
+	 * @return \WP_Error|true
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
 	 * @SuppressWarnings(PHPMD.NPathComplexity)
 	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
 	 */
 	public function refund_payment( $order, $lines, $reason, $create_credit_memo ) {
-		// Verify the captured
+		$context = array(
+			'action'           => 'refund_payment',
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
+		);
+
+		// Verify the captured.
 		$this->validate_items( $order, $lines );
 
-		// Filter items
+		// Filter items.
 		foreach ( $lines as $item_id => $line ) {
 			$qty          = (int) $line['qty'];
 			$refund_total = (float) $line['refund_total'];
@@ -198,8 +205,8 @@ class Swedbank_Pay_Payment_Actions {
 			}
 		}
 
-		// Refund with specific items
-		// Build order items list
+		// Refund with specific items.
+		// Build order items list.
 		$items = array();
 		foreach ( $lines as $item_id => $line ) {
 			/** @var WC_Order_Item $item */
@@ -236,20 +243,20 @@ class Swedbank_Pay_Payment_Actions {
 			}
 
 			if ( empty( $refund_total ) ) {
-				// Skip zero items
+				// Skip zero items.
 				continue;
 			}
 
-			$this->gateway->api->log(
-				WC_Log_Levels::INFO,
+			Swedbank_Pay()->logger()->info(
 				sprintf(
-					'Refund item %s. qty: %s, total: %s. tax: %s. amount: %s',
+					'[REFUND]: Refund item %s. qty: %s, total: %s. tax: %s. amount: %s',
 					$item_id,
 					$qty,
 					$refund_total,
 					$refund_tax,
 					$refund_amount
-				)
+				),
+				$context
 			);
 
 			$order_item = array(
@@ -284,13 +291,13 @@ class Swedbank_Pay_Payment_Actions {
 							)
 						);
 
-						// Get Product image
+						// Get Product image.
 						$image = wp_get_attachment_image_src( $product->get_image_id(), 'full' );
 						if ( $image ) {
 							$image = array_shift( $image );
 						}
 
-						// Get Product Class
+						// Get Product Class.
 						$product_class = $product->get_meta( '_swedbank_pay_product_class' );
 
 						if ( empty( $product_class ) ) {
@@ -316,7 +323,7 @@ class Swedbank_Pay_Payment_Actions {
 						$image = wp_guess_url() . $image;
 					}
 
-					// The field Reference must match the regular expression '[\\w-]*'
+					// The field Reference must match the regular expression '[\\w-]*'.
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = $reference;
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_PRODUCT;
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = $product_class;
@@ -406,7 +413,7 @@ class Swedbank_Pay_Payment_Actions {
 
 		$this->save_refunded_items( $order, $lines );
 
-		// Create Credit Memo
+		// Create Credit Memo.
 		if ( $create_credit_memo ) {
 			$amount = 0;
 			foreach ( $items as $item ) {
@@ -424,6 +431,15 @@ class Swedbank_Pay_Payment_Actions {
 				)
 			);
 			if ( is_wp_error( $refund ) ) {
+				$context['error'] = join( '; ', $refund->get_error_messages() );
+				Swedbank_Pay()->logger()->error(
+					sprintf(
+						'[REFUND]: Refund could not be created. Error: %s',
+						join( '; ', $refund->get_error_messages() )
+					),
+					$context
+				);
+
 				$order->add_order_note(
 					sprintf(
 						'Refund could not be created. Error: %s',
@@ -433,7 +449,7 @@ class Swedbank_Pay_Payment_Actions {
 			}
 		}
 
-		return null;
+		return true;
 	}
 
 	/**

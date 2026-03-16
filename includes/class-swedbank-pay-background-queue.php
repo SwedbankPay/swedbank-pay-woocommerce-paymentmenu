@@ -21,17 +21,11 @@ if ( ! class_exists( 'WC_Background_Process', false ) ) {
  * @SuppressWarnings(PHPMD.StaticAccess)
  */
 class Swedbank_Pay_Background_Queue extends WC_Background_Process {
-	/**
-	 * @var WC_Logger
-	 */
-	private $logger;
 
 	/**
 	 * Initiate new background process.
 	 */
 	public function __construct() {
-		$this->logger = wc_get_logger();
-
 		// Uses unique prefix per blog so each blog has separate queue.
 		$this->prefix = 'wp_' . get_current_blog_id();
 		$this->action = 'swedbank_pay_queue';
@@ -96,7 +90,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 				empty( $task[0]['webhook_data'] ) ||
 				null === json_decode( $task[0]['webhook_data'], true )
 			) {
-				// Remove invalid record from the database
+				// Remove invalid record from the database.
 				// phpcs:disable
 				$query = $wpdb->prepare(
 					'DELETE FROM ' . esc_sql( $table ) . ' WHERE ' . esc_sql( $key_column ) . ' = %s',
@@ -109,9 +103,9 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 				continue;
 			}
 
-			// Check the payment method ID
+			// Check the payment method ID.
 			if ( ! in_array( $task[0]['payment_method_id'], Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) { //phpcs:ignore
-				// Try with another queue processor
+				// Try with another queue processor.
 				continue;
 			}
 
@@ -119,7 +113,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 			$batch->key  = $result->$column;
 			$batch->data = $task;
 
-			// Create Sorting Flow by Transaction Number
+			// Create Sorting Flow by Transaction Number.
 			$webhook             = json_decode( $task[0]['webhook_data'], true );
 			$sorting_flow[ $id ] = $webhook['transaction']['number'];
 			$results[ $id ]      = $batch;
@@ -129,7 +123,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 		array_multisort( $sorting_flow, SORT_ASC, SORT_NUMERIC, $results );
 		unset( $data, $sorting_flow );
 
-		$batch = array_shift( $results ); // Get first result
+		$batch = array_shift( $results ); // Get first result.
 		if ( ! $batch ) {
 			$batch       = new \stdClass();
 			$batch->key  = null;
@@ -137,15 +131,6 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 		}
 
 		return $batch;
-	}
-
-	/**
-	 * Log message.
-	 *
-	 * @param $message
-	 */
-	private function log( $message ) {
-		$this->logger->info( $message, array( 'source' => $this->action ) );
 	}
 
 	/**
@@ -158,7 +143,11 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 	 * @SuppressWarnings(PHPMD.NPathComplexity)
 	 */
 	protected function task( $item ) {
-		$this->log( sprintf( 'Start task: %s', wp_json_encode( $item ) ) );
+		$context = array(
+			'payment_method_id' => $item['payment_method_id'],
+		);
+
+		Swedbank_Pay()->logger()->info( \sprintf( '[BQ]: Start task: %s', wp_json_encode( $item ) ), $context );
 
 		try {
 			$payload = $item['webhook_data'];
@@ -175,82 +164,84 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 				throw new \Exception( 'Error: Invalid transaction number' );
 			}
 
-			$transaction_number = $data['transaction']['number'];
-			$payment_order_id   = $data['paymentOrder']['id'];
+			$transaction_number            = $data['transaction']['number'];
+			$payment_order_id              = $data['paymentOrder']['id'];
+			$context['payment_order_id']   = $payment_order_id;
+			$context['transaction_number'] = $transaction_number;
 
-			// Get order by `orderReference`
+			// Get order by `orderReference`.
 			if ( isset( $data['orderReference'] ) ) {
+				$context['order_reference'] = $data['orderReference'];
+
 				$order = wc_get_order( $data['orderReference'] );
 				if ( ! $order ) {
-					throw new \Exception( 'Failed to find order: ' . $data['orderReference'] );
+					Swedbank_Pay()->logger()->error( "[BQ]: Failed to find order with order reference: #{$context['order_reference']}", $context );
+					throw new \Exception( "Failed to find order: {$context['order_reference']}" );
 				}
 
-				$this->log(
-					sprintf(
-						'Found order #%s by order reference %s.',
-						$order->get_id(),
-						$data['orderReference']
-					)
-				);
+				$context['order_id']     = $order->get_id();
+				$context['order_number'] = $order->get_order_number();
+
+				Swedbank_Pay()->logger()->debug( "[BQ]: Found order #{$context['order_number']} by order reference {$context['order_reference']}.", $context );
+
 			} else {
-				// Get Order by Payment Order Id
+				// Get Order by Payment Order Id.
 				$order = swedbank_pay_get_order( $payment_order_id );
 				if ( ! $order ) {
-					throw new \Exception( 'Failed to find order: ' . $payment_order_id );
+					throw new \Exception( "Failed to find order: {$context['payment_order_id']}" );
 				}
 
-				$this->log( sprintf( 'Found order #%s by payment Order ID %s.', $order->get_id(), $payment_order_id ) );
+				$context['order_id']     = $order->get_id();
+				$context['order_number'] = $order->get_order_number();
+
+				Swedbank_Pay()->logger()->debug( "[BQ]: Found order #{$context['order_number']} by payment Order ID {$context['payment_order_id']}.", $context );
 			}
 
 			$gateway = swedbank_pay_get_payment_method( $order );
 			if ( ! $gateway ) {
-				throw new \Exception(
-					sprintf(
-						'Can\'t retrieve payment gateway instance: %s',
-						$item['payment_method_id']
-					)
-				);
+				Swedbank_Pay()->logger()->error( "[BQ]: Failed to retrieve payment gateway instance for order #{$order->get_order_number()}. Payment method: {$item['payment_method_id']}", $context );
+				throw new \Exception( "Can't retrieve payment gateway instance: {$item['payment_method_id']}" );
 			}
 
 			if ( ! property_exists( $gateway, 'api' ) ||
 				! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
-				$this->log(
-					sprintf(
-						'[ERROR]: Order #%s has not been paid with the swedbank pay. Payment method: %s',
-						$order->get_id(),
-						$order->get_payment_method()
-					)
-				);
+					Swedbank_Pay()->logger()->error(
+						"[BQ]: Order #{$context['order_number']} has not been paid with the swedbank pay. Payment method: {$order->get_payment_method()}",
+						$context
+					);
 
-				// Remove from queue
+				// Remove from queue.
 				return false;
 			}
 
 			$transactions = (array) $order->get_meta( '_swedbank_pay_transactions' );
 			if ( in_array( $transaction_number, $transactions ) ) { //phpcs:ignore
-				$this->log( sprintf( 'Transaction #%s was processed before.', $transaction_number ) );
+				Swedbank_Pay()->logger()->info( "[BQ]: Transaction #{$context['transaction_number']} for order #{$context['order_number']} has already been processed.", $context );
 
-				// Remove from queue
+				// Remove from queue.
 				return false;
 			}
 		} catch ( \Exception $e ) {
-			$this->log( sprintf( '[ERROR]: Validation error: %s', $e->getMessage() ) );
+			$context['error'] = $e->getMessage();
+			Swedbank_Pay()->logger()->error( sprintf( '[BQ]: Validation error: %s', $e->getMessage() ), $context );
 
-			// Remove from queue
+			// Remove from queue.
 			return false;
 		}
 
 		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
+		Swedbank_Pay()->logger()->info( "[BQ]: Attempting to finalize payment for order #{$context['order_number']} with transaction ID #{$context['transaction_number']}.", $context );
 		$result = $gateway->api->finalize_payment( $order, $transaction_number );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-			/** @var \WP_Error $result */
-			$this->log( sprintf( '[ERROR]: %s', $result->get_error_message() ) );
+			$context['error'] = join( '; ', $result->get_error_messages() );
+			Swedbank_Pay()->logger()->error( "[BQ]: Failed to finalize payment for order #{$context['order_number']}", $context );
 
-			// Remove from queue
+			// Remove from queue.
 			return false;
 		}
 
-		// Remove from queue
+		Swedbank_Pay()->logger()->info( "[BQ]: Successfully finalized payment for order #{$context['order_number']} with transaction ID #{$context['transaction_number']}.", $context );
+		// Remove from queue.
 		return false;
 	}
 
@@ -261,8 +252,7 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 	 */
 	protected function complete() {
 		parent::complete();
-
-		$this->log( 'Completed ' . $this->action . ' queue job.' );
+		Swedbank_Pay()->logger()->info( "[BQ]: All items in {$this->action} queue have been processed." );
 	}
 
 	/**
