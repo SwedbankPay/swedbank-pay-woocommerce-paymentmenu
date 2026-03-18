@@ -66,7 +66,7 @@ function swedbank_pay_get_payment_method( WC_Order $order, bool $use_base_gatewa
 	/** @var \WC_Payment_Gateway $gateway */
 	$gateway = $gateways[ $order->get_payment_method() ];
 
-	if ( $use_base_gateway && strpos( $gateway->id, 'swedbank_pay_' ) === 0 ) {
+	if ( $use_base_gateway && swedbank_pay_is_payment_swedbank_method( $gateway->id ) ) {
 		$gateway = swedbank_pay_get_payment_method_by_id();
 	}
 
