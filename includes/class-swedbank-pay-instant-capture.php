@@ -47,9 +47,8 @@ class Swedbank_Pay_Instant_Capture {
 	 * @throws \Exception If the capture fails.
 	 */
 	public function maybe_capture_instantly( $order_id ) {
-		$order          = wc_get_order( $order_id );
-		$payment_method = $order->get_payment_method();
-		if ( ! in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+		$order = wc_get_order( $order_id );
+		if ( ! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			return;
 		}
 

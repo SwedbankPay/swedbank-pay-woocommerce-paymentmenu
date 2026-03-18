@@ -45,8 +45,7 @@ class OrderManagement {
 	 * @throws \Exception If payment order ID is missing or gateway not found.
 	 */
 	public function capture_order( $order_id, $order ) {
-		$payment_method = $order->get_payment_method();
-		if ( ! in_array( $payment_method, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( ! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			return;
 		}
 

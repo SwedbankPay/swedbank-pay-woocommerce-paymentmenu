@@ -577,7 +577,7 @@ class Swedbank_Pay_Subscription {
 			return true;
 		}
 
-		return true;
+		return $is_available;
 	}
 
 	/**

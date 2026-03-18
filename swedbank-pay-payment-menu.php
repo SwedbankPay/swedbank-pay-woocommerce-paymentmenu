@@ -18,6 +18,8 @@
  * @package SwedbankPay
  */
 
+use Krokedil\Swedbank\Pay\Assets;
+use Krokedil\Swedbank\Pay\Gateways\SplitInstrumentGateway;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 use Krokedil\Swedbank\Pay\OrderManagement;
 use KrokedilSwedbankPayDeps\Krokedil\Support\Logger;
@@ -67,6 +69,13 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @var SystemReport
 	 */
 	private $system_report;
+
+	/**
+	 * Assets instance.
+	 *
+	 * @var Assets
+	 */
+	private $assets;
 
 
 	/**
@@ -137,6 +146,15 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	}
 
 	/**
+	 * Assets instance.
+	 *
+	 * @return Assets
+	 */
+	public function assets() {
+		return $this->assets;
+	}
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -201,8 +219,10 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		);
 		$this->system_report    = new SystemReport( 'payex_checkout', 'Swedbank Pay', $system_report_options );
 		$this->order_management = OrderManagement::get_instance();
-
+		$this->assets           = new Assets();
+		// Register the split instruments for the gateway as soon as possible.
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateways' ) );
+		add_filter( 'woocommerce_payment_gateways', SplitInstrumentGateway::class . '::register_split_instrument_gateways', 20, 1 );
 	}
 
 	/**

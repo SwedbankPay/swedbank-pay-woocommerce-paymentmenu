@@ -14,14 +14,15 @@ class Redirect extends CheckoutFlow {
 	 * Process the payment for the WooCommerce order.
 	 *
 	 * @param \WC_Order $order The WooCommerce order to be processed.
+	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
 	 *
 	 * @throws \Exception If there is an error during the payment processing.
 	 * @return array{redirect: array|bool|string, result: string}
 	 */
-	public function process( $order ) {
+	public function process( $order, $instrument = null ) {
 		$has_subscription = Swedbank_Pay_Subscription::order_has_subscription( $order );
 		if ( $has_subscription || ( Swedbank_Pay_Subscription::is_change_payment_method() && $has_subscription ) ) {
-			return $this->process_subscription( $order );
+			return $this->process_subscription( $order, $instrument );
 		}
 
 		if ( swedbank_pay_is_zero( $order->get_total() ) ) {
@@ -29,7 +30,7 @@ class Redirect extends CheckoutFlow {
 		}
 
 		// Initiate Payment Order.
-		$result = $this->api->initiate_purchase( $order );
+		$result = $this->api->initiate_purchase( $order, $instrument );
 		if ( is_wp_error( $result ) ) {
 			throw new \Exception(
 				esc_html( $result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-payment-menu' ) ),
@@ -54,12 +55,13 @@ class Redirect extends CheckoutFlow {
 	 * Process a subscription purchase.
 	 *
 	 * @param \WC_Order $order The WooCommerce order to be processed.
+	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
 	 *
 	 * @throws \Exception If there is an error during the payment processing.
 	 * @return array{redirect: array|bool|string, result: string}
 	 */
-	private function process_subscription( $order ) {
-		$result = swedbank_pay_is_zero( $order->get_total() ) ? Swedbank_Pay_Subscription::approve_for_renewal( $order ) : $this->api->initiate_purchase( $order );
+	private function process_subscription( $order, $instrument = null ) {
+		$result = swedbank_pay_is_zero( $order->get_total() ) ? Swedbank_Pay_Subscription::approve_for_renewal( $order ) : $this->api->initiate_purchase( $order, $instrument );
 		if ( is_wp_error( $result ) ) {
 			throw new \Exception(
 				// translators: %s: order number.

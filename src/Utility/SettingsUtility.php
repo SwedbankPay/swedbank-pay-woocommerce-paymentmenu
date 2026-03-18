@@ -2,6 +2,7 @@
 namespace Krokedil\Swedbank\Pay\Utility;
 
 use Swedbank_Pay_Payment_Gateway_Checkout;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -91,6 +92,25 @@ class SettingsUtility {
 		$flow = self::get_setting( 'checkout_flow', 'redirect' );
 
 		return 'redirect' === $flow;
+	}
+
+	/**
+	 * Check if separate instruments are enabled and available for the current flow.
+	 * Currently separate instruments are only supported for the redirect flow, so if the flow is not set to redirect, this will return false directly.
+	 *
+	 * @return bool
+	 */
+	public static function is_separate_instruments_enabled() {
+		$order_pay             = is_wc_endpoint_url( 'order-pay' );
+		$change_payment_method = Swedbank_Pay_Subscription::is_change_payment_method();
+		$blocks_enabled 	   = BlocksUtility::is_checkout_block_enabled();
+		// If the flow is not set to redirect, separate instruments are not supported, so we can return false directly.
+		// This is only temporary until we have support for separate instruments in the embedded flow, then this check should be removed and the setting should be available for all flows.
+		if ( ! self::is_redirect_flow() && ! $blocks_enabled && ! $order_pay && ! $change_payment_method ) {
+			return false;
+		}
+
+		return wc_string_to_bool( self::get_setting( 'enable_separate_instruments', 'no' ) );
 	}
 
 	/**

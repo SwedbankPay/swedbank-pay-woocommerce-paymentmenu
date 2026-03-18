@@ -39,7 +39,7 @@ class Swedbank_Thankyou {
 				return $located;
 			}
 
-			if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+			if ( ! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 				return $located;
 			}
 
@@ -74,7 +74,7 @@ class Swedbank_Thankyou {
 			return;
 		}
 
-		if ( ! in_array( $order->get_payment_method(), Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) ) {
+		if ( ! swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
 			return;
 		}
 

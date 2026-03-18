@@ -175,13 +175,21 @@ class Swedbank_Pay_Api {
 	/**
 	 * Create a Client for payment.
 	 *
-	 * @param WC_Order $order WC Order.
+	 * @param WC_Order    $order WC Order.
+	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
+	 *
 	 * @return WP_Error|ResponseServiceInterface
 	 */
-	public function initiate_purchase( WC_Order $order ) {
+	public function initiate_purchase( WC_Order $order, $instrument = null ) {
 		$helper = new Order( $order );
 
-		$payment_order        = $helper->get_payment_order();
+		$payment_order = $helper->get_payment_order();
+
+		// Set the instrument if provided.
+		if ( ! empty( $instrument ) ) {
+			$payment_order->setInstrument( $instrument );
+		}
+
 		$payment_order_object = new PaymentorderObject();
 		$payment_order_object->setPaymentorder( $payment_order );
 
@@ -217,15 +225,23 @@ class Swedbank_Pay_Api {
 	/**
 	 * Create a Client for payment.
 	 *
+	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
+	 *
 	 * @return WP_Error|ResponseServiceInterface
 	 */
-	public function initiate_embedded_purchase() {
+	public function initiate_embedded_purchase( $instrument = null ) {
 		$helper = new Cart();
 
 		// Required for zero amount orders. Only checks for subscriptions.
 		$is_verify = Swedbank_Pay_Subscription::cart_has_zero_order();
 
-		$payment_order        = $helper->get_payment_order( $is_verify );
+		$payment_order = $helper->get_payment_order( $is_verify );
+
+		// Set the instrument if provided.
+		if ( ! empty( $instrument ) ) {
+			$payment_order->setInstrument( $instrument );
+		}
+
 		$payment_order_object = new PaymentorderObject();
 		$payment_order_object->setPaymentorder( $payment_order );
 
@@ -296,13 +312,21 @@ class Swedbank_Pay_Api {
 	/**
 	 * Update a embedded payment.
 	 *
+	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
+	 *
 	 * @return WP_Error|ResponseServiceInterface
 	 */
-	public function update_embedded_purchase() {
+	public function update_embedded_purchase( $instrument = null ) {
 		$update_payment_url = WC()->session->get( 'swedbank_pay_update_order_url' );
 		$helper             = new Cart();
 
-		$payment_order        = $helper->get_update_payment_order();
+		$payment_order = $helper->get_update_payment_order();
+
+		// Set the instrument if provided.
+		if ( ! empty( $instrument ) ) {
+			$payment_order->setInstrument( $instrument );
+		}
+
 		$payment_order_object = new PaymentorderObject();
 		$payment_order_object->setPaymentorder( $payment_order );
 
