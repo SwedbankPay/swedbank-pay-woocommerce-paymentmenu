@@ -3,6 +3,7 @@
 namespace SwedbankPay\Checkout\WooCommerce;
 
 use Krokedil\Swedbank\Pay\Helpers\Cart;
+use Krokedil\Swedbank\Pay\Utility\LogUtility;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -191,14 +192,19 @@ class Swedbank_Pay_Api {
 		try {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $purchase_request->send();
-
-			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
+			LogUtility::log_request( '[CHECKOUT]: Initiate purchase', $purchase_request, WC_Log_Levels::DEBUG );
 
 			return $response_service;
 		} catch ( ClientException $e ) {
 
-			Swedbank_Pay()->logger()->error( $purchase_request->getClient()->getDebugInfo() );
-			Swedbank_Pay()->logger()->error( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
+			LogUtility::log_request(
+				'[CHECKOUT]: Initiate purchase',
+				$purchase_request,
+				WC_Log_Levels::ERROR,
+				array(
+					'error' => sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ),
+				)
+			);
 
 			return Swedbank_Pay()->system_report()->request(
 				new WP_Error(
@@ -241,13 +247,19 @@ class Swedbank_Pay_Api {
 		try {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $purchase_request->send();
+			LogUtility::log_request( '[CHECKOUT]: Initiate embedded purchase', $purchase_request );
 
-			Swedbank_Pay()->logger()->debug( $purchase_request->getClient()->getDebugInfo() );
 			return $response_service;
 		} catch ( ClientException $e ) {
 
-			Swedbank_Pay()->logger()->error( $purchase_request->getClient()->getDebugInfo() );
-			Swedbank_Pay()->logger()->error( sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ) );
+			LogUtility::log_request(
+				'[CHECKOUT]: Initiate embedded purchase',
+				$purchase_request,
+				WC_Log_Levels::ERROR,
+				array(
+					'error' => sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() ),
+				)
+			);
 
 			return Swedbank_Pay()->system_report()->request(
 				new WP_Error(
@@ -264,12 +276,22 @@ class Swedbank_Pay_Api {
 	 * @return WP_Error|array
 	 */
 	public function get_embedded_purchase() {
+		$payment_order_id  = explode( '/', WC()->session->get( 'swedbank_pay_paymentorder_id' ) );
+		$payment_order_id  = array_pop( $payment_order_id );
+		$context           = array(
+			'payment_order_id' => $payment_order_id,
+		);
+		LogUtility::$title = "[CHECKOUT]: Get embedded checkout for payment order ID #{$context['payment_order_id']}";
+
 		$view_session_url = WC()->session->get( 'swedbank_pay_view_session_url' );
 		$result           = $this->request( 'GET', $view_session_url );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() );
+
 			/** @var \WP_Error $result */
-			Swedbank_Pay()->logger()->debug(
-				sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() )
+			Swedbank_Pay()->logger()->error(
+				"[CHECKOUT]: Get embedded checkout for payment order ID #{$context['payment_order_id']}",
+				$context
 			);
 
 			return $result;
@@ -299,11 +321,22 @@ class Swedbank_Pay_Api {
 		$payment_order_object = new PaymentorderObject();
 		$payment_order_object->setPaymentorder( $payment_order );
 
-		$result = $this->request( 'PATCH', $update_payment_url, $payment_order_object );
+		$payment_order_id = explode( '/', WC()->session->get( 'swedbank_pay_paymentorder_id' ) );
+		$payment_order_id = array_pop( $payment_order_id );
+
+		$context = array(
+			'payment_order_id' => $payment_order_id,
+		);
+
+		LogUtility::$title = "[CHECKOUT]: Update embedded checkout for payment order ID #{$context['payment_order_id']}";
+		$result            = $this->request( 'PATCH', $update_payment_url, $payment_order_object );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() );
+
 			/** @var \WP_Error $result */
-			Swedbank_Pay()->logger()->debug(
-				sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() )
+			Swedbank_Pay()->logger()->error(
+				"[CHECKOUT]: Update embedded purchase for payment order ID #{$context['payment_order_id']}",
+				$context
 			);
 
 			return $result;
@@ -333,7 +366,7 @@ class Swedbank_Pay_Api {
 		}
 
 		if ( empty( $url ) ) {
-			return new \WP_Error( 'validation', 'Invalid url' );
+			return new WP_Error( 'validation', 'Invalid url' );
 		}
 
 		// Process params.
@@ -346,15 +379,15 @@ class Swedbank_Pay_Api {
 			}
 		);
 
-		$start = microtime( true );
-		Swedbank_Pay()->logger()->debug(
-			sprintf(
-				'Request: %s %s %s',
-				$method,
-				$url,
-				json_encode( $params, JSON_PRETTY_PRINT )
-			)
+		$context = array(
+			'method'           => $method,
+			'url'              => $url,
+			'params'           => wp_json_encode( $params, JSON_PRETTY_PRINT ),
+			'action'           => $action ?? 'api_request',
+			'payment_order_id' => isset( WC()->session ) ? WC()->session->get( 'swedbank_pay_paymentorder_id' ) : null,
 		);
+
+		$start = microtime( true );
 
 		try {
 			/** @var \SwedbankPay\Api\Response $response */
@@ -364,21 +397,22 @@ class Swedbank_Pay_Api {
 			$response_body = $client->getResponseBody();
 			$result        = json_decode( $response_body, true );
 			$time          = microtime( true ) - $start;
-			Swedbank_Pay()->logger()->debug(
-				sprintf( '[%.4F] Response: %s', $time, $response_body )
-			);
+
+			$context['time'] = $time;
+			LogUtility::log_request( '', $client, WC_Log_Levels::DEBUG, $context );
 
 			return $result;
 		} catch ( \KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception $exception ) {
-			$httpCode = (int) self::get_client()->getResponseCode();
-			$time     = microtime( true ) - $start;
-			Swedbank_Pay()->logger()->debug(
-				sprintf(
-					'[%.4F] Client Exception. Check debug info: %s',
-					$time,
-					self::get_client()->getDebugInfo()
-				)
+			$http_code = (int) self::get_client()->getResponseCode();
+			$time      = microtime( true ) - $start;
+
+			$context['error'] = sprintf(
+				'[%.4F] Client Exception. Check debug info: %s',
+				$time,
+				self::get_client()->getDebugInfo()
 			);
+			$client           = empty( $client ) ? self::get_client() : $client;
+			LogUtility::log_request( '', $client, WC_Log_Levels::ERROR, $context );
 
 			// https://tools.ietf.org/html/rfc7807
 			$response_body = self::get_client()->getResponseBody() ?? '{}';
@@ -403,10 +437,10 @@ class Swedbank_Pay_Api {
 					}
 				}
 
-				return new \WP_Error( $httpCode, $message );
+				return new WP_Error( $http_code, $message );
 			}
 
-			return new \WP_Error( 'api_generic', 'API Exception. Please check logs' );
+			return new WP_Error( 'api_generic', 'API Exception. Please check logs' );
 		}
 	}
 
@@ -418,12 +452,16 @@ class Swedbank_Pay_Api {
 	 * @return bool
 	 */
 	public function is_captured( $payment_id_url ) {
-		// Fetch transactions list
-		$result           = $this->request( 'GET', $payment_id_url . '/financialtransactions' );
-		$transactionsList = $result['financialTransactions']['financialTransactionsList'];
+		$payment_order_id  = explode( '/', $payment_id_url );
+		$payment_order_id  = array_pop( $payment_order_id );
+		LogUtility::$title = "[ORDER MANAGEMENT]: Check if payment is captured for payment ID #{$payment_order_id}";
 
-		// Check if have captured transactions
-		foreach ( $transactionsList as $transaction ) {
+		// Fetch transactions list.
+		$result            = $this->request( 'GET', "{$payment_id_url}/financialtransactions" );
+		$transactions_list = $result['financialTransactions']['financialTransactionsList'];
+
+		// Check if have captured transactions.
+		foreach ( $transactions_list as $transaction ) {
 			// TYPE_SALE is a so-called "1-phase" transaction, which means that the amount is captured immediately after the authorization.
 			// Attempting to still capture these will result in an error from the API.
 			if ( in_array( $transaction['type'], array( self::TYPE_CAPTURE, self::TYPE_SALE ) ) ) {
@@ -438,21 +476,23 @@ class Swedbank_Pay_Api {
 	/**
 	 * Finalize Payment Order.
 	 *
-	 * @param null $transaction_number
+	 * @param WC_Order    $order WC order.
+	 * @param string|null $transaction_number Swedbank transaction ID.
 	 *
 	 * @return true|WP_Error
 	 */
-	public function finalize_payment( WC_Order $order, $transaction_number = null ) {
+	public function finalize_payment( $order, $transaction_number = null ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		Swedbank_Pay()->logger()->debug(
-			sprintf(
-				'Finalize payment for Order #%s. Payment ID: %s. Transaction number: %s',
-				$order->get_id(),
-				$payment_order_id,
-				$transaction_number
-			)
+
+		$context = array(
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $payment_order_id,
 		);
+
+		Swedbank_Pay()->logger()->info( "[FINALIZE]: Finalize payment for order #{$order->get_order_number()}. Payment ID: {$payment_order_id}. Transaction number: {$transaction_number}", $context );
 		if ( empty( $payment_order_id ) ) {
+			Swedbank_Pay()->logger()->error( "[FINALIZE]: Payment Order ID is missing for order #{$order->get_order_number()}.", $context );
 			return new WP_Error(
 				'error',
 				sprintf(
@@ -462,28 +502,27 @@ class Swedbank_Pay_Api {
 			);
 		}
 
-		$data = $this->request( 'GET', $payment_order_id . '/paid' );
+		LogUtility::$title = "[FINALIZE]: Retrieve paid transaction for order #{$order->get_order_number()}";
+		$data              = $this->request( 'GET', "{$payment_order_id}/paid" );
 		if ( is_wp_error( $data ) ) {
+			$context['error'] = $data->get_error_message();
+			Swedbank_Pay()->logger()->error( "[FINALIZE]: Failed to retrieve paid transaction for order #{$order->get_order_number()}.", $context );
+
 			return $data;
 		}
 
 		if ( ! $transaction_number ) {
-			$transaction_number = $data['paid']['number'];
+			$transaction_number            = $data['paid']['number'];
+			$context['transaction_number'] = $transaction_number;
 		}
 
-		$result            = $this->request( 'GET', $payment_order_id . '/financialtransactions' );
+		LogUtility::$title = "[FINALIZE]: Retrieve transactions list for order #{$order->get_order_number()}";
+		$result            = $this->request( 'GET', "{$payment_order_id}/financialtransactions" );
 		$transactions_list = $result['financialTransactions']['financialTransactionsList'] ?? array();
 		// @todo Sort by "created" field using array_multisort
 		foreach ( $transactions_list as $transaction ) {
 			if ( $transaction_number === $transaction['number'] ) {
-				Swedbank_Pay()->logger()->debug(
-					sprintf(
-						'Handle Transaction #%s for Order #%s.',
-						$transaction_number,
-						$order->get_id()
-					)
-				);
-
+				Swedbank_Pay()->logger()->debug( "[FINALIZE]: Handle transaction #{$transaction_number} for order #{$order->get_order_number()}.", $context );
 				return $this->process_transaction( $order, $transaction );
 			}
 		}
@@ -491,12 +530,10 @@ class Swedbank_Pay_Api {
 		// Some Authorize, Sale transaction are not in the list
 		// Financial transaction list is empty, initiate workaround / failback.
 		if ( 0 === count( $transactions_list ) ) {
-			Swedbank_Pay()->logger()->debug(
-				sprintf( 'Transaction List is empty. Run failback for Transaction #%s', $transaction_number )
-			);
+			Swedbank_Pay()->logger()->debug( "[FINALIZE]: Transaction list is empty for order #{$order->get_order_number()}. Run workaround/failback for transaction #{$transaction_number}", $context );
 
 			$transaction = array(
-				'id'             => $payment_order_id . '/financialtransactions/' . uniqid( 'fake' ),
+				'id'             => "{$payment_order_id}/financialtransactions/" . uniqid( 'fake' ),
 				'created'        => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
 				'updated'        => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
 				'type'           => $data['paid']['transactionType'] ?? '',
@@ -529,6 +566,12 @@ class Swedbank_Pay_Api {
 	 */
 	public function process_transaction( WC_Order $order, array $transaction ) {
 		$transaction_id = $transaction['number'];
+		$context        = array(
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'transaction_id'   => $transaction_id,
+			'transaction_type' => $transaction['type'],
+		);
 
 		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts.
 		$order->read_meta_data();
@@ -540,24 +583,28 @@ class Swedbank_Pay_Api {
 		// For free trial subscriptions orders, the list of transactions will always be empty. To allow still processing the transaction, we need to allow an empty list to continue.
 		if ( ! empty( $transactions ) && in_array( $transaction_id, $transactions, true ) ) {
 			Swedbank_Pay()->logger()->debug(
-				sprintf( 'Skip transaction processing #%s. Order ID: %s', $transaction_id, $order->get_id() )
+				"[PROCESS TRANSACTION]: Skip transaction processing #{$transaction_id}. Order number: {$order->get_order_number()}",
+				$context
 			);
 
 			return true;
 		}
 
 		Swedbank_Pay()->logger()->debug(
-			sprintf( 'Process transaction: %s', wp_json_encode( $transaction ) )
+			sprintf( '[PROCESS TRANSACTION]: Process transaction for order #%s: %s', $order->get_order_number(), wp_json_encode( $transaction ) ),
+			$context
 		);
 
 		// Fetch payment info.
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
+			Swedbank_Pay()->logger()->error( "[PROCESS TRANSACTION]: Payment Order ID is missing for order #{$order->get_order_number()}. Cannot retrieve payment order details.", $context );
 			return new \WP_Error( 'missing_payment_id', 'Payment order ID is unknown.' );
 		}
 
-		$payment_order = $this->request( 'GET', $payment_order_id );
-		$payment_order = $payment_order['paymentOrder'];
+		LogUtility::$title = "[PROCESS TRANSACTION]: Retrieve payment order for order #{$order->get_order_number()}";
+		$payment_order     = $this->request( 'GET', $payment_order_id );
+		$payment_order     = $payment_order['paymentOrder'];
 
 		// Apply action.
 		switch ( $transaction['type'] ) {
@@ -588,12 +635,13 @@ class Swedbank_Pay_Api {
 					Swedbank_Pay()->logger()->debug(
 						// translators: 1: payment order ID, 2: transaction ID, 3: transaction amount, 4: order amount.
 						sprintf(
-							'Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingCaptureAmount is missing. Full action?',
+							'[PROCESS TRANSACTION]: Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingCaptureAmount is missing. Full action?',
 							$payment_order_id,
 							$transaction_id,
 							$transaction['amount'] / 100,
 							$order->get_total()
-						)
+						),
+						$context
 					);
 
 					$is_full_capture = true;
@@ -634,24 +682,25 @@ class Swedbank_Pay_Api {
 
 				break;
 			case self::TYPE_REVERSAL:
-				// Check if the payment was refunded fully
-				// `remainingReversalAmount` is missing if the payment was refunded fully
+				// Check if the payment was refunded fully.
+				// `remainingReversalAmount` is missing if the payment was refunded fully.
 				$is_full_refund = false;
 				if ( ! isset( $payment_order['remainingReversalAmount'] ) ) {
 					Swedbank_Pay()->logger()->debug(
 						sprintf(
-							'Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingReversalAmount is missing. Full action?', //phpcs:ignore
+							'[PROCESS TRANSACTION]: Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingReversalAmount is missing. Full action?', //phpcs:ignore
 							$payment_order_id,
 							$transaction_id,
 							$transaction['amount'] / 100,
 							$order->get_total()
-						)
+						),
+						$context
 					);
 
 					$is_full_refund = true;
 				}
 
-				// Update order status
+				// Update order status.
 				if ( $is_full_refund ) {
 					remove_action(
 						'woocommerce_order_status_changed',
@@ -695,7 +744,8 @@ class Swedbank_Pay_Api {
 				// @todo Prent duplicated Credit Memo creation (by backend, by admin, by transaction callback)
 				break;
 			default:
-				return new \WP_Error( sprintf( 'Error: Unknown type %s', $transaction['type'] ) );
+				Swedbank_Pay()->logger()->debug( sprintf( '[PROCESS TRANSACTION]: Unknown transaction type %s for order #%s', $transaction['type'], $order->get_order_number() ), $context );
+				return new WP_Error( sprintf( 'Error: Unknown type %s', $transaction['type'] ) );
 		}
 
 		// Save transaction ID
@@ -703,9 +753,7 @@ class Swedbank_Pay_Api {
 		$order->update_meta_data( '_swedbank_pay_transactions', $transactions );
 		$order->save();
 
-		Swedbank_Pay()->logger()->debug(
-			sprintf( 'Transaction #%s has been processed.', $transaction['number'] )
-		);
+		Swedbank_Pay()->logger()->debug( "[PROCESS TRANSACTION]: Transaction #{$transaction['number']} for order #{$order->get_order_number()} has been processed.", $context );
 
 		return true;
 	}
@@ -730,15 +778,16 @@ class Swedbank_Pay_Api {
 
 		$order_id = $order->get_id();
 
-		$this->log(
-			WC_Log_Levels::INFO,
-			sprintf(
-				'Update order status #%s to %s. Transaction ID: %s',
-				$order_id,
-				$status,
-				$transaction_id
-			)
+		$context = array(
+			'action'           => 'update_order_status',
+			'order_id'         => $order_id,
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $order->get_meta( '_payex_paymentorder_id' ),
+			'transaction_id'   => $transaction_id,
+			'status'           => $status,
 		);
+
+		Swedbank_Pay()->logger()->info( "[UPDATE STATUS]: Update order #{$context['order_number']} status to '{$context['status']}' with transaction ID: {$context['transaction_id']}'", $context );
 
 		switch ( $status ) {
 			case 'checkout-draft':
@@ -831,6 +880,7 @@ class Swedbank_Pay_Api {
 		}
 
 		if ( empty( $this->payment_orders[ $payment_order_id ] ) ) {
+			LogUtility::$title                         = "[ORDER MANAGEMENT]: Retrieve capture status for order #{$order->get_order_number()}";
 			$this->payment_orders[ $payment_order_id ] = $this->request( 'GET', $payment_order_id );
 		}
 
@@ -856,6 +906,7 @@ class Swedbank_Pay_Api {
 		}
 
 		if ( empty( $this->payment_orders[ $payment_order_id ] ) ) {
+			LogUtility::$title                         = "[ORDER MANAGEMENT]: Retrieve cancellation status for order #{$order->get_order_number()}";
 			$this->payment_orders[ $payment_order_id ] = $this->request( 'GET', $payment_order_id );
 		}
 
@@ -881,6 +932,7 @@ class Swedbank_Pay_Api {
 		}
 
 		if ( empty( $this->payment_orders[ $payment_order_id ] ) ) {
+			LogUtility::$title                         = "[ORDER MANAGEMENT]: Retrieve refund status for order #{$order->get_order_number()}";
 			$this->payment_orders[ $payment_order_id ] = $this->request( 'GET', $payment_order_id );
 		}
 
@@ -912,6 +964,13 @@ class Swedbank_Pay_Api {
 			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
 		}
 
+		$context = array(
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $payment_order_id,
+			'action'           => 'capture_checkout',
+		);
+
 		$helper           = new Order( $order, $items );
 		$transaction_data = $helper->get_transaction_data()->setDescription( sprintf( 'Capture for Order #%s', $order->get_order_number() ) );
 
@@ -925,10 +984,14 @@ class Swedbank_Pay_Api {
 		try {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $request_service->send();
+			$result           = $response_service->getResponseResource()->__toArray();
 
-			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
-
-			$result = $response_service->getResponseResource()->__toArray();
+			LogUtility::log_request(
+				'[ORDER MANAGEMENT]: capture checkout',
+				$request_service->getClient(),
+				WC_Log_Levels::DEBUG,
+				$context
+			);
 
 			// Save transaction.
 			$transaction = $result['capture']['transaction'];
@@ -937,13 +1000,15 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
-
-			Swedbank_Pay()->logger()->error(
-				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
+			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
+			LogUtility::log_request(
+				'[ORDER MANAGEMENT]: capture checkout',
+				$request_service->getClient(),
+				WC_Log_Levels::ERROR,
+				$context
 			);
 
-			return new \WP_Error(
+			return new WP_Error(
 				'capture',
 				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
@@ -961,6 +1026,13 @@ class Swedbank_Pay_Api {
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
 		}
+
+		$context = array(
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $payment_order_id,
+			'action'           => 'cancel_checkout',
+		);
 
 		$helper = new Order( $order );
 
@@ -985,7 +1057,12 @@ class Swedbank_Pay_Api {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
+			LogUtility::log_request(
+				'[ORDER MANAGEMENT]: cancel checkout',
+				$request_service->getClient(),
+				WC_Log_Levels::DEBUG,
+				$context
+			);
 
 			$result = $response_service->getResponseResource()->__toArray();
 
@@ -996,13 +1073,15 @@ class Swedbank_Pay_Api {
 
 			return $result;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
-
-			Swedbank_Pay()->logger()->error(
-				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
+			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
+			LogUtility::log_request(
+				'[ORDER MANAGEMENT]: cancel checkout',
+				$request_service->getClient(),
+				WC_Log_Levels::ERROR,
+				$context
 			);
 
-			return new \WP_Error(
+			return new WP_Error(
 				'cancel',
 				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
@@ -1024,6 +1103,14 @@ class Swedbank_Pay_Api {
 			return new WP_Error( 0, 'Unable to get the payment order ID' );
 		}
 
+		$context = array(
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $payment_order_id,
+			'action'           => 'refund_amount',
+			'amount'           => $amount,
+		);
+
 		$helper           = new Order( $order );
 		$transaction_data = $helper->get_transaction_data()
 			->setAmount( round( $amount * 100 ) )
@@ -1041,7 +1128,12 @@ class Swedbank_Pay_Api {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
+			LogUtility::log_request(
+				'[ORDER MANAGEMENT]: refund amount',
+				$request_service->getClient(),
+				WC_Log_Levels::DEBUG,
+				$context
+			);
 
 			$result = $response_service->getResponseData();
 			// FIXME: Remove this.
@@ -1054,13 +1146,15 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
-
-			Swedbank_Pay()->logger()->error(
-				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
+			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
+			LogUtility::log_request(
+				'[ORDER MANAGEMENT]: refund amount',
+				$request_service->getClient(),
+				WC_Log_Levels::ERROR,
+				$context
 			);
 
-			return new \WP_Error(
+			return new WP_Error(
 				'refund',
 				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
@@ -1098,11 +1192,24 @@ class Swedbank_Pay_Api {
 			->setClient( self::get_client() )
 			->setPaymentOrderId( $payment_order_id );
 
+		$context = array(
+			'order_id'         => $order->get_id(),
+			'order_number'     => $order->get_order_number(),
+			'payment_order_id' => $payment_order_id,
+			'action'           => 'refund_payment',
+			'amount'           => $amount,
+		);
+
 		try {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $request_service->send();
 
-			Swedbank_Pay()->logger()->debug( $request_service->getClient()->getDebugInfo() );
+			LogUtility::log_request(
+				'[ORDER MANAGEMENT]: refund amount',
+				$request_service->getClient(),
+				WC_Log_Levels::DEBUG,
+				$context
+			);
 
 			$result = $response_service->getResponseData();
 			$result = $response_service->getResponseResource()->__toArray();
@@ -1114,51 +1221,19 @@ class Swedbank_Pay_Api {
 
 			return $transaction;
 		} catch ( ClientException $e ) {
-			Swedbank_Pay()->logger()->error( $request_service->getClient()->getDebugInfo() );
-
-			Swedbank_Pay()->logger()->error(
-				sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() )
+			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
+			LogUtility::log_request(
+				'[ORDER MANAGEMENT]: refund amount',
+				$request_service->getClient(),
+				WC_Log_Levels::ERROR,
+				$context
 			);
 
-			return new \WP_Error(
+			return new WP_Error(
 				'refund',
 				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
-	}
-
-	/**
-	 * Log a message.
-	 *
-	 * @param $level
-	 * @param $message
-	 * @param array $context
-	 *
-	 * @see WC_Log_Levels
-	 */
-	public function log( $level, $message, array $context = array() ) {
-		$logger = wc_get_logger();
-
-		if ( ! is_string( $message ) ) {
-			$message = wp_json_encode( $message );
-		}
-
-		$logger->log(
-			$level,
-			sprintf(
-				'[%s] %s [%s]',
-				$level,
-				$message,
-				count( $context ) > 0 ? wp_json_encode( $context ) : ''
-			),
-			array_merge(
-				$context,
-				array(
-					'source'  => 'payex_checkout',
-					'_legacy' => true,
-				)
-			)
-		);
 	}
 
 	/**

@@ -72,14 +72,14 @@ abstract class CheckoutFlow {
 	public static function process_payment( $order_id, $instrument = null ) {
 		$order = wc_get_order( $order_id );
 		if ( ! $order ) {
-			throw new \Exception( __( 'Invalid order ID.', 'swedbank-pay-payment-menu' ) );
+			throw new \Exception( esc_html__( 'Invalid order ID.', 'swedbank-pay-payment-menu' ) );
 		}
 
 		$handler = self::get_handler( $order );
 
 		Swedbank_Pay()->logger()->info(
 			sprintf(
-				'Processing payment for order %s using %s flow.',
+				'[PROCESS PAYMENT]: Processing payment for order #%s using %s flow.',
 				$handler->get_order_number( $order ),
 				get_class( $handler )
 			),
