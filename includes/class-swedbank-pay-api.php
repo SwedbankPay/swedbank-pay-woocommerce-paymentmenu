@@ -162,6 +162,13 @@ class Swedbank_Pay_Api {
 				->setMode( wc_string_to_bool( $settings['testmode'] ?? 'no' ) ? Client::MODE_TEST : Client::MODE_PRODUCTION )
 				->setUserAgent( $user_agent );
 
+		$base_url = $client->getBaseUrl();
+		// Replace payex.com with swedbankpay.com. Can be disabled using the filter `swedbank_pay_replace_base_url` and returning false instead of true.
+		if ( apply_filters( 'swedbank_pay_replace_base_url', true ) && strpos( $base_url, 'payex.com' ) !== false ) {
+			$base_url = str_replace( 'payex.com', 'swedbankpay.com', $base_url );
+			$client->setBaseUrl( $base_url );
+		}
+
 		return apply_filters( 'swedbank_pay_client', $client );
 	}
 
