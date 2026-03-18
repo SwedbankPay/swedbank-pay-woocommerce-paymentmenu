@@ -218,6 +218,8 @@ class Swedbank_Pay_Api {
 	/**
 	 * Create a Client for payment.
 	 *
+	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
+	 *
 	 * @return WP_Error|ResponseServiceInterface
 	 */
 	public function initiate_embedded_purchase( $instrument = null ) {
