@@ -6,7 +6,7 @@ Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 5.5.1
 WC tested up to: 10.6.1
-Stable tag: 4.3.4
+Stable tag: 4.4.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,11 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.03.23    - version 4.4.0 =
+* Feature       - Added support for splitting the payment methods from Swedbank Pay into separate payment methods in WooCommerce. Currently only supported for the redirect flow.
+* Fix           - The selected language setting is now also used for the 'Seamless Menu' checkout flow.
+* Tweak         - Changed the default API base URL from payex.com to swedbankpay.com. Use the 'swedbank_pay_replace_base_url' filter to opt out.
+
 = 2026.03.16    - version 4.3.4 =
 * Enhancement   - Added support for Estonian, Latvian, and Lithuanian.
 * Enhancement   - Improved and extended logging, including support for custom log titles, making entries easier to identify.

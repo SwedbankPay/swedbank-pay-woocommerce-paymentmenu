@@ -83,6 +83,7 @@ class InlineEmbedded extends CheckoutFlow {
 
 		$params = array(
 			'script_debug'     => defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG,
+			'culture'          => $this->gateway->get_option( 'culture', 'en-US' ),
 			'payment_complete' => $this->is_payment_complete,
 		);
 
@@ -222,12 +223,13 @@ class InlineEmbedded extends CheckoutFlow {
 	/**
 	 * Process the payment for the WooCommerce order.
 	 *
-	 * @param \WC_Order $order The WooCommerce order to be processed.
+	 * @param \WC_Order   $order The WooCommerce order to be processed.
+	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
 	 *
 	 * @throws \Exception If there is an error during the payment processing.
 	 * @return array{redirect: array|bool|string, result: string}
 	 */
-	public function process( $order ) {
+	public function process( $order, $instrument = null ) {
 		$has_subscription = Swedbank_Pay_Subscription::order_has_subscription( $order );
 		if ( ! $has_subscription && swedbank_pay_is_zero( $order->get_total() ) ) {
 			throw new \Exception( 'Zero order is not supported.' );
@@ -313,9 +315,11 @@ class InlineEmbedded extends CheckoutFlow {
 	/**
 	 * Output the payment fields content for the handler.
 	 *
+	 * @param string $gateway_id The gateway ID to determine the correct container for the checkout. Defaults to 'payex_checkout' which is the main gateway for the embedded flow, but can be a split payment method ID for split payments.
+	 *
 	 * @return void
 	 */
-	protected function payment_fields_content() {
+	protected function payment_fields_content( $gateway_id = 'payex_checkout' ) {
 		?>
 		<?php if ( $this->is_payment_complete ) : ?>
 			<input type="hidden" id="swedbank_pay_payment_complete" name="swedbank_pay_payment_complete" value="1" />

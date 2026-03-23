@@ -2,6 +2,8 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
+use Krokedil\Swedbank\Pay\Gateways\SplitInstrumentBlockSupport;
+
 defined( 'ABSPATH' ) || exit;
 
 use Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry;
@@ -61,7 +63,6 @@ class Swedbank_Pay_Plugin {
 			'plugin_action_links_' . constant( __NAMESPACE__ . '\PLUGIN_PATH' ),
 			__CLASS__ . '::plugin_action_links'
 		);
-		add_action( 'plugins_loaded', array( $this, 'init' ), 0 );
 		add_action( 'woocommerce_init', array( $this, 'woocommerce_init' ) );
 
 		// Filters.
@@ -305,7 +306,8 @@ class Swedbank_Pay_Plugin {
 		$errors = array();
 		foreach ( $dependencies as $dependency ) {
 			if ( ! extension_loaded( $dependency ) ) {
-				/* translators: 1: plugin name */                        $errors[] = sprintf( esc_html__( 'Extension %s is missing.', 'swedbank-pay-payment-menu' ), $dependency );
+				/* translators: 1: plugin name */
+				$errors[] = sprintf( esc_html__( 'Extension %s is missing.', 'swedbank-pay-payment-menu' ), $dependency );
 			}
 		}
 
@@ -421,6 +423,8 @@ class Swedbank_Pay_Plugin {
 					$payment_method_registry->register( new Swedbank_Pay_Blocks_Support() );
 				}
 			);
+
+			add_action( 'woocommerce_blocks_payment_method_type_registration', SplitInstrumentBlockSupport::class . '::register_split_payment_blocks' );
 		}
 	}
 }

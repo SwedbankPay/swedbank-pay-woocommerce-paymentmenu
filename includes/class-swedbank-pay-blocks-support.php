@@ -51,7 +51,7 @@ class Swedbank_Pay_Blocks_Support extends AbstractPaymentMethodType {
 		wp_register_script(
 			'wc-swedbank-pay-blocks-integration',
 			plugin_dir_url( __FILE__ ) . '../assets/js/gutenberg-blocks' . $suffix . '.js',
-			array( 'wp-hooks' ),
+			array( 'wp-hooks', 'wc-settings', 'wc-blocks-registry' ),
 			'1.0.0',
 			true
 		);
@@ -59,11 +59,13 @@ class Swedbank_Pay_Blocks_Support extends AbstractPaymentMethodType {
 		// Localize the script
 		$translation_array = array(
 			'proceed_to'  => sprintf(
-			/* translators: 1: title */                __( 'Proceed to %s', 'swedbank-pay-payment-menu' ),
+				/* translators: 1: title */
+				__( 'Proceed to %s', 'swedbank-pay-payment-menu' ),
 				$this->settings['title']
 			),
 			'payment_via' => sprintf(
-			/* translators: 1: title */                __( 'Payment via %s', 'swedbank-pay-payment-menu' ),
+				/* translators: 1: title */
+				__( 'Payment via %s', 'swedbank-pay-payment-menu' ),
 				$this->settings['title']
 			),
 			'logo_src'    => plugin_dir_url( __FILE__ ) . '../assets/images/checkout.svg',

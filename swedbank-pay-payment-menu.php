@@ -7,7 +7,7 @@
  * Author URI: https://profiles.wordpress.org/swedbankpay/
  * License: Apache License 2.0
  * License URI: http://www.apache.org/licenses/LICENSE-2.0
- * Version: 4.3.4
+ * Version: 4.4.0
  * Text Domain: swedbank-pay-payment-menu
  * Domain Path: /languages
  *
@@ -18,6 +18,8 @@
  * @package SwedbankPay
  */
 
+use Krokedil\Swedbank\Pay\Assets;
+use Krokedil\Swedbank\Pay\Gateways\SplitInstrumentGateway;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 use Krokedil\Swedbank\Pay\OrderManagement;
 use KrokedilSwedbankPayDeps\Krokedil\Support\Logger;
@@ -25,7 +27,7 @@ use KrokedilSwedbankPayDeps\Krokedil\Support\SystemReport;
 
 
 defined( 'ABSPATH' ) || exit;
-define( 'SWEDBANK_PAY_VERSION', '4.3.4' );
+define( 'SWEDBANK_PAY_VERSION', '4.4.0' );
 define( 'SWEDBANK_PAY_MAIN_FILE', __FILE__ );
 define( 'SWEDBANK_PAY_PLUGIN_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
 define( 'SWEDBANK_PAY_PLUGIN_URL', untrailingslashit( plugin_dir_url( __FILE__ ) ) );
@@ -67,6 +69,13 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @var SystemReport
 	 */
 	private $system_report;
+
+	/**
+	 * Assets instance.
+	 *
+	 * @var Assets
+	 */
+	private $assets;
 
 
 	/**
@@ -137,6 +146,15 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	}
 
 	/**
+	 * Assets instance.
+	 *
+	 * @return Assets
+	 */
+	public function assets() {
+		return $this->assets;
+	}
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -201,8 +219,10 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		);
 		$this->system_report    = new SystemReport( 'payex_checkout', 'Swedbank Pay', $system_report_options );
 		$this->order_management = OrderManagement::get_instance();
-
+		$this->assets           = new Assets();
+		// Register the split instruments for the gateway as soon as possible.
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateways' ) );
+		add_filter( 'woocommerce_payment_gateways', SplitInstrumentGateway::class . '::register_split_instrument_gateways', 20, 1 );
 	}
 
 	/**

@@ -1,3 +1,8 @@
+Version 4.4.0
+* Feature       - Added support for splitting the payment methods from Swedbank Pay into separate payment methods in WooCommerce. Currently only supported for the redirect flow.
+* Fix           - The selected language setting is now also used for the 'Seamless Menu' checkout flow.
+* Tweak         - Changed the default API base URL from payex.com to swedbankpay.com. Use the 'swedbank_pay_replace_base_url' filter to opt out.
+
 Version 4.3.4
 * Enhancement   - Added support for Estonian, Latvian, and Lithuanian.
 * Enhancement   - Improved and extended logging, including support for custom log titles, making entries easier to identify.

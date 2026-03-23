@@ -1,7 +1,7 @@
 <?php
 
 use Automattic\WooCommerce\Utilities\OrderUtil;
-use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Order_Item;
+use SwedbankPay\Checkout\WooCommerce\{Swedbank_Pay_Order_Item, Swedbank_Pay_Plugin};
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 
 defined( 'ABSPATH' ) || exit;
@@ -52,10 +52,11 @@ function swedbank_pay_get_order( $paymentOrderId ) {
  * Get Payment Method.
  *
  * @param WC_Order $order
+ * @param bool     $use_base_gateway Whether to return the base gateway for split instruments or the specific split instrument gateway. Default: true.
  *
  * @return null|\WC_Payment_Gateway|\Swedbank_Pay_Payment_Gateway_Checkout
  */
-function swedbank_pay_get_payment_method( WC_Order $order ) {
+function swedbank_pay_get_payment_method( WC_Order $order, bool $use_base_gateway = true ) {
 	// Get Payment Gateway
 	$gateways = WC()->payment_gateways()->payment_gateways();
 	if ( ! isset( $gateways[ $order->get_payment_method() ] ) ) {
@@ -63,7 +64,42 @@ function swedbank_pay_get_payment_method( WC_Order $order ) {
 	}
 
 	/** @var \WC_Payment_Gateway $gateway */
-	return $gateways[ $order->get_payment_method() ];
+	$gateway = $gateways[ $order->get_payment_method() ];
+
+	if ( $use_base_gateway && swedbank_pay_is_payment_swedbank_method( $gateway->id ) ) {
+		$gateway = swedbank_pay_get_payment_method_by_id();
+	}
+
+	return $gateway;
+}
+
+/**
+ * Get Payment Method.
+ *
+ * @param string $id The ID of the payment method in WooCommerce. Default: 'payex_checkout'.
+ *
+ * @return null|\WC_Payment_Gateway|\Swedbank_Pay_Payment_Gateway_Checkout
+ */
+function swedbank_pay_get_payment_method_by_id( string $id = 'payex_checkout' ) {
+	// Get Payment Gateway
+	$gateways = WC()->payment_gateways()->payment_gateways();
+	if ( ! isset( $gateways[ $id ] ) ) {
+		return null;
+	}
+
+	/** @var \WC_Payment_Gateway $gateway */
+	return $gateways[ $id ];
+}
+
+/**
+ * Test if the payment method is a Swedbank Pay payment method.
+ *
+ * @param string $payment_method_id The payment method ID to test.
+ *
+ * @return bool True if the payment method is a Swedbank Pay payment method, false otherwise.
+ */
+function swedbank_pay_is_payment_swedbank_method( string $payment_method_id ) {
+	return in_array( $payment_method_id, Swedbank_Pay_Plugin::PAYMENT_METHODS, true ) || strpos( $payment_method_id, 'swedbank_pay_' ) === 0;
 }
 
 /**
