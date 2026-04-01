@@ -46,7 +46,7 @@ class InstrumentsUtility {
 			),
 			'trustly'                          => array(
 				'instrument' => 'Trustly',
-				'name'       => __( 'Pay by bank', 'swedbank-pay-payment-menu' ),
+				'name'       => __( 'Trustly (Bank transfer)', 'swedbank-pay-payment-menu' ),
 			),
 			'mobile_pay'                       => array(
 				'instrument' => 'MobilePay',
@@ -125,5 +125,4 @@ class InstrumentsUtility {
 
 		return self::get_instruments()[ $instrument ]['instrument'] ?? null;
 	}
-
 }
