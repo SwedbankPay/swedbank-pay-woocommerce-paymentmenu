@@ -26,6 +26,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 			: </strong> <?php echo esc_html( $info['paid']['transactionType'] ); ?>
 		<br/>
 	<?php endif; ?>
+		<?php if ( isset( $info['paid']['payeeReference'] ) ) : ?>
+		<strong><?php esc_html_e( 'Payee Reference', 'swedbank-pay-payment-menu' ); ?>
+			: </strong> <?php echo esc_html( $info['paid']['payeeReference'] ); ?>
+		<br/>
+	<?php endif; ?>
 	<?php if ( $gateway->api->can_capture( $order ) ) : ?>
 		<button id="swedbank_pay_capture"
 				data-nonce="<?php echo esc_attr( wp_create_nonce( 'swedbank_pay' ) ); ?>"
