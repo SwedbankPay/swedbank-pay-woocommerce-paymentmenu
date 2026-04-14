@@ -26,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			: </strong> <?php echo esc_html( $info['paid']['transactionType'] ); ?>
 		<br/>
 	<?php endif; ?>
-		<?php if ( isset( $info['paid']['payeeReference'] ) ) : ?>
+	<?php if ( isset( $info['paid']['payeeReference'] ) ) : ?>
 		<strong><?php esc_html_e( 'Payee Reference', 'swedbank-pay-payment-menu' ); ?>
 			: </strong> <?php echo esc_html( $info['paid']['payeeReference'] ); ?>
 		<br/>
