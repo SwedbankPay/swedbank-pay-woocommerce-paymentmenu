@@ -63,7 +63,12 @@ class Swedbank_Pay_Instant_Capture {
 		}
 
 		// Disable this feature if "Autocomplete" is active.
-		if ( 'yes' === $this->gateway->autocomplete ) {
+		if ( wc_string_to_bool( $this->gateway->autocomplete ) ) {
+			return;
+		}
+
+		$instant_capture = $this->gateway->instant_capture;
+		if ( empty( $instant_capture ) ) {
 			return;
 		}
 
@@ -81,7 +86,7 @@ class Swedbank_Pay_Instant_Capture {
 			try {
 				$this->instant_capture( $order );
 			} catch ( \Exception $e ) {
-				$context['error'] = sprintf( '%s: Warning: %s', __METHOD__, $e->getMessage() );
+				$context['error'] = \sprintf( '%s: Warning: %s', __METHOD__, $e->getMessage() );
 				Swedbank_Pay()->logger()->error( "[INSTANT CAPTURE]: Failed to capture order #{$order->get_order_number()}. Error: {$e->getMessage()}", $context );
 			}
 		}
