@@ -5,8 +5,8 @@ Requires at least: 5.3
 Tested up to: 6.9
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 10.6.1
-Stable tag: 4.4.0
+WC tested up to: 10.7.0
+Stable tag: 4.4.1
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,11 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.04.27    - version 4.4.1 =
+* Fix           - Fixed an issue where automatic capture was sometimes used even when disabled in the plugin settings.
+* Fix           - Corrected the Trustly label on the settings page.
+* Tweak         - Added the 'Payee Reference' field to the admin order metabox.
+
 = 2026.03.23    - version 4.4.0 =
 * Feature       - Added support for splitting the payment methods from Swedbank Pay into separate payment methods in WooCommerce. Currently only supported for the redirect flow.
 * Fix           - The selected language setting is now also used for the 'Seamless Menu' checkout flow.
