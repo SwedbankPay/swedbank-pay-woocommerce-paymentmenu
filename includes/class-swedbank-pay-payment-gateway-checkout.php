@@ -216,6 +216,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			case 'fi':
 				$locale = 'fi_FI';
 				break;
+			case 'et':
+				$locale = 'et_EE';
+				break;
+			case 'lv':
+				$locale = 'lv_LV';
+				break;
 			default:
 				break;
 		}
