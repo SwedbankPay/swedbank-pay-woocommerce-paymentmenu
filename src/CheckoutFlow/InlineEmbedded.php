@@ -83,7 +83,7 @@ class InlineEmbedded extends CheckoutFlow {
 
 		$params = array(
 			'script_debug'     => defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG,
-			'culture'          => $this->gateway->get_option( 'culture', 'en-US' ),
+			'culture'          => $this->gateway->culture,
 			'payment_complete' => $this->is_payment_complete,
 		);
 
