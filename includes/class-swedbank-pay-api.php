@@ -15,15 +15,17 @@ use Swedbank_Pay_Payment_Gateway_Checkout;
 use Krokedil\Swedbank\Pay\Helpers\Order;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCaptureV3;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCancelV3;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionReversalV3;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\TransactionCapture;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\TransactionCancel;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\TransactionReversal;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\GetPaymentorder;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Resource\Response\PaymentorderResponse;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
 
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Verify;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\Verify;
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
@@ -160,7 +162,9 @@ class Swedbank_Pay_Api {
 		$client->setAccessToken( $settings['access_token'] ?? '' )
 				->setPayeeId( $settings['payee_id'] ?? '' )
 				->setMode( wc_string_to_bool( $settings['testmode'] ?? 'no' ) ? Client::MODE_TEST : Client::MODE_PRODUCTION )
-				->setUserAgent( $user_agent );
+				->setUserAgent( $user_agent )
+				->setApiVersion( '3.1' )
+				->setHeaders();
 
 		$base_url = $client->getBaseUrl();
 		// Replace payex.com with swedbankpay.com. Can be disabled using the filter `swedbank_pay_replace_base_url` and returning false instead of true.
@@ -247,6 +251,7 @@ class Swedbank_Pay_Api {
 
 		if ( $is_verify ) {
 			$purchase_request = new Verify( $payment_order_object );
+			$purchase_request->setExpands( array( 'paid' ) );
 		} else {
 			$purchase_request = new Purchase( $payment_order_object );
 		}
@@ -612,8 +617,12 @@ class Swedbank_Pay_Api {
 		}
 
 		LogUtility::$title = "[PROCESS TRANSACTION]: Retrieve payment order for order #{$order->get_order_number()}";
-		$payment_order     = $this->request( 'GET', $payment_order_id );
-		$payment_order     = $payment_order['paymentOrder'];
+		$payment_order     = $this->get_payment_order( $payment_order_id );
+		if ( is_wp_error( $payment_order ) ) {
+			$context['error'] = $payment_order->get_error_message();
+			Swedbank_Pay()->logger()->error( "[PROCESS TRANSACTION]: Failed to retrieve payment order for order #{$order->get_order_number()}.", $context );
+			return $payment_order;
+		}
 
 		// Apply action.
 		switch ( $transaction['type'] ) {
@@ -636,11 +645,10 @@ class Swedbank_Pay_Api {
 				}
 				break;
 			case self::TYPE_CAPTURE:
-				$is_full_capture = false;
+				$remaining_capture = $payment_order->getRemainingCaptureAmount();
+				$is_full_capture   = null === $remaining_capture;
 
-				// Check if the payment was captured fully.
-				// `remainingCaptureAmount` is missing if the payment was captured fully.
-				if ( ! isset( $payment_order['remainingCaptureAmount'] ) ) {
+				if ( $is_full_capture ) {
 					Swedbank_Pay()->logger()->debug(
 						// translators: 1: payment order ID, 2: transaction ID, 3: transaction amount, 4: order amount.
 						sprintf(
@@ -652,8 +660,6 @@ class Swedbank_Pay_Api {
 						),
 						$context
 					);
-
-					$is_full_capture = true;
 				}
 
 				$captured_amount = wc_price( $transaction['amount'] / 100, array( 'currency' => $order->get_currency() ) );
@@ -668,9 +674,8 @@ class Swedbank_Pay_Api {
 					);
 					$order->add_order_note( $message );
 				} else {
-					$remaining_amount = isset( $payment_order['remainingCaptureAmount'] ) ? $payment_order['remainingCaptureAmount'] / 100 : 0;
-					$price            = wc_price( $remaining_amount, array( 'currency' => $order->get_currency() ) );
-					$message          = sprintf(
+					$price   = wc_price( $remaining_capture / 100, array( 'currency' => $order->get_currency() ) );
+					$message = sprintf(
 						// translators: 1: transaction ID, 2: transaction amount, 3: remaining amount.
 						__( 'Payment has been partially captured: Transaction: %1$s. Amount: %2$s. Remaining amount: %3$s', 'swedbank-pay-payment-menu' ),
 						$transaction_id,
@@ -691,10 +696,10 @@ class Swedbank_Pay_Api {
 
 				break;
 			case self::TYPE_REVERSAL:
-				// Check if the payment was refunded fully.
-				// `remainingReversalAmount` is missing if the payment was refunded fully.
-				$is_full_refund = false;
-				if ( ! isset( $payment_order['remainingReversalAmount'] ) ) {
+				$remaining_reversal = $payment_order->getRemainingReversalAmount();
+				$is_full_refund     = null === $remaining_reversal;
+
+				if ( $is_full_refund ) {
 					Swedbank_Pay()->logger()->debug(
 						sprintf(
 							'[PROCESS TRANSACTION]: Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingReversalAmount is missing. Full action?', //phpcs:ignore
@@ -705,8 +710,6 @@ class Swedbank_Pay_Api {
 						),
 						$context
 					);
-
-					$is_full_refund = true;
 				}
 
 				// Update order status.
@@ -734,8 +737,7 @@ class Swedbank_Pay_Api {
 						$message
 					);
 				} else {
-					$remaining_amount = isset( $payment_order['remainingReversalAmount'] )
-						? $payment_order['remainingReversalAmount'] / 100 : 0;
+					$remaining_amount = $remaining_reversal / 100;
 
 					$message = sprintf(
 						'Payment has been partially refunded: Transaction: %s. Amount: %s. Remaining amount: %s', //phpcs:ignore
@@ -876,6 +878,47 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Fetch the typed v3.1 paymentOrder resource for the given ID, with per-request caching.
+	 *
+	 * @param string $payment_order_id Payment order resource path, e.g. "/psp/paymentorders/...".
+	 * @return \KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Resource\Data\PaymentOrderInterface|\WP_Error
+	 */
+	private function get_payment_order( $payment_order_id ) {
+		if ( empty( $payment_order_id ) ) {
+			return new WP_Error( 'missing_payment_id', 'Payment order ID is unknown.' );
+		}
+
+		if ( isset( $this->payment_orders[ $payment_order_id ] ) ) {
+			return $this->payment_orders[ $payment_order_id ];
+		}
+
+		$request = ( new GetPaymentorder() )
+			->setClient( self::get_client() )
+			->setRequestEndpoint( $payment_order_id );
+
+		try {
+			/** @var ResponseServiceInterface $response */
+			$response = $request->send();
+		} catch ( ClientException $e ) {
+			return new WP_Error(
+				'get_paymentorder',
+				$this->format_error_message( $request->getClient()->getResponseBody(), $e->getMessage() )
+			);
+		}
+
+		/** @var PaymentorderResponse $resource */
+		$resource      = $response->getResponseResource();
+		$payment_order = $resource ? $resource->getPaymentOrder() : null;
+		if ( ! $payment_order ) {
+			return new WP_Error( 'get_paymentorder', 'Payment order resource missing in response.' );
+		}
+
+		$this->payment_orders[ $payment_order_id ] = $payment_order;
+
+		return $payment_order;
+	}
+
+	/**
 	 * Can Capture.
 	 *
 	 * @param WC_Order $order
@@ -883,22 +926,14 @@ class Swedbank_Pay_Api {
 	 * @return bool
 	 */
 	public function can_capture( WC_Order $order ) {
-		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		if ( empty( $payment_order_id ) ) {
+		LogUtility::$title = "[ORDER MANAGEMENT]: Retrieve capture status for order #{$order->get_order_number()}";
+		$payment_order     = $this->get_payment_order( $order->get_meta( '_payex_paymentorder_id' ) );
+		if ( is_wp_error( $payment_order ) ) {
 			return false;
 		}
 
-		if ( empty( $this->payment_orders[ $payment_order_id ] ) ) {
-			LogUtility::$title                         = "[ORDER MANAGEMENT]: Retrieve capture status for order #{$order->get_order_number()}";
-			$this->payment_orders[ $payment_order_id ] = $this->request( 'GET', $payment_order_id );
-		}
-
-		if ( is_wp_error( $this->payment_orders[ $payment_order_id ] ) ) {
-			return false;
-		}
-
-		return isset( $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingCaptureAmount'] )
-				&& (float) $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingCaptureAmount'] > 0.1;
+		$remaining = $payment_order->getRemainingCaptureAmount();
+		return null !== $remaining && (float) $remaining > 0.1;
 	}
 
 	/**
@@ -909,22 +944,14 @@ class Swedbank_Pay_Api {
 	 * @return bool
 	 */
 	public function can_cancel( WC_Order $order ) {
-		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		if ( empty( $payment_order_id ) ) {
+		LogUtility::$title = "[ORDER MANAGEMENT]: Retrieve cancellation status for order #{$order->get_order_number()}";
+		$payment_order     = $this->get_payment_order( $order->get_meta( '_payex_paymentorder_id' ) );
+		if ( is_wp_error( $payment_order ) ) {
 			return false;
 		}
 
-		if ( empty( $this->payment_orders[ $payment_order_id ] ) ) {
-			LogUtility::$title                         = "[ORDER MANAGEMENT]: Retrieve cancellation status for order #{$order->get_order_number()}";
-			$this->payment_orders[ $payment_order_id ] = $this->request( 'GET', $payment_order_id );
-		}
-
-		if ( is_wp_error( $this->payment_orders[ $payment_order_id ] ) ) {
-			return false;
-		}
-
-		return isset( $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingCancellationAmount'] )
-				&& (float) $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingCancellationAmount'] > 0.1;
+		$remaining = $payment_order->getRemainingCancellationAmount();
+		return null !== $remaining && (float) $remaining > 0.1;
 	}
 
 	/**
@@ -935,22 +962,14 @@ class Swedbank_Pay_Api {
 	 * @return bool
 	 */
 	public function can_refund( WC_Order $order ) {
-		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		if ( empty( $payment_order_id ) ) {
+		LogUtility::$title = "[ORDER MANAGEMENT]: Retrieve refund status for order #{$order->get_order_number()}";
+		$payment_order     = $this->get_payment_order( $order->get_meta( '_payex_paymentorder_id' ) );
+		if ( is_wp_error( $payment_order ) ) {
 			return false;
 		}
 
-		if ( empty( $this->payment_orders[ $payment_order_id ] ) ) {
-			LogUtility::$title                         = "[ORDER MANAGEMENT]: Retrieve refund status for order #{$order->get_order_number()}";
-			$this->payment_orders[ $payment_order_id ] = $this->request( 'GET', $payment_order_id );
-		}
-
-		if ( is_wp_error( $this->payment_orders[ $payment_order_id ] ) ) {
-			return false;
-		}
-
-		return isset( $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingReversalAmount'] )
-				&& (float) $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingReversalAmount'] > 0.1;
+		$remaining = $payment_order->getRemainingReversalAmount();
+		return null !== $remaining && (float) $remaining > 0.1;
 	}
 
 	/**
@@ -986,14 +1005,14 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$request_service = ( new TransactionCaptureV3( $transaction ) )
+		$request_service = ( new TransactionCapture( $transaction ) )
 			->setClient( self::get_client() )
-			->setPaymentOrderId( $payment_order_id );
+			->setPaymentOrderId( $payment_order_id )
+			->setExpands( array( 'financialtransactions', 'paid' ) );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
 			$response_service = $request_service->send();
-			$result           = $response_service->getResponseResource()->__toArray();
 
 			LogUtility::log_request(
 				'[ORDER MANAGEMENT]: capture checkout',
@@ -1002,8 +1021,9 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			// Save transaction.
-			$transaction = $result['capture']['transaction'];
+			$transaction = $this->financial_transaction_to_array(
+				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			);
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1058,9 +1078,10 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$request_service = ( new TransactionCancelV3( $transaction ) )
+		$request_service = ( new TransactionCancel( $transaction ) )
 			->setClient( self::get_client() )
-			->setPaymentOrderId( $payment_order_id );
+			->setPaymentOrderId( $payment_order_id )
+			->setExpands( array( 'financialtransactions', 'paid' ) );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
@@ -1073,14 +1094,13 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$result = $response_service->getResponseResource()->__toArray();
-
-			// Save transaction.
-			$transaction = $result['cancellation']['transaction'];
+			$transaction = $this->financial_transaction_to_array(
+				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			);
 
 			$this->process_transaction( $order, $transaction );
 
-			return $result;
+			return $transaction;
 		} catch ( ClientException $e ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
 			LogUtility::log_request(
@@ -1103,7 +1123,7 @@ class Swedbank_Pay_Api {
 	 * @param WC_Order $order The order object
 	 * @param float    $amount The amount to refund
 	 *
-	 * @return TransactionObject|\WP_Error Returns the refunded transaction object or WP_Error on failure
+	 * @return array|\WP_Error Returns the refunded transaction data or WP_Error on failure
 	 * @throws ClientException
 	 */
 	public function refund_amount( WC_Order $order, $amount ) {
@@ -1129,9 +1149,10 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$request_service = ( new TransactionReversalV3( $transaction ) )
+		$request_service = ( new TransactionReversal( $transaction ) )
 			->setClient( self::get_client() )
-			->setPaymentOrderId( $payment_order_id );
+			->setPaymentOrderId( $payment_order_id )
+			->setExpands( array( 'financialtransactions', 'paid' ) );
 
 		try {
 			/** @var ResponseServiceInterface $response_service */
@@ -1144,12 +1165,9 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$result = $response_service->getResponseData();
-			// FIXME: Remove this.
-			$result = $response_service->getResponseResource()->__toArray();
-
-			// Save transaction.
-			$transaction = $result['reversal']['transaction'];
+			$transaction = $this->financial_transaction_to_array(
+				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			);
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1197,9 +1215,10 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$request_service = ( new TransactionReversalV3( $transaction ) )
+		$request_service = ( new TransactionReversal( $transaction ) )
 			->setClient( self::get_client() )
-			->setPaymentOrderId( $payment_order_id );
+			->setPaymentOrderId( $payment_order_id )
+			->setExpands( array( 'financialtransactions', 'paid' ) );
 
 		$context = array(
 			'order_id'         => $order->get_id(),
@@ -1220,11 +1239,9 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$result = $response_service->getResponseData();
-			$result = $response_service->getResponseResource()->__toArray();
-
-			// Save transaction.
-			$transaction = $result['reversal']['transaction'];
+			$transaction = $this->financial_transaction_to_array(
+				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			);
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1243,6 +1260,29 @@ class Swedbank_Pay_Api {
 				$this->format_error_message( $request_service->getClient()->getResponseBody(), $e->getMessage() )
 			);
 		}
+	}
+
+	/**
+	 * Bridge a typed v3.1 FinancialTransaction to the array shape that
+	 * {@see process_transaction()} expects.
+	 *
+	 * @param mixed $ft FinancialTransaction|null
+	 * @return array
+	 */
+	private function financial_transaction_to_array( $ft ) {
+		if ( empty( $ft ) ) {
+			return array();
+		}
+
+		return array(
+			'number'         => $ft->getNumber(),
+			'type'           => $ft->getType(),
+			'amount'         => $ft->getAmount(),
+			'created'        => $ft->getCreated(),
+			'updated'        => $ft->getUpdated(),
+			'description'    => $ft->getDescription(),
+			'payeeReference' => $ft->getPayeeReference(),
+		);
 	}
 
 	/**

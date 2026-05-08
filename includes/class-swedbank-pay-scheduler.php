@@ -8,6 +8,8 @@
 
 namespace SwedbankPay\Checkout\WooCommerce;
 
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Resource\Response\CallbackPayload;
+
 defined( 'ABSPATH' ) || exit;
 
 
@@ -64,33 +66,33 @@ class Swedbank_Pay_Scheduler {
 		Swedbank_Pay()->logger()->info( sprintf( '[SCHEDULER]: Start task: %s', wp_json_encode( array( $payment_method_id, $webhook_data ) ) ), $context );
 
 		try {
-			$data = json_decode( $webhook_data, true );
-			if ( empty( $data ) ) {
+			try {
+				$payload = new CallbackPayload( $webhook_data );
+			} catch ( \Throwable $e ) {
 				throw new \WP_Exception( 'Invalid webhook data' );
 			}
 
-			if ( ! isset( $data['paymentOrder']['id'] ) ) {
+			$payment_order = $payload->getPaymentOrder();
+			if ( ! $payment_order || ! $payment_order->getId() ) {
 				throw new \WP_Exception( 'Error: Invalid paymentOrder value' );
 			}
 
-			if ( ! isset( $data['transaction']['number'] ) ) {
-				throw new \WP_Exception( 'Error: Invalid transaction number' );
-			}
-
-			$transaction_number          = $data['transaction']['number'];
-			$payment_order_id            = $data['paymentOrder']['id'];
-			$context['transaction_id']   = $transaction_number;
+			$payment_order_id            = $payment_order->getId();
+			$payment_number              = $payment_order->getNumber();
+			$order_reference             = $payload->getOrderReference();
 			$context['payment_order_id'] = $payment_order_id;
+			$context['payment_number']   = $payment_number;
+			$context['order_reference']  = $order_reference;
 
-			if ( isset( $data['orderReference'] ) ) {
+			if ( ! empty( $order_reference ) ) {
 				// Use the order reference for quicker lookup.
-				$order = wc_get_order( $data['orderReference'] );
-				if ( $order->get_meta( '_payex_paymentorder_id' ) !== $payment_order_id ) {
+				$order = wc_get_order( $order_reference );
+				if ( ! $order || $order->get_meta( '_payex_paymentorder_id' ) !== $payment_order_id ) {
 
 					// Fallback to payment order ID if the order reference does not match.
 					$order = swedbank_pay_get_order( $payment_order_id );
 					if ( ! $order ) {
-						Swedbank_Pay()->logger()->error( "[SCHEDULER]: Failed to find order with order reference: {$data['orderReference']} and payment order ID: $payment_order_id", $context );
+						Swedbank_Pay()->logger()->error( "[SCHEDULER]: Failed to find order with order reference: {$order_reference} and payment order ID: $payment_order_id", $context );
 						throw new \Exception( "[SCHEDULER]: Failed to find order with payment order ID: $payment_order_id" );
 					}
 				}
@@ -115,21 +117,17 @@ class Swedbank_Pay_Scheduler {
 				Swedbank_Pay()->logger()->error( "[SCHEDULER]: Order #{$order->get_order_number()} has not been paid with the swedbank pay. Payment method: {$order->get_payment_method()}", $context );
 				return false;
 			}
-
-			$transactions = (array) $order->get_meta( '_swedbank_pay_transactions' );
-			if ( in_array( $transaction_number, $transactions, true ) ) {
-				Swedbank_Pay()->logger()->info( "[SCHEDULER]: The order #{$order->get_order_number()} with transaction ID #{$transaction_number} has already been processed.", $context );
-				return false;
-			}
 		} catch ( \WP_Exception $e ) {
 			$context['error'] = $e->getMessage();
 			Swedbank_Pay()->logger()->error( "[SCHEDULER]: Validation error: {$e->getMessage()}", $context );
 			return false;
 		}
 
-		// @todo Use https://developer.swedbankpay.com/checkout-v3/features/core/callback
-		Swedbank_Pay()->logger()->info( "[SCHEDULER]: Attempting to finalize payment for order #{$context['order_number']} with transaction ID #{$context['transaction_id']}.", $context );
-		$result = $gateway->api->finalize_payment( $order, $transaction_number );
+		// v3.1 callbacks no longer carry a transaction.number; finalize_payment falls back
+		// to the paymentOrder's `paid` resource to discover the right transaction.
+		// process_transaction() dedupes by financial transaction id internally.
+		Swedbank_Pay()->logger()->info( "[SCHEDULER]: Attempting to finalize payment for order #{$context['order_number']} with payment number #{$context['payment_number']}.", $context );
+		$result = $gateway->api->finalize_payment( $order );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$context['error'] = join( '; ', $result->get_error_messages() );
 			Swedbank_Pay()->logger()->error( '[SCHEDULER]: Failed to finalize payment.', $context );
@@ -138,7 +136,7 @@ class Swedbank_Pay_Scheduler {
 
 		do_action( 'swedbank_pay_scheduler_run_after', $order, $gateway, $webhook_data );
 
-		Swedbank_Pay()->logger()->info( "[SCHEDULER]: Successfully processed payment for order #{$order->get_order_number()} with transaction ID #{$transaction_number}.", $context );
+		Swedbank_Pay()->logger()->info( "[SCHEDULER]: Successfully processed payment for order #{$order->get_order_number()} with payment number #{$context['payment_number']}.", $context );
 		return false;
 	}
 }

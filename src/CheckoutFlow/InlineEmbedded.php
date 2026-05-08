@@ -195,14 +195,14 @@ class InlineEmbedded extends CheckoutFlow {
 				}
 
 				// Get the payment order data.
-				$payment_order     = $result->getResponseData()['payment_order'];
+				$payment_order     = $result->getResponseResource()->getPaymentOrder();
 				$view_session_url  = $result->getOperationByRel( 'view-paymentsession', 'href' );
 				$update_order_url  = $result->getOperationByRel( 'update-order', 'href' );
 				$view_checkout_url = $result->getOperationByRel( 'view-checkout', 'href' );
-				$operation         = $result->getResponseData()['payment_order']['operation'];
+				$operation         = $payment_order->getOperation();
 
 				// Save payment ID to the session.
-				WC()->session->set( 'swedbank_pay_paymentorder_id', $payment_order['id'] );
+				WC()->session->set( 'swedbank_pay_paymentorder_id', $payment_order->getId() );
 				WC()->session->set( 'swedbank_pay_view_session_url', $view_session_url );
 				WC()->session->set( 'swedbank_pay_update_order_url', $update_order_url );
 				WC()->session->set( 'swedbank_pay_view_checkout_url', $view_checkout_url );

@@ -11,6 +11,7 @@ use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Payment_Actions;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Scheduler;
 use Krokedil\Swedbank\Pay\CheckoutFlow\CheckoutFlow;
 use Krokedil\Swedbank\Pay\Utility\LogUtility;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Resource\Response\CallbackPayload;
 
 /**
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
@@ -625,10 +626,15 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		Swedbank_Pay()->logger()->info( "[IPN]: Incoming Callback. Post data: {$raw_body}" );
 
-		// Decode raw body.
-		$data = json_decode( $raw_body, true );
-		if ( empty( $data ) ) {
+		try {
+			$payload = new CallbackPayload( $raw_body );
+		} catch ( \Throwable $e ) {
 			throw new Exception( 'Invalid webhook data' );
+		}
+
+		$payment_order = $payload->getPaymentOrder();
+		if ( ! $payment_order || ! $payment_order->getId() ) {
+			throw new Exception( 'Error: Invalid paymentOrder value' );
 		}
 
 		try {
@@ -652,20 +658,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				}
 			}
 
-			// Validate fields.
-			if ( ! isset( $data['paymentOrder'] ) || ! isset( $data['paymentOrder']['id'] ) ) {
-				throw new \Exception( 'Error: Invalid paymentOrder value' );
-			}
-
-			if ( ! isset( $data['transaction'] ) || ! isset( $data['transaction']['number'] ) ) {
-				throw new \Exception( 'Error: Invalid transaction number' );
-			}
-
 			$context = array(
 				'order_id'         => $order->get_id(),
 				'order_number'     => $order->get_order_number(),
-				'payment_order_id' => $data['paymentOrder']['id'] ?? $order->get_meta( '_payex_paymentorder_id' ),
-				'transaction_id'   => $data['transaction']['number'],
+				'payment_order_id' => $payment_order->getId(),
+				'payment_number'   => $payment_order->getNumber(),
+				'instrument'       => $payment_order->getInstrument(),
+				'order_reference'  => $payload->getOrderReference(),
 			);
 
 			// Schedule the payment for later processing.
@@ -679,14 +678,14 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			);
 
 			if ( 0 === $schedule_id ) {
-				Swedbank_Pay()->logger()->error( "[IPN]: Failed to schedule a task for processing the payment. Order #{$context['order_number']}, Transaction ID: {$context['transaction_id']}.", $context );
+				Swedbank_Pay()->logger()->error( "[IPN]: Failed to schedule a task for processing the payment. Order #{$context['order_number']}, Payment number: {$context['payment_number']}.", $context );
 				throw new \Exception( 'Unable to schedule a task.' );
 			}
 
-			Swedbank_Pay()->logger()->info( "[IPN]: Callback scheduled for processing. Order #{$context['order_number']}, Transaction ID: {$context['transaction_id']}, Schedule ID: {$schedule_id}.", $context );
+			Swedbank_Pay()->logger()->info( "[IPN]: Callback scheduled for processing. Order #{$context['order_number']}, Payment number: {$context['payment_number']}, Schedule ID: {$schedule_id}.", $context );
 		} catch ( \Exception $e ) {
 			$context['error'] = $e->getMessage();
-			Swedbank_Pay()->logger()->error( sprintf( '[IPN]: Callback processing failed. Order %s, Transaction ID: %s. Error: %s', $context['order_number'] ?? 'N/A', $context['transaction_id'] ?? 'N/A', $context['error'] ), $context );
+			Swedbank_Pay()->logger()->error( sprintf( '[IPN]: Callback processing failed. Order %s, Payment number: %s. Error: %s', $context['order_number'] ?? 'N/A', $context['payment_number'] ?? 'N/A', $context['error'] ), $context );
 			return;
 		}
 	}
