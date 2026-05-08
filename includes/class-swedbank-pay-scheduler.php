@@ -51,6 +51,7 @@ class Swedbank_Pay_Scheduler {
 	 * Code to execute for each item in the queue.
 	 *
 	 * @throws \Exception If the webhook data is invalid or if the order cannot be found.
+	 * @throws \WP_Exception If there is an error with the payment gateway or if the payment cannot be finalized.
 	 *
 	 * @param string $payment_method_id The payment method ID.
 	 * @param string $webhook_data The webhook data in JSON format.

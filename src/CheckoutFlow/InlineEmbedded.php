@@ -287,6 +287,7 @@ class InlineEmbedded extends CheckoutFlow {
 	 * If any issues are found, the current session with Swedbank is cleared and the user is redirected back to the checkout page with an error message.
 	 *
 	 * @return void
+	 * @throws \Exception If there is an error during the payment verification process.
 	 */
 	protected function process_payment_complete_return() {
 		try {
