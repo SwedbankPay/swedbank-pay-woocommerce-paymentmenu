@@ -24,7 +24,7 @@ jobs:
         uses: shivammathur/setup-php@master
         with:
           php-version: '7.3'
-          extension: intl, mbstring, json, bcmath
+          extension: intl, mbstring, json
           coverage: xdebug
           tools: composer, php-cs-fixer, phpunit:7.5.20, phpcpd, phpmd
 

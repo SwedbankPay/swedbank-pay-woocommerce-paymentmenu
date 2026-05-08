@@ -230,14 +230,13 @@ class Cart extends PaymentDataHelper {
 			$items = $this->get_formatted_items();
 
 			$payment_order->setAmount(
-				(int) bcmul(
-					100,
+				(int) round(
 					apply_filters(
 						'swedbank_pay_order_amount',
 						WC()->cart->get_total( 'edit' ),
 						$items,
 						WC()->cart
-					)
+					) * 100
 				)
 			)
 			->setVatAmount(
@@ -275,14 +274,13 @@ class Cart extends PaymentDataHelper {
 		$payment_order         = ( new Paymentorder() )
 			->setOperation( 'UpdateOrder' )
 			->setAmount(
-				(int) bcmul(
-					100,
+				(int) round(
 					apply_filters(
 						'swedbank_pay_order_amount',
 						WC()->cart->get_total( 'edit' ),
 						$items,
 						WC()->cart
-					)
+					) * 100
 				)
 			)
 			->setVatAmount(
