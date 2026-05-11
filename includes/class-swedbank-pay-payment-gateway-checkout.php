@@ -842,7 +842,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					// Request failed.
 					return $value;
 				}
-				$instrument = $result['paid']['instrument'];
+				$instrument = $result['paid']['instrument'] ?? '';
 				$order->update_meta_data( '_swedbank_pay_payment_instrument', $instrument );
 				$order->save();
 
