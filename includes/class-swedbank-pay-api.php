@@ -1085,6 +1085,18 @@ class Swedbank_Pay_Api {
 				$response_service->getResponseResource()->getLatestFinancialTransaction()
 			);
 
+			if ( is_wp_error( $transaction ) ) {
+				$context['error'] = $transaction->get_error_message();
+				LogUtility::log_request(
+					'[ORDER MANAGEMENT]: capture checkout',
+					$request_service->getClient(),
+					WC_Log_Levels::ERROR,
+					$context
+				);
+
+				return $transaction;
+			}
+
 			$this->process_transaction( $order, $transaction );
 
 			return $transaction;
@@ -1162,6 +1174,18 @@ class Swedbank_Pay_Api {
 				$response_service->getResponseResource()->getLatestFinancialTransaction()
 			);
 
+			if ( is_wp_error( $transaction ) ) {
+				$context['error'] = $transaction->get_error_message();
+				LogUtility::log_request(
+					'[ORDER MANAGEMENT]: cancel checkout',
+					$request_service->getClient(),
+					WC_Log_Levels::ERROR,
+					$context
+				);
+
+				return $transaction;
+			}
+
 			$this->process_transaction( $order, $transaction );
 
 			return $transaction;
@@ -1236,6 +1260,18 @@ class Swedbank_Pay_Api {
 			$transaction = $this->financial_transaction_to_array(
 				$response_service->getResponseResource()->getLatestFinancialTransaction()
 			);
+
+			if ( is_wp_error( $transaction ) ) {
+				$context['error'] = $transaction->get_error_message();
+				LogUtility::log_request(
+					'[ORDER MANAGEMENT]: refund amount',
+					$request_service->getClient(),
+					WC_Log_Levels::ERROR,
+					$context
+				);
+
+				return $transaction;
+			}
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1314,6 +1350,18 @@ class Swedbank_Pay_Api {
 				$response_service->getResponseResource()->getLatestFinancialTransaction()
 			);
 
+			if ( is_wp_error( $transaction ) ) {
+				$context['error'] = $transaction->get_error_message();
+				LogUtility::log_request(
+					'[ORDER MANAGEMENT]: refund amount',
+					$request_service->getClient(),
+					WC_Log_Levels::ERROR,
+					$context
+				);
+
+				return $transaction;
+			}
+
 			$this->process_transaction( $order, $transaction );
 
 			return $transaction;
@@ -1338,11 +1386,14 @@ class Swedbank_Pay_Api {
 	 * {@see process_transaction()} expects.
 	 *
 	 * @param mixed $ft FinancialTransaction|null.
-	 * @return array
+	 * @return array|WP_Error WP_Error when no transaction is available, otherwise the array shape.
 	 */
 	private function financial_transaction_to_array( $ft ) {
 		if ( empty( $ft ) ) {
-			return array();
+			return new WP_Error(
+				'missing_financial_transaction',
+				'No financial transaction was returned by the API.'
+			);
 		}
 
 		return array(
