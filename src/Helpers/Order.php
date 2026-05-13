@@ -244,14 +244,13 @@ class Order extends PaymentDataHelper {
 			$items = $this->get_formatted_items();
 
 			$payment_order->setAmount(
-				(int) bcmul(
-					100,
+				(int) round(
 					apply_filters(
 						'swedbank_pay_order_amount',
 						$this->order->get_total(),
 						$items,
 						$this->order
-					)
+					) * 100
 				)
 			)
 			->setVatAmount(
