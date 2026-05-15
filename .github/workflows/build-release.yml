@@ -1,50 +1,55 @@
+# Deploy to WordPress.org
+#
+# Triggered when a GitHub Release is published.
+# Builds the plugin, deploys to WordPress.org SVN, and attaches the zip
+# to the release.
+#
+# Required secrets: SVN_USERNAME, SVN_PASSWORD (wp.org credentials).
+
 name: Deploy to WordPress.org
+
+permissions:
+  contents: write # Required for uploading release assets.
+
 on:
   release:
-      types: [published]
+    types: [published]
 
 jobs:
   deploy:
+    name: Build and deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@master
+      - name: Checkout repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
-      # Build the plugin with dev dependencies to scope the dependency packages.
-      - name: Composer Install (Dev)
-        run: composer install
-
-      - name: Build
+      - name: Install Composer dependencies if composer.json is present
+        if: hashFiles('composer.json') != ''
         run: |
-          composer install --no-dev
+          # Install with dev dependencies first (needed for PHP Scoper or similar tooling).
+          composer install --prefer-dist --no-progress --optimize-autoloader
+          # Re-install without dev dependencies for the release build.
+          composer install --prefer-dist --no-progress --optimize-autoloader --no-dev
+
+      - name: Build with npm if package.json is present
+        if: hashFiles('package.json') != ''
+        run: |
           npm ci
-          gulp js:build
-          gulp css:build
+          # Run the build script if it exists, but don't fail if it's not defined.
+          npm run build --if-present
 
-      # Install SVN ( Subversion )
-      - name: Install SVN ( Subversion )
-        run: |
-          sudo apt-get update
-          sudo apt-get install subversion
-
-      # Deploy the plugin to WordPress.org
-      - name: WordPress Plugin Deploy
+      - name: Deploy to WordPress.org
         id: deploy
-        uses: 10up/action-wordpress-plugin-deploy@stable
+        uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # v2.3.0
         with:
           generate-zip: true
         env:
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
           SLUG: swedbank-pay-payment-menu
+          ASSETS_DIR: .wordpress-org
 
-       # Add release assets to the Github release tag.
       - name: Upload release asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ steps.deploy.outputs.zip-path }}
-          asset_name: ${{ github.event.repository.name }}.zip
-          asset_content_type: application/zip
+          files: ${{ steps.deploy.outputs.zip-path }}

@@ -162,7 +162,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->access_token                 = $this->settings['access_token'] ?? $this->access_token;
 		$this->payee_id                     = $this->settings['payee_id'] ?? $this->payee_id;
 		$this->testmode                     = $this->settings['testmode'] ?? $this->testmode;
-		$this->culture                      = $this->settings['culture'] ?? $this->culture;
+		$this->culture                      = self::locale_to_culture();
 		$this->logo_url                     = $this->settings['logo_url'] ?? $this->logo_url;
 		$this->instant_capture              = $this->settings['instant_capture'] ?? $this->instant_capture;
 		$this->terms_url                    = $this->settings['terms_url'] ?? get_site_url();
@@ -201,6 +201,32 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			->set_mode( wc_string_to_bool( $this->testmode ) ? Swedbank_Pay_Api::MODE_TEST : Swedbank_Pay_Api::MODE_LIVE );
 
 		$this->payment_actions_handler = new Swedbank_Pay_Payment_Actions( $this );
+	}
+
+	/**
+	 * Convert WordPress locale to Swedbank Pay culture code.
+	 *
+	 * @return string Swedbank Pay culture code, e.g. 'sv-SE'.
+	 */
+	public static function locale_to_culture() {
+		$locale = get_locale();
+
+		// Format exceptions for locales that do not match the expected format, e.g. fi_FI for Finnish in Finland.
+		switch ( $locale ) {
+			case 'fi':
+				$locale = 'fi_FI';
+				break;
+			case 'et':
+				$locale = 'et_EE';
+				break;
+			case 'lv':
+				$locale = 'lv_LV';
+				break;
+			default:
+				break;
+		}
+
+		return substr( str_replace( '_', '-', $locale ), 0, 5 );
 	}
 
 	/**
@@ -285,25 +311,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 					return $value;
 				},
-			),
-			'culture'                     => array(
-				'title'       => __( 'Language', 'swedbank-pay-payment-menu' ),
-				'type'        => 'select',
-				'options'     => array(
-					'da-DK' => __( 'Danish', 'swedbank-pay-payment-menu' ),
-					'en-US' => __( 'English', 'swedbank-pay-payment-menu' ),
-					'et-EE' => __( 'Estonian', 'swedbank-pay-payment-menu' ),
-					'fi-FI' => __( 'Finnish', 'swedbank-pay-payment-menu' ),
-					'lt-LT' => __( 'Lithuanian', 'swedbank-pay-payment-menu' ),
-					'lv-LV' => __( 'Latvian', 'swedbank-pay-payment-menu' ),
-					'nb-NO' => __( 'Norwegian', 'swedbank-pay-payment-menu' ),
-					'sv-SE' => __( 'Swedish', 'swedbank-pay-payment-menu' ),
-				),
-				'description' => __(
-					'Language of pages displayed by Swedbank Pay during payment.',
-					'swedbank-pay-payment-menu'
-				),
-				'default'     => $this->culture,
 			),
 			'instant_capture'             => array(
 				'title'          => __( 'Instant Capture', 'swedbank-pay-payment-menu' ),
