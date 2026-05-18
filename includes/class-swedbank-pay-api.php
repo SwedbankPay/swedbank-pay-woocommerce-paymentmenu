@@ -1,9 +1,11 @@
 <?php
+/**
+ * Swedbank Pay API class file.
+ *
+ * @package SwedbankPay\Checkout\WooCommerce
+ */
 
 namespace SwedbankPay\Checkout\WooCommerce;
-
-use Krokedil\Swedbank\Pay\Helpers\Cart;
-use Krokedil\Swedbank\Pay\Utility\LogUtility;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -13,18 +15,24 @@ use WC_Order;
 use WC_Payment_Gateway;
 use Swedbank_Pay_Payment_Gateway_Checkout;
 use Krokedil\Swedbank\Pay\Helpers\Order;
+use Krokedil\Swedbank\Pay\Helpers\Cart;
+use Krokedil\Swedbank\Pay\Utility\LogUtility;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCaptureV3;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionCancelV3;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Request\TransactionReversalV3;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\TransactionCapture;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\TransactionCancel;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\TransactionReversal;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\GetPaymentorder;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Resource\Response\PaymentorderResponse;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Purchase;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\Verify;
 
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Verify;
 /**
+ * Swedbank_Pay_Api Class.
+ *
  * @SuppressWarnings(PHPMD.CamelCaseClassName)
  * @SuppressWarnings(PHPMD.CamelCaseMethodName)
  * @SuppressWarnings(PHPMD.CamelCaseParameterName)
@@ -56,29 +64,44 @@ class Swedbank_Pay_Api {
 	public const TYPE_REVERSAL      = 'Reversal';
 
 	/**
+	 * The access token for authenticating with the Swedbank Pay API.
+	 *
 	 * @var string
 	 */
 	private $access_token;
 
 	/**
+	 * The payee ID for the Swedbank Pay API.
+	 *
 	 * @var string
 	 */
 	private $payee_id;
 
 	/**
+	 * The mode for the Swedbank Pay API (test or live).
+	 *
 	 * @var string
 	 */
 	private $mode;
 
+	/**
+	 * An array to store payment orders, indexed by order ID or other identifiers.
+	 *
+	 * @var array
+	 */
 	private $payment_orders = array();
 
 	/**
+	 * The payment gateway instance, which can be either Swedbank_Pay_Payment_Gateway_Checkout or WC_Payment_Gateway.
+	 *
 	 * @var Swedbank_Pay_Payment_Gateway_Checkout|WC_Payment_Gateway
 	 */
 	private $gateway;
 
 	/**
-	 * @param Swedbank_Pay_Payment_Gateway_Checkout|WC_Payment_Gateway $gateway
+	 * Constructor for the Swedbank_Pay_Api class.
+	 *
+	 * @param Swedbank_Pay_Payment_Gateway_Checkout|WC_Payment_Gateway $gateway The payment gateway instance to use for API interactions. This can be an instance of Swedbank_Pay_Payment_Gateway_Checkout or WC_Payment_Gateway, depending on the context in which the API class is being used.
 	 */
 	public function __construct( $gateway ) {
 		$this->gateway = $gateway;
@@ -101,18 +124,45 @@ class Swedbank_Pay_Api {
 		return $items;
 	}
 
+	/**
+	 * Set the access token for the API client.
+	 *
+	 * @param string $access_token The access token to set.
+	 * @return self Returns the instance of the class for method chaining.
+	 */
 	public function set_access_token( $access_token ) {
 		$this->access_token = $access_token;
 
 		return $this;
 	}
 
+	/**
+	 * Get the access token for the API client.
+	 *
+	 * @return string The access token.
+	 */
+	public function get_access_token() {
+		return $this->access_token;
+	}
+
+	/**
+	 * Set the payee ID for the API client.
+	 *
+	 * @param string $payee_id The payee ID to set.
+	 * @return self Returns the instance of the class for method chaining.
+	 */
 	public function set_payee_id( $payee_id ) {
 		$this->payee_id = $payee_id;
 
 		return $this;
 	}
 
+	/**
+	 * Set the mode for the API client.
+	 *
+	 * @param string $mode The mode to set (test or live).
+	 * @return self Returns the instance of the class for method chaining.
+	 */
 	public function set_mode( $mode ) {
 		$this->mode = $mode;
 
@@ -160,7 +210,9 @@ class Swedbank_Pay_Api {
 		$client->setAccessToken( $settings['access_token'] ?? '' )
 				->setPayeeId( $settings['payee_id'] ?? '' )
 				->setMode( wc_string_to_bool( $settings['testmode'] ?? 'no' ) ? Client::MODE_TEST : Client::MODE_PRODUCTION )
-				->setUserAgent( $user_agent );
+				->setUserAgent( $user_agent )
+				->setApiVersion( '3.1' )
+				->setHeaders();
 
 		$base_url = $client->getBaseUrl();
 		// Replace payex.com with swedbankpay.com. Can be disabled using the filter `swedbank_pay_replace_base_url` and returning false instead of true.
@@ -197,7 +249,11 @@ class Swedbank_Pay_Api {
 		$purchase_request->setClient( self::get_client() );
 
 		try {
-			/** @var ResponseServiceInterface $response_service */
+			/**
+			 * ResponseServiceInterface is the expected type from the send() method.
+			 *
+			 * @var ResponseServiceInterface $response_service
+			 */
 			$response_service = $purchase_request->send();
 			LogUtility::log_request( '[CHECKOUT]: Initiate purchase', $purchase_request, WC_Log_Levels::DEBUG );
 
@@ -247,6 +303,7 @@ class Swedbank_Pay_Api {
 
 		if ( $is_verify ) {
 			$purchase_request = new Verify( $payment_order_object );
+			$purchase_request->setExpands( array( 'paid' ) );
 		} else {
 			$purchase_request = new Purchase( $payment_order_object );
 		}
@@ -254,7 +311,11 @@ class Swedbank_Pay_Api {
 		$purchase_request->setClient( self::get_client() );
 
 		try {
-			/** @var ResponseServiceInterface $response_service */
+			/**
+			 * ResponseServiceInterface is the expected type from the send() method.
+			 *
+			 * @var ResponseServiceInterface $response_service
+			 */
 			$response_service = $purchase_request->send();
 			LogUtility::log_request( '[CHECKOUT]: Initiate embedded purchase', $purchase_request );
 
@@ -296,8 +357,6 @@ class Swedbank_Pay_Api {
 		$result           = $this->request( 'GET', $view_session_url );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() );
-
-			/** @var \WP_Error $result */
 			Swedbank_Pay()->logger()->error(
 				"[CHECKOUT]: Get embedded checkout for payment order ID #{$context['payment_order_id']}",
 				$context
@@ -341,8 +400,6 @@ class Swedbank_Pay_Api {
 		$result            = $this->request( 'PATCH', $update_payment_url, $payment_order_object );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() );
-
-			/** @var \WP_Error $result */
 			Swedbank_Pay()->logger()->error(
 				"[CHECKOUT]: Update embedded purchase for payment order ID #{$context['payment_order_id']}",
 				$context
@@ -355,11 +412,11 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
-	 * Do API Request
+	 * Do API Request.
 	 *
-	 * @param       $method
-	 * @param       $url
-	 * @param array|string|object $params
+	 * @param string              $method HTTP method (GET, POST, etc.).
+	 * @param string              $url The API endpoint URL to send the request to. This can be a full URL or just the endpoint path.
+	 * @param array|string|object $params The parameters to include in the API request. This can be an associative array, a JSON string, or an object that can be converted to an array. The method will handle the conversion and sanitization of the parameters as needed.
 	 *
 	 * @return array|\WP_Error
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
@@ -399,10 +456,7 @@ class Swedbank_Pay_Api {
 		$start = microtime( true );
 
 		try {
-			/** @var \SwedbankPay\Api\Response $response */
-			$client = self::get_client()->request( $method, $url, $params );
-
-			// $codeClass = (int)($this->client->getResponseCode() / 100);
+			$client        = self::get_client()->request( $method, $url, $params );
 			$response_body = $client->getResponseBody();
 			$result        = json_decode( $response_body, true );
 			$time          = microtime( true ) - $start;
@@ -423,7 +477,7 @@ class Swedbank_Pay_Api {
 			$client           = empty( $client ) ? self::get_client() : $client;
 			LogUtility::log_request( '', $client, WC_Log_Levels::ERROR, $context );
 
-			// https://tools.ietf.org/html/rfc7807
+			// https://tools.ietf.org/html/rfc7807 .
 			$response_body = self::get_client()->getResponseBody() ?? '{}';
 			$data          = json_decode( $response_body, true );
 			if ( json_last_error() === JSON_ERROR_NONE &&
@@ -456,7 +510,7 @@ class Swedbank_Pay_Api {
 	/**
 	 * Check if payment is captured.
 	 *
-	 * @param string $payment_id_url
+	 * @param string $payment_id_url The URL of the payment order to check, which should include the payment order ID.
 	 *
 	 * @return bool
 	 */
@@ -473,7 +527,7 @@ class Swedbank_Pay_Api {
 		foreach ( $transactions_list as $transaction ) {
 			// TYPE_SALE is a so-called "1-phase" transaction, which means that the amount is captured immediately after the authorization.
 			// Attempting to still capture these will result in an error from the API.
-			if ( in_array( $transaction['type'], array( self::TYPE_CAPTURE, self::TYPE_SALE ) ) ) {
+			if ( in_array( $transaction['type'], array( self::TYPE_CAPTURE, self::TYPE_SALE ) ) ) { // phpcs:ignore WordPress.PHP.StrictInArray.MissingTrueStrict
 				// @todo Calculate captured amount
 				return true;
 			}
@@ -568,8 +622,8 @@ class Swedbank_Pay_Api {
 	/**
 	 * Process Transaction.
 	 *
-	 * @param WC_Order $order
-	 * @param array    $transaction
+	 * @param WC_Order $order The WooCommerce order object to process the transaction for.
+	 * @param array    $transaction An associative array containing transaction details, such as 'number', 'type', 'amount', etc.
 	 *
 	 * @return true|WP_Error
 	 */
@@ -612,8 +666,12 @@ class Swedbank_Pay_Api {
 		}
 
 		LogUtility::$title = "[PROCESS TRANSACTION]: Retrieve payment order for order #{$order->get_order_number()}";
-		$payment_order     = $this->request( 'GET', $payment_order_id );
-		$payment_order     = $payment_order['paymentOrder'];
+		$payment_order     = $this->get_payment_order( $payment_order_id );
+		if ( is_wp_error( $payment_order ) ) {
+			$context['error'] = $payment_order->get_error_message();
+			Swedbank_Pay()->logger()->error( "[PROCESS TRANSACTION]: Failed to retrieve payment order for order #{$order->get_order_number()}.", $context );
+			return $payment_order;
+		}
 
 		// Apply action.
 		switch ( $transaction['type'] ) {
@@ -636,11 +694,10 @@ class Swedbank_Pay_Api {
 				}
 				break;
 			case self::TYPE_CAPTURE:
-				$is_full_capture = false;
+				$remaining_capture = $payment_order->getRemainingCaptureAmount();
+				$is_full_capture   = null === $remaining_capture;
 
-				// Check if the payment was captured fully.
-				// `remainingCaptureAmount` is missing if the payment was captured fully.
-				if ( ! isset( $payment_order['remainingCaptureAmount'] ) ) {
+				if ( $is_full_capture ) {
 					Swedbank_Pay()->logger()->debug(
 						// translators: 1: payment order ID, 2: transaction ID, 3: transaction amount, 4: order amount.
 						sprintf(
@@ -652,8 +709,6 @@ class Swedbank_Pay_Api {
 						),
 						$context
 					);
-
-					$is_full_capture = true;
 				}
 
 				$captured_amount = wc_price( $transaction['amount'] / 100, array( 'currency' => $order->get_currency() ) );
@@ -668,9 +723,8 @@ class Swedbank_Pay_Api {
 					);
 					$order->add_order_note( $message );
 				} else {
-					$remaining_amount = isset( $payment_order['remainingCaptureAmount'] ) ? $payment_order['remainingCaptureAmount'] / 100 : 0;
-					$price            = wc_price( $remaining_amount, array( 'currency' => $order->get_currency() ) );
-					$message          = sprintf(
+					$price   = wc_price( $remaining_capture / 100, array( 'currency' => $order->get_currency() ) );
+					$message = sprintf(
 						// translators: 1: transaction ID, 2: transaction amount, 3: remaining amount.
 						__( 'Payment has been partially captured: Transaction: %1$s. Amount: %2$s. Remaining amount: %3$s', 'swedbank-pay-payment-menu' ),
 						$transaction_id,
@@ -691,10 +745,10 @@ class Swedbank_Pay_Api {
 
 				break;
 			case self::TYPE_REVERSAL:
-				// Check if the payment was refunded fully.
-				// `remainingReversalAmount` is missing if the payment was refunded fully.
-				$is_full_refund = false;
-				if ( ! isset( $payment_order['remainingReversalAmount'] ) ) {
+				$remaining_reversal = $payment_order->getRemainingReversalAmount();
+				$is_full_refund     = null === $remaining_reversal;
+
+				if ( $is_full_refund ) {
 					Swedbank_Pay()->logger()->debug(
 						sprintf(
 							'[PROCESS TRANSACTION]: Warning: Payment Order ID: %s. Transaction %s. Transaction amount: %s. Order amount: %s. Field remainingReversalAmount is missing. Full action?', //phpcs:ignore
@@ -705,8 +759,6 @@ class Swedbank_Pay_Api {
 						),
 						$context
 					);
-
-					$is_full_refund = true;
 				}
 
 				// Update order status.
@@ -717,7 +769,7 @@ class Swedbank_Pay_Api {
 						0
 					);
 
-					// Prevent refund creation
+					// Prevent refund creation.
 					remove_action(
 						'woocommerce_order_status_refunded',
 						'wc_order_fully_refunded'
@@ -734,8 +786,7 @@ class Swedbank_Pay_Api {
 						$message
 					);
 				} else {
-					$remaining_amount = isset( $payment_order['remainingReversalAmount'] )
-						? $payment_order['remainingReversalAmount'] / 100 : 0;
+					$remaining_amount = $remaining_reversal / 100;
 
 					$message = sprintf(
 						'Payment has been partially refunded: Transaction: %s. Amount: %s. Remaining amount: %s', //phpcs:ignore
@@ -749,15 +800,15 @@ class Swedbank_Pay_Api {
 					);
 				}
 
-				// @todo Create Credit Memo
-				// @todo Prent duplicated Credit Memo creation (by backend, by admin, by transaction callback)
+				// @todo Create Credit Memo.
+				// @todo Prent duplicated Credit Memo creation (by backend, by admin, by transaction callback).
 				break;
 			default:
 				Swedbank_Pay()->logger()->debug( sprintf( '[PROCESS TRANSACTION]: Unknown transaction type %s for order #%s', $transaction['type'], $order->get_order_number() ), $context );
 				return new WP_Error( sprintf( 'Error: Unknown type %s', $transaction['type'] ) );
 		}
 
-		// Save transaction ID
+		// Save transaction ID.
 		$transactions[] = $transaction_id;
 		$order->update_meta_data( '_swedbank_pay_transactions', $transactions );
 		$order->save();
@@ -770,10 +821,10 @@ class Swedbank_Pay_Api {
 	/**
 	 * Update Order Status.
 	 *
-	 * @param WC_Order    $order
-	 * @param string      $status
-	 * @param string|null $transaction_id
-	 * @param string|null $message
+	 * @param WC_Order    $order The order to update.
+	 * @param string      $status The new status to set for the order. This should be a valid WooCommerce order status slug, e.g. 'pending', 'processing', 'completed', etc.
+	 * @param string|null $transaction_id The transaction ID associated with the status update, if applicable. This is optional and can be null if not needed.
+	 * @param string|null $message An optional message to add as an order note when updating the status. This can provide additional context for the status change.
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
 	 * @SuppressWarnings(PHPMD.ElseExpression)
 	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
@@ -876,88 +927,113 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Fetch the typed v3.1 paymentOrder resource for the given ID, with per-request caching.
+	 *
+	 * @param string $payment_order_id Payment order resource path, e.g. "/psp/paymentorders/...".
+	 * @return \KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Resource\Data\PaymentOrderInterface|\WP_Error
+	 */
+	private function get_payment_order( $payment_order_id ) {
+		if ( empty( $payment_order_id ) ) {
+			return new WP_Error( 'missing_payment_id', 'Payment order ID is unknown.' );
+		}
+
+		if ( isset( $this->payment_orders[ $payment_order_id ] ) ) {
+			return $this->payment_orders[ $payment_order_id ];
+		}
+
+		$request = ( new GetPaymentorder() )
+			->setClient( self::get_client() )
+			->setRequestEndpoint( $payment_order_id );
+
+		try {
+			/**
+			 * ResponseServiceInterface is the expected type from the send() method.
+			 *
+			 * @var ResponseServiceInterface $response
+			 */
+			$response = $request->send();
+		} catch ( ClientException $e ) {
+			return new WP_Error(
+				'get_paymentorder',
+				$this->format_error_message( $request->getClient()->getResponseBody(), $e->getMessage() )
+			);
+		}
+
+		/**
+		 * ResponseServiceInterface is the expected type from the send() method.
+		 *
+		 * @var PaymentorderResponse $resource
+		 */
+		$resource      = $response->getResponseResource();
+		$payment_order = $resource ? $resource->getPaymentOrder() : null;
+		if ( ! $payment_order ) {
+			return new WP_Error( 'get_paymentorder', 'Payment order resource missing in response.' );
+		}
+
+		$this->payment_orders[ $payment_order_id ] = $payment_order;
+
+		return $payment_order;
+	}
+
+	/**
 	 * Can Capture.
 	 *
-	 * @param WC_Order $order
+	 * @param WC_Order $order The order to check.
 	 *
 	 * @return bool
 	 */
 	public function can_capture( WC_Order $order ) {
-		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		if ( empty( $payment_order_id ) ) {
+		LogUtility::$title = "[ORDER MANAGEMENT]: Retrieve capture status for order #{$order->get_order_number()}";
+		$payment_order     = $this->get_payment_order( $order->get_meta( '_payex_paymentorder_id' ) );
+		if ( is_wp_error( $payment_order ) ) {
 			return false;
 		}
 
-		if ( empty( $this->payment_orders[ $payment_order_id ] ) ) {
-			LogUtility::$title                         = "[ORDER MANAGEMENT]: Retrieve capture status for order #{$order->get_order_number()}";
-			$this->payment_orders[ $payment_order_id ] = $this->request( 'GET', $payment_order_id );
-		}
-
-		if ( is_wp_error( $this->payment_orders[ $payment_order_id ] ) ) {
-			return false;
-		}
-
-		return isset( $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingCaptureAmount'] )
-				&& (float) $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingCaptureAmount'] > 0.1;
+		$remaining = $payment_order->getRemainingCaptureAmount();
+		return null !== $remaining && (float) $remaining > 0.1;
 	}
 
 	/**
 	 * Can Cancel.
 	 *
-	 * @param WC_Order $order
+	 * @param WC_Order $order The order to check.
 	 *
 	 * @return bool
 	 */
 	public function can_cancel( WC_Order $order ) {
-		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		if ( empty( $payment_order_id ) ) {
+		LogUtility::$title = "[ORDER MANAGEMENT]: Retrieve cancellation status for order #{$order->get_order_number()}";
+		$payment_order     = $this->get_payment_order( $order->get_meta( '_payex_paymentorder_id' ) );
+		if ( is_wp_error( $payment_order ) ) {
 			return false;
 		}
 
-		if ( empty( $this->payment_orders[ $payment_order_id ] ) ) {
-			LogUtility::$title                         = "[ORDER MANAGEMENT]: Retrieve cancellation status for order #{$order->get_order_number()}";
-			$this->payment_orders[ $payment_order_id ] = $this->request( 'GET', $payment_order_id );
-		}
-
-		if ( is_wp_error( $this->payment_orders[ $payment_order_id ] ) ) {
-			return false;
-		}
-
-		return isset( $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingCancellationAmount'] )
-				&& (float) $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingCancellationAmount'] > 0.1;
+		$remaining = $payment_order->getRemainingCancellationAmount();
+		return null !== $remaining && (float) $remaining > 0.1;
 	}
 
 	/**
 	 * Can Refund.
 	 *
-	 * @param WC_Order $order
+	 * @param WC_Order $order The order to check refund capability for.
 	 *
 	 * @return bool
 	 */
 	public function can_refund( WC_Order $order ) {
-		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		if ( empty( $payment_order_id ) ) {
+		LogUtility::$title = "[ORDER MANAGEMENT]: Retrieve refund status for order #{$order->get_order_number()}";
+		$payment_order     = $this->get_payment_order( $order->get_meta( '_payex_paymentorder_id' ) );
+		if ( is_wp_error( $payment_order ) ) {
 			return false;
 		}
 
-		if ( empty( $this->payment_orders[ $payment_order_id ] ) ) {
-			LogUtility::$title                         = "[ORDER MANAGEMENT]: Retrieve refund status for order #{$order->get_order_number()}";
-			$this->payment_orders[ $payment_order_id ] = $this->request( 'GET', $payment_order_id );
-		}
-
-		if ( is_wp_error( $this->payment_orders[ $payment_order_id ] ) ) {
-			return false;
-		}
-
-		return isset( $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingReversalAmount'] )
-				&& (float) $this->payment_orders[ $payment_order_id ]['paymentOrder']['remainingReversalAmount'] > 0.1;
+		$remaining = $payment_order->getRemainingReversalAmount();
+		return null !== $remaining && (float) $remaining > 0.1;
 	}
 
 	/**
 	 * Capture Checkout.
 	 *
-	 * @param WC_Order $order
-	 * @param array    $items
+	 * @param WC_Order $order The order to capture.
+	 * @param array    $items Optional list of items to capture, used for partial captures. If empty, a full capture will be attempted. Each item should be an array with keys 'reference', 'name', 'quantity', 'unit', 'unitPrice', and 'totalAmount'.
 	 *
 	 * @return \WP_Error|array
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
@@ -986,14 +1062,17 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$request_service = ( new TransactionCaptureV3( $transaction ) )
+		$request_service = ( new TransactionCapture( $transaction ) )
 			->setClient( self::get_client() )
-			->setPaymentOrderId( $payment_order_id );
+			->setPaymentOrderId( $payment_order_id )
+			->setExpands( array( 'financialtransactions', 'paid' ) );
 
 		try {
-			/** @var ResponseServiceInterface $response_service */
+			/**
+			 * ResponseServiceInterface is the expected type from the send() method.
+			 *
+			 * @var ResponseServiceInterface $response_service */
 			$response_service = $request_service->send();
-			$result           = $response_service->getResponseResource()->__toArray();
 
 			LogUtility::log_request(
 				'[ORDER MANAGEMENT]: capture checkout',
@@ -1002,8 +1081,21 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			// Save transaction.
-			$transaction = $result['capture']['transaction'];
+			$transaction = $this->financial_transaction_to_array(
+				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			);
+
+			if ( is_wp_error( $transaction ) ) {
+				$context['error'] = $transaction->get_error_message();
+				LogUtility::log_request(
+					'[ORDER MANAGEMENT]: capture checkout',
+					$request_service->getClient(),
+					WC_Log_Levels::ERROR,
+					$context
+				);
+
+				return $transaction;
+			}
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1058,12 +1150,17 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$request_service = ( new TransactionCancelV3( $transaction ) )
+		$request_service = ( new TransactionCancel( $transaction ) )
 			->setClient( self::get_client() )
-			->setPaymentOrderId( $payment_order_id );
+			->setPaymentOrderId( $payment_order_id )
+			->setExpands( array( 'financialtransactions', 'paid' ) );
 
 		try {
-			/** @var ResponseServiceInterface $response_service */
+			/**
+			 * ResponseServiceInterface is the expected type from the send() method.
+			 *
+			 * @var ResponseServiceInterface $response_service
+			 */
 			$response_service = $request_service->send();
 
 			LogUtility::log_request(
@@ -1073,14 +1170,25 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$result = $response_service->getResponseResource()->__toArray();
+			$transaction = $this->financial_transaction_to_array(
+				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			);
 
-			// Save transaction.
-			$transaction = $result['cancellation']['transaction'];
+			if ( is_wp_error( $transaction ) ) {
+				$context['error'] = $transaction->get_error_message();
+				LogUtility::log_request(
+					'[ORDER MANAGEMENT]: cancel checkout',
+					$request_service->getClient(),
+					WC_Log_Levels::ERROR,
+					$context
+				);
+
+				return $transaction;
+			}
 
 			$this->process_transaction( $order, $transaction );
 
-			return $result;
+			return $transaction;
 		} catch ( ClientException $e ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
 			LogUtility::log_request(
@@ -1098,13 +1206,13 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
-	 * Refund amount for an order
+	 * Refund amount for an order.
 	 *
-	 * @param WC_Order $order The order object
-	 * @param float    $amount The amount to refund
+	 * @param WC_Order $order The order object.
+	 * @param float    $amount The amount to refund.
 	 *
-	 * @return TransactionObject|\WP_Error Returns the refunded transaction object or WP_Error on failure
-	 * @throws ClientException
+	 * @return array|\WP_Error Returns the refunded transaction data or WP_Error on failure.
+	 * @throws ClientException Throws ClientException on API errors.
 	 */
 	public function refund_amount( WC_Order $order, $amount ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
@@ -1129,12 +1237,17 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$request_service = ( new TransactionReversalV3( $transaction ) )
+		$request_service = ( new TransactionReversal( $transaction ) )
 			->setClient( self::get_client() )
-			->setPaymentOrderId( $payment_order_id );
+			->setPaymentOrderId( $payment_order_id )
+			->setExpands( array( 'financialtransactions', 'paid' ) );
 
 		try {
-			/** @var ResponseServiceInterface $response_service */
+			/**
+			 * ResponseServiceInterface is the expected type from the send() method.
+			 *
+			 * @var ResponseServiceInterface $response_service
+			 */
 			$response_service = $request_service->send();
 
 			LogUtility::log_request(
@@ -1144,12 +1257,21 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$result = $response_service->getResponseData();
-			// FIXME: Remove this.
-			$result = $response_service->getResponseResource()->__toArray();
+			$transaction = $this->financial_transaction_to_array(
+				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			);
 
-			// Save transaction.
-			$transaction = $result['reversal']['transaction'];
+			if ( is_wp_error( $transaction ) ) {
+				$context['error'] = $transaction->get_error_message();
+				LogUtility::log_request(
+					'[ORDER MANAGEMENT]: refund amount',
+					$request_service->getClient(),
+					WC_Log_Levels::ERROR,
+					$context
+				);
+
+				return $transaction;
+			}
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1173,7 +1295,7 @@ class Swedbank_Pay_Api {
 	/**
 	 * Refund Checkout.
 	 *
-	 * @param \WC_Order_Refund $order
+	 * @param \WC_Order_Refund $refund_order The refund order object.
 	 *
 	 * @return \WP_Error|array
 	 * @SuppressWarnings(PHPMD.CyclomaticComplexity)
@@ -1197,9 +1319,10 @@ class Swedbank_Pay_Api {
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
 
-		$request_service = ( new TransactionReversalV3( $transaction ) )
+		$request_service = ( new TransactionReversal( $transaction ) )
 			->setClient( self::get_client() )
-			->setPaymentOrderId( $payment_order_id );
+			->setPaymentOrderId( $payment_order_id )
+			->setExpands( array( 'financialtransactions', 'paid' ) );
 
 		$context = array(
 			'order_id'         => $order->get_id(),
@@ -1210,7 +1333,10 @@ class Swedbank_Pay_Api {
 		);
 
 		try {
-			/** @var ResponseServiceInterface $response_service */
+			/**
+			 * ResponseServiceInterface is the expected type from the send() method.
+			 *
+			 * @var ResponseServiceInterface $response_service */
 			$response_service = $request_service->send();
 
 			LogUtility::log_request(
@@ -1220,11 +1346,21 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$result = $response_service->getResponseData();
-			$result = $response_service->getResponseResource()->__toArray();
+			$transaction = $this->financial_transaction_to_array(
+				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			);
 
-			// Save transaction.
-			$transaction = $result['reversal']['transaction'];
+			if ( is_wp_error( $transaction ) ) {
+				$context['error'] = $transaction->get_error_message();
+				LogUtility::log_request(
+					'[ORDER MANAGEMENT]: refund amount',
+					$request_service->getClient(),
+					WC_Log_Levels::ERROR,
+					$context
+				);
+
+				return $transaction;
+			}
 
 			$this->process_transaction( $order, $transaction );
 
@@ -1246,10 +1382,36 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Bridge a typed v3.1 FinancialTransaction to the array shape that
+	 * {@see process_transaction()} expects.
+	 *
+	 * @param mixed $ft FinancialTransaction|null.
+	 * @return array|WP_Error WP_Error when no transaction is available, otherwise the array shape.
+	 */
+	private function financial_transaction_to_array( $ft ) {
+		if ( empty( $ft ) ) {
+			return new WP_Error(
+				'missing_financial_transaction',
+				'No financial transaction was returned by the API.'
+			);
+		}
+
+		return array(
+			'number'         => $ft->getNumber(),
+			'type'           => $ft->getType(),
+			'amount'         => $ft->getAmount(),
+			'created'        => $ft->getCreated(),
+			'updated'        => $ft->getUpdated(),
+			'description'    => $ft->getDescription(),
+			'payeeReference' => $ft->getPayeeReference(),
+		);
+	}
+
+	/**
 	 * Parse and format error response
 	 *
-	 * @param string $response_body
-	 * @param string $err_msg
+	 * @param string $response_body The raw response body from the API, expected to be a JSON string containing error details. The method will attempt to decode this and extract meaningful error messages to present to the user.
+	 * @param string $err_msg The original error message from the exception, used as fallback if the response body doesn't contain more details about the error.
 	 *
 	 * @return string
 	 */
@@ -1267,7 +1429,7 @@ class Swedbank_Pay_Api {
 				// Payment.Cardholder.HomePhoneNumber
 				// Payment.Cardholder.WorkPhoneNumber
 				// Payment.Cardholder.BillingAddress.Msisdn
-				// Payment.Cardholder.ShippingAddress.Msisdn
+				// Payment.Cardholder.ShippingAddress.Msisdn.
 				if ( ( strpos( $problem['name'], 'Msisdn' ) !== false ) ||
 					strpos( $problem['name'], 'HomePhoneNumber' ) !== false ||
 					strpos( $problem['name'], 'WorkPhoneNumber' ) !== false
