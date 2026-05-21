@@ -575,7 +575,7 @@ class Swedbank_Pay_Api {
 		}
 
 		if ( ! $transaction_number ) {
-			$transaction_number            = $data['paid']['number'];
+			$transaction_number            = $data['paid']['number'] ?? '';
 			$context['transaction_number'] = $transaction_number;
 		}
 
