@@ -521,6 +521,20 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @return bool was anything saved?
 	 */
 	public function process_admin_options() {
+		// WC_Settings_API ignores sanitize_callback — run them manually before saving.
+		foreach ( $this->get_form_fields() as $key => $field ) {
+			if ( empty( $field['sanitize_callback'] ) || ! is_callable( $field['sanitize_callback'] ) ) {
+				continue;
+			}
+			$field_key = $this->get_field_key( $key );
+			$value     = isset( $_POST[ $field_key ] ) ? wp_unslash( $_POST[ $field_key ] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+			try {
+				call_user_func( $field['sanitize_callback'], $value );
+			} catch ( \Exception $e ) {
+				WC_Admin_Settings::add_error( $e->getMessage() );
+			}
+		}
+
 		$result = parent::process_admin_options();
 
 		// Reload settings.
