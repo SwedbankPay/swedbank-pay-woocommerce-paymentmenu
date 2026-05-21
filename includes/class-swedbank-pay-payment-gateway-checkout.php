@@ -335,7 +335,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'sanitize_callback' => function ( $value ) {
 					$value = trim( $value );
 
-					if ( '' !== $value ) {
+					if ( ! empty( $value ) ) {
 						if ( strlen( $value ) > 40 ) {
 							throw new Exception( esc_html__( 'Subsite can only contain a maximum of 40 characters.', 'swedbank-pay-payment-menu' ) );
 						}
