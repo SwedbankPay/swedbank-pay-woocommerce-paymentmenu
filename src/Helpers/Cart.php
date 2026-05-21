@@ -31,13 +31,12 @@ class Cart extends PaymentDataHelper {
 	private $settings;
 
 	/**
-	 * Order constructor.
+	 * Cart constructor.
 	 *
 	 * Initializes the order with the provided WC order or WC order refund object.
 	 * Retrieves the payment gateway and sets the user agent based on the order's customer user agent.
 	 *
-	 * @param array|null $items Optional. If provided, these items will be used for generating the OrderItemsCollection instead of using the WC order items.
-	 *                           Set to `null` (or empty) to retrieve from the WC order instead.
+	 * @param array|null $items Optional. If provided, these items will be used for generating the OrderItemsCollection.
 	 */
 	public function __construct( ?array $items = null ) {
 		$this->formatted_items = $items;
