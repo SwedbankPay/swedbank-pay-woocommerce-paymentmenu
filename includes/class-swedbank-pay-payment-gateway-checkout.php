@@ -332,6 +332,10 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			'subsite'                     => array(
 				'title'             => __( 'Subsite', 'swedbank-pay-payment-menu' ),
 				'type'              => 'text',
+				'description'       => __(
+					'Optional identifier for split settlement through Swedbank Pay, used to allocate payments to different business units under your Payee ID. Must be agreed with Swedbank Pay. Max 40 characters, alphanumeric.',
+					'swedbank-pay-payment-menu'
+				),
 				'sanitize_callback' => function ( $value ) {
 					$value = trim( $value );
 
