@@ -1081,25 +1081,17 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$transaction = $this->financial_transaction_to_array(
-				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			$result = $this->handle_post_action_response(
+				$order,
+				$response_service->getResponseResource(),
+				self::TYPE_CAPTURE,
+				$context
 			);
-
-			if ( is_wp_error( $transaction ) ) {
-				$context['error'] = $transaction->get_error_message();
-				LogUtility::log_request(
-					'[ORDER MANAGEMENT]: capture checkout',
-					$request_service->getClient(),
-					WC_Log_Levels::ERROR,
-					$context
-				);
-
-				return $transaction;
+			if ( is_wp_error( $result ) ) {
+				return $result;
 			}
 
-			$this->process_transaction( $order, $transaction );
-
-			return $transaction;
+			return $result;
 		} catch ( ClientException $e ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
 			LogUtility::log_request(
@@ -1170,25 +1162,17 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$transaction = $this->financial_transaction_to_array(
-				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			$result = $this->handle_post_action_response(
+				$order,
+				$response_service->getResponseResource(),
+				self::TYPE_CANCELLATION,
+				$context
 			);
-
-			if ( is_wp_error( $transaction ) ) {
-				$context['error'] = $transaction->get_error_message();
-				LogUtility::log_request(
-					'[ORDER MANAGEMENT]: cancel checkout',
-					$request_service->getClient(),
-					WC_Log_Levels::ERROR,
-					$context
-				);
-
-				return $transaction;
+			if ( is_wp_error( $result ) ) {
+				return $result;
 			}
 
-			$this->process_transaction( $order, $transaction );
-
-			return $transaction;
+			return $result;
 		} catch ( ClientException $e ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
 			LogUtility::log_request(
@@ -1257,25 +1241,17 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$transaction = $this->financial_transaction_to_array(
-				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			$result = $this->handle_post_action_response(
+				$order,
+				$response_service->getResponseResource(),
+				self::TYPE_REVERSAL,
+				$context
 			);
-
-			if ( is_wp_error( $transaction ) ) {
-				$context['error'] = $transaction->get_error_message();
-				LogUtility::log_request(
-					'[ORDER MANAGEMENT]: refund amount',
-					$request_service->getClient(),
-					WC_Log_Levels::ERROR,
-					$context
-				);
-
-				return $transaction;
+			if ( is_wp_error( $result ) ) {
+				return $result;
 			}
 
-			$this->process_transaction( $order, $transaction );
-
-			return $transaction;
+			return $result;
 		} catch ( ClientException $e ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
 			LogUtility::log_request(
@@ -1346,25 +1322,17 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$transaction = $this->financial_transaction_to_array(
-				$response_service->getResponseResource()->getLatestFinancialTransaction()
+			$result = $this->handle_post_action_response(
+				$order,
+				$response_service->getResponseResource(),
+				self::TYPE_REVERSAL,
+				$context
 			);
-
-			if ( is_wp_error( $transaction ) ) {
-				$context['error'] = $transaction->get_error_message();
-				LogUtility::log_request(
-					'[ORDER MANAGEMENT]: refund amount',
-					$request_service->getClient(),
-					WC_Log_Levels::ERROR,
-					$context
-				);
-
-				return $transaction;
+			if ( is_wp_error( $result ) ) {
+				return $result;
 			}
 
-			$this->process_transaction( $order, $transaction );
-
-			return $transaction;
+			return $result;
 		} catch ( ClientException $e ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
 			LogUtility::log_request(
@@ -1382,18 +1350,104 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Handle the deserialized response from a capture/cancel/reversal POST.
+	 *
+	 * Prefers to drive {@see process_transaction()} from the freshly-created
+	 * FinancialTransaction in the response. If the API didn't populate the
+	 * financial-transactions list (observed for v3.1 cancellations whose
+	 * details only live at `paymentOrder.cancelled`), falls back to the
+	 * paymentOrder.status as the authoritative signal and updates the WC
+	 * order explicitly so the meta-box button doesn't silently no-op.
+	 *
+	 * @param WC_Order $order              The WooCommerce order.
+	 * @param mixed    $response_resource  The typed PaymentorderResponse, or null.
+	 * @param string   $expected_type      One of self::TYPE_CAPTURE, self::TYPE_CANCELLATION, self::TYPE_REVERSAL.
+	 * @param array    $context            Logging context.
+	 * @return array|WP_Error Returns the transaction array on success, WP_Error otherwise.
+	 */
+	private function handle_post_action_response( WC_Order $order, $response_resource, $expected_type, array $context ) {
+		$latest_ft     = $response_resource ? $response_resource->getLatestFinancialTransaction() : null;
+		$payment_order = $response_resource ? $response_resource->getPaymentOrder() : null;
+
+		// Primary path: a fresh financial transaction is available — process it normally.
+		if ( $latest_ft && $latest_ft->getType() === $expected_type ) {
+			$transaction = $this->financial_transaction_to_array( $latest_ft );
+
+			$result = $this->process_transaction( $order, $transaction );
+			if ( is_wp_error( $result ) ) {
+				return $result;
+			}
+
+			return $transaction;
+		}
+
+		// Fallback path: the financial-transactions list was empty (typical for v3.1 cancellations).
+		// Trust paymentOrder.status, which is set by Swedbank when the action has been applied.
+		$po_status = $payment_order ? $payment_order->getStatus() : null;
+		Swedbank_Pay()->logger()->debug(
+			sprintf(
+				'[ORDER MANAGEMENT]: No matching FinancialTransaction in response for %s on order #%s. Falling back to paymentOrder.status="%s".',
+				$expected_type,
+				$order->get_order_number(),
+				$po_status
+			),
+			$context
+		);
+
+		switch ( $expected_type ) {
+			case self::TYPE_CANCELLATION:
+				if ( 'Cancelled' !== $po_status ) {
+					return new WP_Error(
+						'cancel',
+						sprintf( 'Cancellation response did not confirm a Cancelled status (got "%s").', $po_status )
+					);
+				}
+				$this->update_order_status(
+					$order,
+					'cancelled',
+					null,
+					__( 'Payment has been cancelled.', 'swedbank-pay-payment-menu' )
+				);
+				return array( 'type' => self::TYPE_CANCELLATION );
+
+			case self::TYPE_CAPTURE:
+				if ( 'Paid' !== $po_status ) {
+					return new WP_Error(
+						'capture',
+						sprintf( 'Capture response did not confirm a Paid status (got "%s").', $po_status )
+					);
+				}
+				$order->add_order_note( __( 'Payment has been captured.', 'swedbank-pay-payment-menu' ) );
+				return array( 'type' => self::TYPE_CAPTURE );
+
+			case self::TYPE_REVERSAL:
+				// For a full reversal Swedbank sets status='Reversed'. Partials only move
+				// remainingReversalAmount, so we can't always rely on the status alone.
+				$remaining = $payment_order ? $payment_order->getRemainingReversalAmount() : null;
+				if ( 'Reversed' !== $po_status && null === $remaining ) {
+					return new WP_Error(
+						'refund',
+						sprintf( 'Reversal response did not confirm a refund (status "%s").', $po_status )
+					);
+				}
+				$order->add_order_note( __( 'Payment has been refunded.', 'swedbank-pay-payment-menu' ) );
+				return array( 'type' => self::TYPE_REVERSAL );
+
+			default:
+				return new WP_Error( 'unknown_action', sprintf( 'Unknown expected transaction type "%s".', $expected_type ) );
+		}
+	}
+
+	/**
 	 * Bridge a typed v3.1 FinancialTransaction to the array shape that
 	 * {@see process_transaction()} expects.
 	 *
 	 * @param mixed $ft FinancialTransaction|null.
-	 * @return array|WP_Error WP_Error when no transaction is available, otherwise the array shape.
+	 * @return array
 	 */
 	private function financial_transaction_to_array( $ft ) {
 		if ( empty( $ft ) ) {
-			return new WP_Error(
-				'missing_financial_transaction',
-				'No financial transaction was returned by the API.'
-			);
+			return array();
 		}
 
 		return array(
