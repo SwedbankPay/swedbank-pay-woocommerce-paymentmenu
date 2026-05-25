@@ -106,7 +106,7 @@ class Redirect extends CheckoutFlow {
 
 		$description = $gateway->get_description();
 		if ( ! empty( $description ) ) {
-			echo wpautop( wptexturize( $description ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			echo wp_kses_post( wpautop( wptexturize( $description ) ) );
 		}
 	}
 }
