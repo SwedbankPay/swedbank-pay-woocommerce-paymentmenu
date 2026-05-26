@@ -1,3 +1,8 @@
+Version 4.4.2
+* Fix           - Resolved an "undefined array key" PHP warning.
+* Tweak         - Removed the plugin's dependency on the PHP BCMath extension.
+* Tweak         - Removed the "Language" setting. The checkout language is now automatically derived from the current WordPress locale.
+
 Version 4.4.1
 * Fix           - Fixed an issue where automatic capture was sometimes used even when disabled in the plugin settings.
 * Fix           - Corrected the Trustly label on the settings page.

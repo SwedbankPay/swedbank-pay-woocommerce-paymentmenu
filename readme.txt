@@ -2,11 +2,11 @@
 Contributors: swedbankpay
 Tags: ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 7.4
 WC requires at least: 5.5.1
 WC tested up to: 10.7.0
-Stable tag: 4.4.1
+Stable tag: 4.4.2
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,11 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.05.26    - version 4.4.2 =
+* Fix           - Resolved an "undefined array key" PHP warning.
+* Tweak         - Removed the plugin's dependency on the PHP BCMath extension.
+* Tweak         - Removed the "Language" setting. The checkout language is now automatically derived from the current WordPress locale.
+
 = 2026.04.27    - version 4.4.1 =
 * Fix           - Fixed an issue where automatic capture was sometimes used even when disabled in the plugin settings.
 * Fix           - Corrected the Trustly label on the settings page.
