@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "876f89e7b29e373655ea2e144da55806",
+    "content-hash": "744aae224012957628868616302c410d",
     "packages": [
         {
             "name": "krokedil/support",
@@ -214,16 +214,16 @@
         },
         {
             "name": "swedbank-pay/swedbank-pay-sdk-php",
-            "version": "dev-develop-v3.1-api",
+            "version": "dev-add-payer-country-code",
             "source": {
                 "type": "git",
                 "url": "https://github.com/krokedil/swedbank-pay-sdk-php.git",
-                "reference": "715f8aa778bf012e37ffc16f619ff2125dd67d92"
+                "reference": "330b328a3d5ef67f395a48c0f00fd953b4c870be"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/krokedil/swedbank-pay-sdk-php/zipball/715f8aa778bf012e37ffc16f619ff2125dd67d92",
-                "reference": "715f8aa778bf012e37ffc16f619ff2125dd67d92",
+                "url": "https://api.github.com/repos/krokedil/swedbank-pay-sdk-php/zipball/330b328a3d5ef67f395a48c0f00fd953b4c870be",
+                "reference": "330b328a3d5ef67f395a48c0f00fd953b4c870be",
                 "shasum": ""
             },
             "require": {
@@ -286,9 +286,9 @@
                 "sdk"
             ],
             "support": {
-                "source": "https://github.com/krokedil/swedbank-pay-sdk-php/tree/develop-v3.1-api"
+                "source": "https://github.com/krokedil/swedbank-pay-sdk-php/tree/add-payer-country-code"
             },
-            "time": "2026-05-13T08:49:10+00:00"
+            "time": "2026-05-27T09:36:50+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -389,5 +389,5 @@
     "platform-overrides": {
         "php": "7.4"
     },
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }
