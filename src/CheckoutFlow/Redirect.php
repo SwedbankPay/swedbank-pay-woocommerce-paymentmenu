@@ -86,4 +86,27 @@ class Redirect extends CheckoutFlow {
 			'redirect' => $result->getOperationByRel( 'redirect-checkout', 'href' ),
 		);
 	}
+
+	/**
+	 * Output the payment fields content for the handler.
+	 *
+	 * Mirrors WooCommerce's default WC_Payment_Gateway::payment_fields() behavior
+	 * by rendering the gateway description, which the gateway's payment_fields()
+	 * override no longer does on its own. When called from a split instrument
+	 * gateway, the per-instrument description is rendered instead of the main
+	 * gateway's description.
+	 *
+	 * @param string $gateway_id The gateway ID whose description should be rendered.
+	 *
+	 * @return void
+	 */
+	protected function payment_fields_content( $gateway_id = 'payex_checkout' ) {
+		$gateways = WC()->payment_gateways()->payment_gateways();
+		$gateway  = $gateways[ $gateway_id ] ?? $this->gateway;
+
+		$description = $gateway->get_description();
+		if ( ! empty( $description ) ) {
+			echo wp_kses_post( wpautop( wptexturize( $description ) ) );
+		}
+	}
 }
