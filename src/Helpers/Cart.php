@@ -22,15 +22,21 @@ defined( 'ABSPATH' ) || exit;
  * It also provides methods to calculate total amounts and VAT amounts for the order.
  */
 class Cart extends PaymentDataHelper {
+
 	/**
-	 * Order constructor.
+	 * Plugin settings.
+	 *
+	 * @var array
+	 */
+	private $settings;
+
+	/**
+	 * Cart constructor.
 	 *
 	 * Initializes the order with the provided WC order or WC order refund object.
 	 * Retrieves the payment gateway and sets the user agent based on the order's customer user agent.
 	 *
-	 * @param \WC_Order|\WC_Order_Refund $order The WooCommerce order or refund object.
-	 * @param array|null                 $items Optional. If provided, these items will be used for generating the OrderItemsCollection instead of using the WC order items.
-	 *                                           Set to `null` (or empty) to retrieve from the WC order instead.
+	 * @param array|null $items Optional. If provided, these items will be used for generating the OrderItemsCollection.
 	 */
 	public function __construct( ?array $items = null ) {
 		$this->formatted_items = $items;
@@ -40,6 +46,8 @@ class Cart extends PaymentDataHelper {
 		if ( empty( $this->user_agent ) ) {
 			$this->user_agent = 'WooCommerce/' . WC()->version;
 		}
+
+		$this->settings = get_option( "woocommerce_{$this->gateway->id}_settings", array() );
 	}
 
 	/**
@@ -100,21 +108,25 @@ class Cart extends PaymentDataHelper {
 	 * @return PaymentorderPayeeInfo
 	 */
 	public function get_payee_info() {
-		$payee = new PaymentorderPayeeInfo(
-			array(
-				'payeeId'        => $this->gateway->payee_id,
-				'payeeReference' => apply_filters(
-					'swedbank_pay_payee_reference',
-					self::get_payee_reference(),
-				),
-				'payeeName'      => apply_filters(
-					'swedbank_pay_payee_name',
-					get_bloginfo( 'name' ),
-					$this->gateway->id
-				),
-			)
+		$payload = array(
+			'payeeId'        => $this->gateway->payee_id,
+			'payeeReference' => apply_filters(
+				'swedbank_pay_payee_reference',
+				self::get_payee_reference(),
+			),
+			'payeeName'      => apply_filters(
+				'swedbank_pay_payee_name',
+				get_bloginfo( 'name' ),
+				$this->gateway->id
+			),
 		);
 
+		$subsite = $this->settings['subsite'] ?? '';
+		if ( ! empty( $subsite ) ) {
+			$payload['subsite'] = $subsite;
+		}
+
+		$payee = new PaymentorderPayeeInfo( $payload );
 		return apply_filters( 'swedbank_pay_payee', $payee, $this );
 	}
 
@@ -128,7 +140,7 @@ class Cart extends PaymentDataHelper {
 	 */
 	public function get_url_data() {
 		$payee_reference = self::get_payee_reference();
-		$callback_url = add_query_arg(
+		$callback_url    = add_query_arg(
 			array(
 				'type'            => 'inline_embedded',
 				'payee_reference' => $payee_reference,
@@ -138,7 +150,7 @@ class Cart extends PaymentDataHelper {
 
 		$complete_url = $this->gateway->get_return_url();
 		$payment_url  = add_query_arg( 'payex-payment-complete', $payee_reference, wc_get_checkout_url() );
-		$url_data = ( new PaymentorderUrl() )
+		$url_data     = ( new PaymentorderUrl() )
 			->setHostUrls(
 				Swedbank_Pay_Api::get_host_urls(
 					array(

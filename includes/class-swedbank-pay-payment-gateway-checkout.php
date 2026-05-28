@@ -305,6 +305,29 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				),
 				'default'     => $this->culture,
 			),
+			'subsite'                     => array(
+				'title'             => __( 'Subsite', 'swedbank-pay-payment-menu' ),
+				'type'              => 'text',
+				'description'       => __(
+					'Optional identifier for split settlement through Swedbank Pay, used to allocate payments to different business units under your Payee ID. Must be agreed with Swedbank Pay. Max 40 characters, alphanumeric.',
+					'swedbank-pay-payment-menu'
+				),
+				'sanitize_callback' => function ( $value ) {
+					$value = trim( $value );
+
+					if ( ! empty( $value ) ) {
+						if ( strlen( $value ) > 40 ) {
+							throw new Exception( esc_html__( 'Subsite can only contain a maximum of 40 characters.', 'swedbank-pay-payment-menu' ) );
+						}
+
+						if ( ! preg_match( '/^[A-Za-z0-9]+$/', $value ) ) {
+							throw new Exception( esc_html__( 'Subsite can only contain letters and numbers.', 'swedbank-pay-payment-menu' ) );
+						}
+					}
+
+					return $value;
+				},
+			),
 			'instant_capture'             => array(
 				'title'          => __( 'Instant Capture', 'swedbank-pay-payment-menu' ),
 				'description'    => __( 'Capture payment automatically depends on the product type. It\'s working when Auto Capture Intent is off.', 'swedbank-pay-payment-menu' ),
@@ -497,6 +520,20 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @return bool was anything saved?
 	 */
 	public function process_admin_options() {
+		// WC_Settings_API ignores sanitize_callback — run them manually before saving.
+		foreach ( $this->get_form_fields() as $key => $field ) {
+			if ( empty( $field['sanitize_callback'] ) || ! is_callable( $field['sanitize_callback'] ) ) {
+				continue;
+			}
+			$field_key = $this->get_field_key( $key );
+			$value     = isset( $_POST[ $field_key ] ) ? wp_unslash( $_POST[ $field_key ] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification
+			try {
+				call_user_func( $field['sanitize_callback'], $value );
+			} catch ( \Exception $e ) {
+				WC_Admin_Settings::add_error( $e->getMessage() );
+			}
+		}
+
 		$result = parent::process_admin_options();
 
 		// Reload settings.
