@@ -29,6 +29,13 @@ class Order extends PaymentDataHelper {
 	private $order;
 
 	/**
+	 * Plugin settings.
+	 *
+	 * @var array
+	 */
+	private $settings;
+
+	/**
 	 * Order constructor.
 	 *
 	 * Initializes the order with the provided WC order or WC order refund object.
@@ -51,6 +58,8 @@ class Order extends PaymentDataHelper {
 		if ( empty( $this->user_agent ) ) {
 			$this->user_agent = 'WooCommerce/' . WC()->version;
 		}
+
+		$this->settings = get_option( "woocommerce_{$this->gateway->id}_settings", array() );
 	}
 
 	/**
@@ -105,25 +114,29 @@ class Order extends PaymentDataHelper {
 	 * @return PaymentorderPayeeInfo
 	 */
 	public function get_payee_info() {
-		$payee = new PaymentorderPayeeInfo(
-			array(
-				'orderReference' => apply_filters(
-					'swedbank_pay_order_reference',
-					$this->order->get_order_number()
-				),
-				'payeeReference' => apply_filters(
-					'swedbank_pay_payee_reference',
-					swedbank_pay_generate_payee_reference( $this->order->get_id() )
-				),
-				'payeeId'        => $this->gateway->payee_id,
-				'payeeName'      => apply_filters(
-					'swedbank_pay_payee_name',
-					get_bloginfo( 'name' ),
-					$this->gateway->id
-				),
-			)
+		$payload = array(
+			'orderReference' => apply_filters(
+				'swedbank_pay_order_reference',
+				$this->order->get_order_number()
+			),
+			'payeeReference' => apply_filters(
+				'swedbank_pay_payee_reference',
+				swedbank_pay_generate_payee_reference( $this->order->get_id() )
+			),
+			'payeeId'        => $this->gateway->payee_id,
+			'payeeName'      => apply_filters(
+				'swedbank_pay_payee_name',
+				get_bloginfo( 'name' ),
+				$this->gateway->id
+			),
 		);
 
+		$subsite = $this->settings['subsite'] ?? '';
+		if ( ! empty( $subsite ) ) {
+			$payload['subsite'] = $subsite;
+		}
+
+		$payee = new PaymentorderPayeeInfo( $payload );
 		return apply_filters( 'swedbank_pay_payee', $payee, $this );
 	}
 
@@ -186,7 +199,8 @@ class Order extends PaymentDataHelper {
 				->setFirstName( $this->order->get_billing_first_name() )
 				->setLastName( $this->order->get_billing_last_name() )
 				->setEmail( $this->order->get_billing_email() )
-				->setMsisdn( self::format_phone_number( $this->order->get_billing_phone(), $this->order->get_billing_country() ) );
+				->setMsisdn( self::format_phone_number( $this->order->get_billing_phone(), $this->order->get_billing_country() ) )
+				->setCountryCode( $this->order->get_billing_country() );
 
 		$needs_shipping = false;
 		foreach ( $this->order->get_items() as $order_item ) {
@@ -244,14 +258,13 @@ class Order extends PaymentDataHelper {
 			$items = $this->get_formatted_items();
 
 			$payment_order->setAmount(
-				(int) bcmul(
-					100,
+				(int) round(
 					apply_filters(
 						'swedbank_pay_order_amount',
 						$this->order->get_total(),
 						$items,
 						$this->order
-					)
+					) * 100
 				)
 			)
 			->setVatAmount(
