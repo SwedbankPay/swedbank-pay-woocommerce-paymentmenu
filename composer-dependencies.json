@@ -2,7 +2,7 @@
   "require": {
     "php": ">=7.4",
     "ramsey/uuid": "^3.7",
-    "swedbank-pay/swedbank-pay-sdk-php": "dev-develop-v3.1-api",
+    "swedbank-pay/swedbank-pay-sdk-php": "dev-add-payer-country-code",
     "krokedil/support": "1.0.2"
   },
   "config": {
