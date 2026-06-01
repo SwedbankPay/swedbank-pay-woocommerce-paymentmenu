@@ -650,9 +650,14 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return parent::get_transaction_url( $order );
 		}
 
-		$view_transaction_url = 'https://merchantportal.swedbankpay.com/ecom/payments/details;id=%s';
+		// The meta value is a resource path (e.g. "/psp/paymentorders/{uuid}"),
+		// but the merchant portal link expects only the trailing UUID.
+		$parts        = explode( '/', $payment_order_id );
+		$payment_uuid = array_pop( $parts );
 
-		return sprintf( $view_transaction_url, rawurlencode( $payment_order_id ) );
+		$view_transaction_url = 'https://merchantportal.swedbankpay.com/psp/transactions/paymentorder/%s';
+
+		return sprintf( $view_transaction_url, rawurlencode( $payment_uuid ) );
 	}
 
 	/**
