@@ -253,8 +253,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
 	 */
 	public function init_form_fields() {
-		$portal_url = 'yes' === $this->testmode ? 'https://merchantportal.externalintegration.swedbankpay.com' :
-			'https://merchantportal.swedbankpay.com';
+		$portal_url = 'https://merchantportal.swedbankpay.com';
 
 		// Define checkout flow options.
 		$flow_options = array(
@@ -651,11 +650,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return parent::get_transaction_url( $order );
 		}
 
-		if ( wc_string_to_bool( $this->testmode ) ) {
-			$view_transaction_url = 'https://merchantportal.externalintegration.swedbankpay.com/ecom/payments/details;id=%s';
-		} else {
-			$view_transaction_url = 'https://merchantportal.swedbankpay.com/ecom/payments/details;id=%s';
-		}
+		$view_transaction_url = 'https://merchantportal.swedbankpay.com/ecom/payments/details;id=%s';
 
 		return sprintf( $view_transaction_url, rawurlencode( $payment_order_id ) );
 	}
