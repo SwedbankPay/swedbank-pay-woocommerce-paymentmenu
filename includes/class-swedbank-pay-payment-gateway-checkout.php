@@ -652,7 +652,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		}
 
 		if ( wc_string_to_bool( $this->testmode ) ) {
-			$view_transaction_url = 'https://merchantportal.externalintegration.swedbankpay.com/ecom/paymentorders;id=%s';
+			$view_transaction_url = 'https://merchantportal.externalintegration.swedbankpay.com/ecom/payments/details;id=%s';
 		} else {
 			$view_transaction_url = 'https://merchantportal.swedbankpay.com/ecom/payments/details;id=%s';
 		}
