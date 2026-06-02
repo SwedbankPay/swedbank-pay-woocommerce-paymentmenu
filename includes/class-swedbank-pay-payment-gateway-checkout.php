@@ -352,6 +352,29 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 					return $value;
 				},
 			),
+			'subsite'                     => array(
+				'title'             => __( 'Subsite', 'swedbank-pay-payment-menu' ),
+				'type'              => 'text',
+				'description'       => __(
+					'Optional identifier for split settlement through Swedbank Pay, used to allocate payments to different business units under your Payee ID. Must be agreed with Swedbank Pay. Max 40 characters, alphanumeric.',
+					'swedbank-pay-payment-menu'
+				),
+				'sanitize_callback' => function ( $value ) {
+					$value = trim( $value );
+
+					if ( ! empty( $value ) ) {
+						if ( strlen( $value ) > 40 ) {
+							throw new Exception( esc_html__( 'Subsite can only contain a maximum of 40 characters.', 'swedbank-pay-payment-menu' ) );
+						}
+
+						if ( ! preg_match( '/^[A-Za-z0-9]+$/', $value ) ) {
+							throw new Exception( esc_html__( 'Subsite can only contain letters and numbers.', 'swedbank-pay-payment-menu' ) );
+						}
+					}
+
+					return $value;
+				},
+			),
 			'instant_capture'             => array(
 				'title'          => __( 'Instant Capture', 'swedbank-pay-payment-menu' ),
 				'description'    => __( 'Capture payment automatically depends on the product type. It\'s working when Auto Capture Intent is off.', 'swedbank-pay-payment-menu' ),

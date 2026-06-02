@@ -1,3 +1,7 @@
+Version 4.5.0
+* Feature       - Added a 'Subsite' setting for split settlement with Swedbank Pay. Requires a prior agreement with Swedbank Pay.
+* Fix           - Fixed an issue where error messages were not shown on the settings page.
+
 Version 4.4.2
 * Fix           - Resolved an "undefined array key" PHP warning.
 * Tweak         - Removed the plugin's dependency on the PHP BCMath extension.
