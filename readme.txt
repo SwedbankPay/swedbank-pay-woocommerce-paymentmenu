@@ -2,11 +2,11 @@
 Contributors: swedbankpay
 Tags: ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 10.7.0
-Stable tag: 4.4.1
+WC tested up to: 10.8.1
+Stable tag: 4.5.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,10 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.06.02    - version 4.5.0 =
+* Feature       - Added a 'Subsite' setting for split settlement with Swedbank Pay. Requires a prior agreement with Swedbank Pay.
+* Fix           - Fixed an issue where error messages were not shown on the settings page.
+
 = 2026.04.27    - version 4.4.1 =
 * Fix           - Fixed an issue where automatic capture was sometimes used even when disabled in the plugin settings.
 * Fix           - Corrected the Trustly label on the settings page.
