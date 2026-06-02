@@ -1,3 +1,7 @@
+Version 4.5.0
+* Feature       - Added a 'Subsite' setting for split settlement with Swedbank Pay. Requires a prior agreement with Swedbank Pay.
+* Fix           - Fixed an issue where error messages were not shown on the settings page.
+
 Version 4.4.1
 * Fix           - Fixed an issue where automatic capture was sometimes used even when disabled in the plugin settings.
 * Fix           - Corrected the Trustly label on the settings page.
