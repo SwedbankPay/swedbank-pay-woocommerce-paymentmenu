@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "744aae224012957628868616302c410d",
+    "content-hash": "f33f4cf8f1d0d6d7bde3fc16a5986863",
     "packages": [
         {
             "name": "krokedil/support",
-            "version": "1.0.2",
+            "version": "1.0.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/krokedil/support.git",
-                "reference": "99059b1b27cc4ed7667c1d04968aec45413fe533"
+                "reference": "96da75792434a2553c6af9e891e646705fd33e7c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/krokedil/support/zipball/99059b1b27cc4ed7667c1d04968aec45413fe533",
-                "reference": "99059b1b27cc4ed7667c1d04968aec45413fe533",
+                "url": "https://api.github.com/repos/krokedil/support/zipball/96da75792434a2553c6af9e891e646705fd33e7c",
+                "reference": "96da75792434a2553c6af9e891e646705fd33e7c",
                 "shasum": ""
             },
             "require": {
@@ -57,10 +57,10 @@
             ],
             "description": "The support library allows you to extend your plugin with logging that can be optionally toggled through your plugin settings, generate an entry in the system report from your plugin settings, and report issues to the system report.",
             "support": {
-                "source": "https://github.com/krokedil/support/tree/1.0.2",
+                "source": "https://github.com/krokedil/support/tree/1.0.4",
                 "issues": "https://github.com/krokedil/support/issues"
             },
-            "time": "2025-10-08T12:47:46+00:00"
+            "time": "2026-04-20T16:27:59+00:00"
         },
         {
             "name": "paragonie/random_compat",
@@ -218,12 +218,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/krokedil/swedbank-pay-sdk-php.git",
-                "reference": "330b328a3d5ef67f395a48c0f00fd953b4c870be"
+                "reference": "c2e1f0d482d19bddcad8622aa3de1e02981ea08c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/krokedil/swedbank-pay-sdk-php/zipball/330b328a3d5ef67f395a48c0f00fd953b4c870be",
-                "reference": "330b328a3d5ef67f395a48c0f00fd953b4c870be",
+                "url": "https://api.github.com/repos/krokedil/swedbank-pay-sdk-php/zipball/c2e1f0d482d19bddcad8622aa3de1e02981ea08c",
+                "reference": "c2e1f0d482d19bddcad8622aa3de1e02981ea08c",
                 "shasum": ""
             },
             "require": {
@@ -288,7 +288,7 @@
             "support": {
                 "source": "https://github.com/krokedil/swedbank-pay-sdk-php/tree/add-payer-country-code"
             },
-            "time": "2026-05-27T09:36:50+00:00"
+            "time": "2026-05-29T12:53:13+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",

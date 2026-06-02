@@ -5,8 +5,8 @@ Requires at least: 5.3
 Tested up to: 7.0
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 10.7.0
-Stable tag: 4.4.2
+WC tested up to: 10.8.1
+Stable tag: 4.5.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,13 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.06.02    - version 4.5.0 =
+* Feature       - Added a 'Subsite' setting for split settlement with Swedbank Pay. Requires a prior agreement with Swedbank Pay.
+* Enhancement   - The customer's billing country is now sent to Swedbank Pay at checkout.
+* Fix           - Fixed an issue where the description for split payment methods was not showing at checkout.
+* Fix           - Fixed an issue where the description setting for split payment methods was not saving correctly.
+* Fix           - Fixed an issue where error messages were not shown on the settings page.
+
 = 2026.05.26    - version 4.4.2 =
 * Fix           - Resolved an "undefined array key" PHP warning.
 * Tweak         - Removed the plugin's dependency on the PHP BCMath extension.
