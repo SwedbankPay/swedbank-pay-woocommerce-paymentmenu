@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "744aae224012957628868616302c410d",
+    "content-hash": "3e69ff01f9c46965a361a8cd1aea81c3",
     "packages": [
         {
             "name": "krokedil/support",
@@ -214,16 +214,16 @@
         },
         {
             "name": "swedbank-pay/swedbank-pay-sdk-php",
-            "version": "dev-add-payer-country-code",
+            "version": "6.3.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/krokedil/swedbank-pay-sdk-php.git",
-                "reference": "330b328a3d5ef67f395a48c0f00fd953b4c870be"
+                "url": "https://github.com/SwedbankPay/swedbank-pay-sdk-php.git",
+                "reference": "1a85aa5d724954f6b8852a982f8f7cb02c68ebca"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/krokedil/swedbank-pay-sdk-php/zipball/330b328a3d5ef67f395a48c0f00fd953b4c870be",
-                "reference": "330b328a3d5ef67f395a48c0f00fd953b4c870be",
+                "url": "https://api.github.com/repos/SwedbankPay/swedbank-pay-sdk-php/zipball/1a85aa5d724954f6b8852a982f8f7cb02c68ebca",
+                "reference": "1a85aa5d724954f6b8852a982f8f7cb02c68ebca",
                 "shasum": ""
             },
             "require": {
@@ -246,12 +246,7 @@
                     "SwedbankPay\\": "src/SwedbankPay/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "SwedbankPayTest\\": "tests/Unit/SwedbankPayTest/",
-                    "SwedbankPayTest\\Test\\": "tests/Functional/SwedbankPayTest/Test/"
-                }
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
@@ -286,9 +281,10 @@
                 "sdk"
             ],
             "support": {
-                "source": "https://github.com/krokedil/swedbank-pay-sdk-php/tree/add-payer-country-code"
+                "issues": "https://github.com/SwedbankPay/swedbank-pay-sdk-php/issues",
+                "source": "https://github.com/SwedbankPay/swedbank-pay-sdk-php/tree/v6.3.0"
             },
-            "time": "2026-05-27T09:36:50+00:00"
+            "time": "2026-06-03T09:12:40+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -377,9 +373,7 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "swedbank-pay/swedbank-pay-sdk-php": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
