@@ -85,10 +85,10 @@ class Swedbank_Pay_Scheduler {
 			// Get the WooCommerce order using the order reference or the payment order id.
 			$order = $this->get_woocommerce_order( $order_reference, $payment_order_id );
 
-			// If the order is a refund order, skip and just return true.
+			// If the order is a refund order, skip processing.
 			if ( $order instanceof \WC_Order_Refund ) {
 				Swedbank_Pay()->logger()->info( "[SCHEDULER]: Callback for payment order id #{$payment_order_id} is a WooCommerce refund order. Skipping.", $context );
-				return true;
+				return false;
 			}
 
 			$gateway = swedbank_pay_get_payment_method( $order );
