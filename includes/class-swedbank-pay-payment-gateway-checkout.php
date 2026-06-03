@@ -1011,7 +1011,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	private function get_settings_page_args() {
 		$args = get_transient( 'swedbank_pay_settings_page_config' );
 		if ( ! $args ) {
-			$args = wp_remote_get( 'https://krokedil-settings-page-configs.s3.eu-north-1.amazonaws.com/develop/configs/swedbank-pay-woocommerce-paymentmenu.json' );
+			$args = wp_remote_get( 'https://krokedil-settings-page-configs.s3.eu-north-1.amazonaws.com/main/configs/swedbank-pay-woocommerce-paymentmenu.json' );
 
 			if ( is_wp_error( $args ) ) {
 				Swedbank_Pay()->logger()->log(
