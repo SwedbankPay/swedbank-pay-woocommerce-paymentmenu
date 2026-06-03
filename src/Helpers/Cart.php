@@ -279,9 +279,12 @@ class Cart extends PaymentDataHelper {
 	 * This method constructs a Paymentorder object for updating an existing payment order.
 	 *
 	 * @hook swedbank_pay_update_payment_order
+	 *
+	 * @param \WC_Order|null $order The order object to get the order number from if it exists.
+	 *
 	 * @return Paymentorder
 	 */
-	public function get_update_payment_order() {
+	public function get_update_payment_order( $order = null ) {
 		$items                 = $this->get_formatted_items();
 		$this->formatted_items = $items;
 		$payment_order         = ( new Paymentorder() )
@@ -307,6 +310,13 @@ class Cart extends PaymentDataHelper {
 			->setOrderItems( $this->get_order_items() );
 
 		self::set_client_information( $payment_order ); // Set the client information.
+
+		// If the order is provided, Set the order reference in the payee info to ensure it is updated in Swedbank Pay's system.
+		if ( ! empty( $order ) ) {
+			$payee_info = $payment_order->getPayeeInfo() ?: new PaymentorderPayeeInfo();
+			$payee_info->setOrderReference( $order->get_order_number() );
+			$payment_order->setPayeeInfo( apply_filters( 'swedbank_pay_payee', $payee_info, $this ) );
+		}
 
 		return apply_filters( 'swedbank_pay_update_payment_order', $payment_order, $this );
 	}

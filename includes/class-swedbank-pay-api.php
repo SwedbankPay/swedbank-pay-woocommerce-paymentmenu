@@ -372,14 +372,15 @@ class Swedbank_Pay_Api {
 	 * Update a embedded payment.
 	 *
 	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
+	 * @param WC_Order|null $order The order object to get the order number from if it exists.
 	 *
 	 * @return WP_Error|ResponseServiceInterface
 	 */
-	public function update_embedded_purchase( $instrument = null ) {
+	public function update_embedded_purchase( $instrument = null, $order = null ) {
 		$update_payment_url = WC()->session->get( 'swedbank_pay_update_order_url' );
 		$helper             = new Cart();
 
-		$payment_order = $helper->get_update_payment_order();
+		$payment_order = $helper->get_update_payment_order( $order );
 
 		// Set the instrument if provided.
 		if ( ! empty( $instrument ) ) {

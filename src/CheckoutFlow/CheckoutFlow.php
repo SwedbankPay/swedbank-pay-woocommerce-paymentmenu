@@ -27,6 +27,13 @@ abstract class CheckoutFlow {
 	protected $api;
 
 	/**
+	 * The WooCommerce order if one exists.
+	 *
+	 * @var \WC_Order|null
+	 */
+	protected $order;
+
+	/**
 	 * Class constructor.
 	 *
 	 * @param \WC_Order|null $order The WooCommerce order to be processed. Can be null if during checkout.
@@ -36,6 +43,7 @@ abstract class CheckoutFlow {
 	public function __construct( $order = null ) {
 		$this->gateway = empty( $order ) ? SettingsUtility::get_gateway_class() : swedbank_pay_get_payment_method( $order );
 		$this->api     = $this->get_api();
+		$this->order   = $order;
 
 		$this->init();
 	}
