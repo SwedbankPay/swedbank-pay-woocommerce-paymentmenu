@@ -46,11 +46,9 @@ class Swedbank_Pay_Scheduler {
 		add_action( self::ACTION_ID, array( $this, 'run' ), 10, 2 );
 	}
 
-
 	/**
 	 * Code to execute for each item in the queue.
 	 *
-	 * @throws \Exception If the webhook data is invalid or if the order cannot be found.
 	 * @throws \WP_Exception If there is an error with the payment gateway or if the payment cannot be finalized.
 	 *
 	 * @param string $payment_method_id The payment method ID.
@@ -63,7 +61,6 @@ class Swedbank_Pay_Scheduler {
 			'payment_method_id' => $payment_method_id,
 			'webhook_data'      => $webhook_data,
 		);
-
 		Swedbank_Pay()->logger()->info( sprintf( '[SCHEDULER]: Start task: %s', wp_json_encode( array( $payment_method_id, $webhook_data ) ) ), $context );
 
 		try {
@@ -85,23 +82,13 @@ class Swedbank_Pay_Scheduler {
 			$context['payment_number']   = $payment_number;
 			$context['order_reference']  = $order_reference;
 
-			if ( ! empty( $order_reference ) ) {
-				// Use the order reference for quicker lookup.
-				$order = wc_get_order( $order_reference );
-				if ( ! $order || $order->get_meta( '_payex_paymentorder_id' ) !== $payment_order_id ) {
+			// Get the WooCommerce order using the order reference or the payment order id.
+			$order = $this->get_woocommerce_order( $order_reference, $payment_order_id );
 
-					// Fallback to payment order ID if the order reference does not match.
-					$order = swedbank_pay_get_order( $payment_order_id );
-					if ( ! $order ) {
-						Swedbank_Pay()->logger()->error( "[SCHEDULER]: Failed to find order with order reference: {$order_reference} and payment order ID: $payment_order_id", $context );
-						throw new \Exception( "[SCHEDULER]: Failed to find order with payment order ID: $payment_order_id" );
-					}
-				}
-			} else {
-				$order = swedbank_pay_get_order( $payment_order_id );
-				if ( ! $order ) {
-					throw new \Exception( "[SCHEDULER]: Failed to find order with payment order ID: $payment_order_id" );
-				}
+			// If the order is a refund order, skip and just return true.
+			if ( $order instanceof \WC_Order_Refund ) {
+				Swedbank_Pay()->logger()->info( "[SCHEDULER]: Callback for payment order id #{$payment_order_id} is a WooCommerce refund order. Skipping.", $context );
+				return true;
 			}
 
 			$gateway = swedbank_pay_get_payment_method( $order );
@@ -139,5 +126,34 @@ class Swedbank_Pay_Scheduler {
 
 		Swedbank_Pay()->logger()->info( "[SCHEDULER]: Successfully processed payment for order #{$order->get_order_number()} with payment number #{$context['payment_number']}.", $context );
 		return false;
+	}
+
+	/**
+	 * Try to get the WooCommerce order using the order reference or the payment order id.
+	 *
+	 * @param string $order_reference The order reference to find the order by.
+	 * @param string $payment_order_id The payment order ID to find the order by if the order was not found by the order reference.
+	 *
+	 * @throws \WP_Exception
+	 *
+	 * @return \WC_Order|\WC_Order_Refund
+	 */
+	private function get_woocommerce_order( $order_reference, $payment_order_id ) {
+		$order = null;
+
+		// If we have an order reference, try to find the order by the order reference.
+		$order = wc_get_order( $order_reference );
+
+		// If we don't have an order, or the order we have does not match the payment order ID, try to find the order by payment order ID.
+		if ( ! $order || $order->get_meta( '_payex_paymentorder_id' ) !== $payment_order_id ) {
+			$order = swedbank_pay_get_order( $payment_order_id );
+		}
+
+		// If the order is still not found, throw an error and exit.
+		if ( ! $order ) {
+			throw new \WP_Exception( "[SCHEDULER]: Failed to find order with payment order ID: $payment_order_id" );
+		}
+
+		return $order;
 	}
 }
