@@ -144,9 +144,7 @@ class Swedbank_Pay_Payment_Actions {
 		$result = $this->gateway->api->cancel_checkout( $order );
 
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-			$order->add_order_note(
-				'Cancellation has been failed. Error: ' . $result->get_error_message()
-			);
+			$order->add_order_note( "Cancellation failed. Error: {$result->get_error_message()}" );
 		}
 
 		return $result;
