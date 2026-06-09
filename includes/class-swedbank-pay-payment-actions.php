@@ -12,7 +12,6 @@ use WC_Order_Item_Fee;
 use WC_Order_Item_Shipping;
 use WC_Product;
 use WC_Payment_Gateway;
-use WC_Log_Levels;
 use WC_Order;
 use Swedbank_Pay_Payment_Gateway_Checkout;
 
