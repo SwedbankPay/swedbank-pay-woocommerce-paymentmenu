@@ -135,7 +135,6 @@ class Swedbank_Pay_Payment_Actions {
 	 * @return \WP_Error|array
 	 */
 	public function cancel_payment( $order ) {
-		// @todo Add more cancellation logic
 		remove_action(
 			'woocommerce_order_status_changed',
 			Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
@@ -143,7 +142,15 @@ class Swedbank_Pay_Payment_Actions {
 		);
 
 		/** @var \WP_Error|array $result */
-		return $this->gateway->api->cancel_checkout( $order );
+		$result = $this->gateway->api->cancel_checkout( $order );
+
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+			$order->add_order_note(
+				'Cancellation has been failed. Error: ' . $result->get_error_message()
+			);
+		}
+
+		return $result;
 	}
 
 	/**
