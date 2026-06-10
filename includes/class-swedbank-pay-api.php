@@ -1170,12 +1170,23 @@ class Swedbank_Pay_Api {
 				$context
 			);
 
-			$transaction = $this->financial_transaction_to_array(
-				$response_service->getResponseResource()->getLatestFinancialTransaction()
-			);
+			$financial_transaction = $response_service->getResponseResource()->getLatestFinancialTransaction();
 
-			if ( is_wp_error( $transaction ) ) {
-				$context['error'] = $transaction->get_error_message();
+			// A cancellation only applies to an authorized (uncaptured) amount and its financial transaction is optional, so the financial transactions list may be empty.
+			if ( ! empty( $financial_transaction ) ) {
+				$transaction = $this->financial_transaction_to_array( $financial_transaction );
+
+				$this->process_transaction( $order, $transaction );
+
+				return $transaction;
+			}
+
+			// No financial transaction was returned, so confirm the cancellation through the payment order status instead.
+			$payment_order = $response_service->getResponseResource()->getPaymentOrder();
+			$status        = $payment_order ? $payment_order->getStatus() : null;
+
+			if ( 'Cancelled' !== $status ) {
+				$context['error'] = sprintf( 'Cancellation not confirmed. Payment order status: %s.', $status );
 				LogUtility::log_request(
 					'[ORDER MANAGEMENT]: cancel checkout',
 					$request_service->getClient(),
@@ -1183,12 +1194,26 @@ class Swedbank_Pay_Api {
 					$context
 				);
 
-				return $transaction;
+				return new WP_Error(
+					'cancel',
+					__( 'The payment could not be cancelled. Please verify the payment status in Swedbank Pay.', 'swedbank-pay-payment-menu' )
+				);
 			}
 
-			$this->process_transaction( $order, $transaction );
+			$transaction_id = $payment_order->getNumber();
 
-			return $transaction;
+			$this->update_order_status(
+				$order,
+				'cancelled',
+				$transaction_id,
+				// translators: 1: transaction ID.
+				sprintf( __( 'Payment has been cancelled. Transaction: %s', 'swedbank-pay-payment-menu' ), $transaction_id )
+			);
+
+			return array(
+				'number' => $transaction_id,
+				'type'   => self::TYPE_CANCELLATION,
+			);
 		} catch ( ClientException $e ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
 			LogUtility::log_request(
