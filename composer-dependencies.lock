@@ -4,8 +4,53 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "744aae224012957628868616302c410d",
+    "content-hash": "0cf991e9fb2cb2e71e3818a959ca9f34",
     "packages": [
+        {
+            "name": "krokedil/settings-page",
+            "version": "1.3.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/krokedil/settings-page.git",
+                "reference": "2ebd903fc608206cf6fdd414a74c760a282e8159"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/krokedil/settings-page/zipball/2ebd903fc608206cf6fdd414a74c760a282e8159",
+                "reference": "2ebd903fc608206cf6fdd414a74c760a282e8159",
+                "shasum": ""
+            },
+            "require-dev": {
+                "php-stubs/woocommerce-stubs": "dev-master",
+                "wp-coding-standards/wpcs": "dev-develop"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Krokedil\\SettingsPage\\": "src/"
+                }
+            },
+            "scripts": {
+                "makepot": [
+                    "wp --allow-root i18n make-pot ./src ./languages/krokedil-settings.pot --domain=krokedil-settings"
+                ]
+            },
+            "license": [
+                "GPL-V2"
+            ],
+            "authors": [
+                {
+                    "name": "Krokedil AB",
+                    "email": "info@krokedil.se"
+                }
+            ],
+            "description": "A package to help setup settings pages in WordPress and WooCommerce for Krokedil plugins to add the Addons and Support tabs",
+            "support": {
+                "source": "https://github.com/krokedil/settings-page/tree/1.3.4",
+                "issues": "https://github.com/krokedil/settings-page/issues"
+            },
+            "time": "2026-04-23T19:14:17+00:00"
+        },
         {
             "name": "krokedil/support",
             "version": "1.0.2",
@@ -218,12 +263,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/krokedil/swedbank-pay-sdk-php.git",
-                "reference": "330b328a3d5ef67f395a48c0f00fd953b4c870be"
+                "reference": "c2e1f0d482d19bddcad8622aa3de1e02981ea08c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/krokedil/swedbank-pay-sdk-php/zipball/330b328a3d5ef67f395a48c0f00fd953b4c870be",
-                "reference": "330b328a3d5ef67f395a48c0f00fd953b4c870be",
+                "url": "https://api.github.com/repos/krokedil/swedbank-pay-sdk-php/zipball/c2e1f0d482d19bddcad8622aa3de1e02981ea08c",
+                "reference": "c2e1f0d482d19bddcad8622aa3de1e02981ea08c",
                 "shasum": ""
             },
             "require": {
@@ -288,7 +333,7 @@
             "support": {
                 "source": "https://github.com/krokedil/swedbank-pay-sdk-php/tree/add-payer-country-code"
             },
-            "time": "2026-05-27T09:36:50+00:00"
+            "time": "2026-05-29T12:53:13+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -385,9 +430,9 @@
     "platform": {
         "php": ">=7.4"
     },
-    "platform-dev": {},
+    "platform-dev": [],
     "platform-overrides": {
         "php": "7.4"
     },
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
