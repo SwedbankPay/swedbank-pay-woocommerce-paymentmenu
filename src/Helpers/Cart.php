@@ -78,7 +78,7 @@ class Cart extends PaymentDataHelper {
 		foreach ( $formatted_items as $item ) {
 			// Swedbank does not allow negative values in any numeric field which will always be the case for WC_Order_Refund unless the row is a discount.
 			$items[] = array_map(
-				fn( $value ) => is_numeric( $value ) ? ( $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] === Swedbank_Pay_Order_Item::TYPE_DISCOUNT ? $value : abs( $value ) ) : $value,
+				fn( $value ) => is_numeric( $value ) ? ( Swedbank_Pay_Order_Item::TYPE_DISCOUNT === $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] ? $value : abs( $value ) ) : $value,
 				$item
 			);
 
@@ -313,7 +313,7 @@ class Cart extends PaymentDataHelper {
 
 		// If the order is provided, Set the order reference in the payee info to ensure it is updated in Swedbank Pay's system.
 		if ( ! empty( $order ) ) {
-			$payee_info = $payment_order->getPayeeInfo() ?: new PaymentorderPayeeInfo();
+			$payee_info = $payment_order->getPayeeInfo() ?: new PaymentorderPayeeInfo(); // phpcs:ignore Universal.Operators.DisallowShortTernary.Found -- Safe to use short ternary here.
 			$payee_info->setOrderReference( $order->get_order_number() );
 			$payment_order->setPayeeInfo( apply_filters( 'swedbank_pay_payee', $payee_info, $this ) );
 		}
