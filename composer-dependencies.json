@@ -18,10 +18,6 @@
     },
     {
       "type": "vcs",
-      "url": "git@github.com:krokedil/swedbank-pay-sdk-php.git"
-    },
-    {
-      "type": "vcs",
       "url": "git@github.com:krokedil/settings-page.git"
     }
   ],

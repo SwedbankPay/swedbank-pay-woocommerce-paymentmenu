@@ -180,7 +180,7 @@ class InlineEmbedded extends CheckoutFlow {
 				}
 
 				// Update the existing payment.
-				$result = $this->api->update_embedded_purchase();
+				$result = $this->api->update_embedded_purchase( null, $this->order );
 				// Check for errors.
 				if ( is_wp_error( $result ) ) {
 					throw new \Exception( $result->get_error_message() );
