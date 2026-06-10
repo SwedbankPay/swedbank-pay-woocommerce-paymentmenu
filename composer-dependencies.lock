@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "3e69ff01f9c46965a361a8cd1aea81c3",
+    "content-hash": "fe3c272d76017ec66d9600bf104ddfe6",
     "packages": [
         {
             "name": "krokedil/settings-page",
