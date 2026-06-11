@@ -50,6 +50,8 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 
 		$this->supports   = $instrument['supports'] ?? array( 'products', 'refunds' );
 		$this->has_fields = false; // False for now. Once we add support for embedded version, we will need to set this to true.
+
+		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 	}
 
 	/**

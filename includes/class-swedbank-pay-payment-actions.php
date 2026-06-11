@@ -12,7 +12,6 @@ use WC_Order_Item_Fee;
 use WC_Order_Item_Shipping;
 use WC_Product;
 use WC_Payment_Gateway;
-use WC_Log_Levels;
 use WC_Order;
 use Swedbank_Pay_Payment_Gateway_Checkout;
 
@@ -135,7 +134,6 @@ class Swedbank_Pay_Payment_Actions {
 	 * @return \WP_Error|array
 	 */
 	public function cancel_payment( $order ) {
-		// @todo Add more cancellation logic
 		remove_action(
 			'woocommerce_order_status_changed',
 			Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
@@ -143,7 +141,13 @@ class Swedbank_Pay_Payment_Actions {
 		);
 
 		/** @var \WP_Error|array $result */
-		return $this->gateway->api->cancel_checkout( $order );
+		$result = $this->gateway->api->cancel_checkout( $order );
+
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+			$order->add_order_note( "Cancellation failed. Error: {$result->get_error_message()}" );
+		}
+
+		return $result;
 	}
 
 	/**
@@ -174,10 +178,10 @@ class Swedbank_Pay_Payment_Actions {
 	/**
 	 * Perform Refund.
 	 *
-	 * @param \WC_Order $order
-	 * @param array     $lines
-	 * @param array     $items
-	 * @param $reason
+	 * @param WC_Order $order
+	 * @param array    $lines
+	 * @param string   $reason
+	 * @param bool     $create_credit_memo
 	 *
 	 * @return \WP_Error|true
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
@@ -212,7 +216,7 @@ class Swedbank_Pay_Payment_Actions {
 			/** @var WC_Order_Item $item */
 			$item = $order->get_item( $item_id );
 			if ( ! $item ) {
-				return new \WP_Error( 'error', 'Unable to retrieve order item: ' . $item_id );
+				return new \WP_Error( 'error', "Unable to retrieve order item: $item_id" );
 			}
 
 			$product_name = trim( $item->get_name() );
@@ -248,7 +252,7 @@ class Swedbank_Pay_Payment_Actions {
 			}
 
 			Swedbank_Pay()->logger()->info(
-				sprintf(
+				\sprintf(
 					'[REFUND]: Refund item %s. qty: %s, total: %s. tax: %s. amount: %s',
 					$item_id,
 					$qty,
@@ -262,10 +266,10 @@ class Swedbank_Pay_Payment_Actions {
 			$order_item = array(
 				Swedbank_Pay_Order_Item::FIELD_NAME        => $product_name,
 				Swedbank_Pay_Order_Item::FIELD_DESCRIPTION => mb_substr( trim( $product_name ), 0, 40 ),
-				Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => (int) bcmul( 100, $unit_price ),
-				Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => (int) bcmul( 100, $tax_percent ),
-				Swedbank_Pay_Order_Item::FIELD_AMOUNT      => (int) bcmul( 100, $refund_amount ),
-				Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => (int) bcmul( 100, $refund_tax ),
+				Swedbank_Pay_Order_Item::FIELD_UNITPRICE   => (int) round( $unit_price * 100 ),
+				Swedbank_Pay_Order_Item::FIELD_VAT_PERCENT => (int) round( $tax_percent * 100 ),
+				Swedbank_Pay_Order_Item::FIELD_AMOUNT      => (int) round( $refund_amount * 100 ),
+				Swedbank_Pay_Order_Item::FIELD_VAT_AMOUNT  => (int) round( $refund_tax * 100 ),
 				Swedbank_Pay_Order_Item::FIELD_QTY         => $qty,
 				Swedbank_Pay_Order_Item::FIELD_QTY_UNIT    => 'pcs',
 			);
@@ -400,7 +404,7 @@ class Swedbank_Pay_Payment_Actions {
 		$transaction_id = $result['number'];
 
 		$order->add_order_note(
-			sprintf(
+			\sprintf(
 			/* translators: 1: transaction 2: state 3: reason */                __(
 				'Refund process has been executed from order admin. Transaction ID: %1$s. State: %2$s. Reason: %3$s', //phpcs:ignore
 				'swedbank-pay-payment-menu' //phpcs:ignore
@@ -417,7 +421,7 @@ class Swedbank_Pay_Payment_Actions {
 		if ( $create_credit_memo ) {
 			$amount = 0;
 			foreach ( $items as $item ) {
-				$amount += ( $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] / 100 );
+				$amount += $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] / 100;
 			}
 
 			$refund = wc_create_refund(
@@ -433,7 +437,7 @@ class Swedbank_Pay_Payment_Actions {
 			if ( is_wp_error( $refund ) ) {
 				$context['error'] = join( '; ', $refund->get_error_messages() );
 				Swedbank_Pay()->logger()->error(
-					sprintf(
+					\sprintf(
 						'[REFUND]: Refund could not be created. Error: %s',
 						join( '; ', $refund->get_error_messages() )
 					),
@@ -441,7 +445,7 @@ class Swedbank_Pay_Payment_Actions {
 				);
 
 				$order->add_order_note(
-					sprintf(
+					\sprintf(
 						'Refund could not be created. Error: %s',
 						join( '; ', $refund->get_error_messages() )
 					)

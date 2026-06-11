@@ -199,7 +199,8 @@ class Order extends PaymentDataHelper {
 				->setFirstName( $this->order->get_billing_first_name() )
 				->setLastName( $this->order->get_billing_last_name() )
 				->setEmail( $this->order->get_billing_email() )
-				->setMsisdn( self::format_phone_number( $this->order->get_billing_phone(), $this->order->get_billing_country() ) );
+				->setMsisdn( self::format_phone_number( $this->order->get_billing_phone(), $this->order->get_billing_country() ) )
+				->setCountryCode( $this->order->get_billing_country() );
 
 		$needs_shipping = false;
 		foreach ( $this->order->get_items() as $order_item ) {
@@ -257,14 +258,13 @@ class Order extends PaymentDataHelper {
 			$items = $this->get_formatted_items();
 
 			$payment_order->setAmount(
-				(int) bcmul(
-					100,
+				(int) round(
 					apply_filters(
 						'swedbank_pay_order_amount',
 						$this->order->get_total(),
 						$items,
 						$this->order
-					)
+					) * 100
 				)
 			)
 			->setVatAmount(

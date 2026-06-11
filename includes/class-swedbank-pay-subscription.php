@@ -10,8 +10,8 @@ namespace SwedbankPay\Checkout\WooCommerce;
 use Krokedil\Swedbank\Pay\Helpers\PaymentDataHelper;
 use Krokedil\Swedbank\Pay\Utility\LogUtility;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\UnscheduledPurchase;
-use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Request\Verify;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\UnscheduledPurchase;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\Verify;
 
 use WP_Error;
 use WC_Order;
@@ -159,11 +159,12 @@ class Swedbank_Pay_Subscription {
 		);
 		$renewal_order->add_order_note( $message );
 
-		$payment_order = $response->getResponseData()['payment_order'];
-		$paid          = $payment_order['paid'];
+		$payment_order    = $response->getResponseResource()->getPaymentOrder();
+		$payment_order_id = $payment_order->getId();
+		$paid             = $payment_order->getPaid();
 		foreach ( $subscriptions as $subscription ) {
 			// Save the transaction ID to the renewal order.
-			$subscription->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
+			$subscription->update_meta_data( '_payex_paymentorder_id', $payment_order_id );
 			$subscription->update_meta_data( self::UNSCHEDULED_TOKEN, $token );
 			$subscription->add_order_note( $message );
 
@@ -171,10 +172,10 @@ class Swedbank_Pay_Subscription {
 		}
 
 		// While not necessary for the renewal order(s), we'll save the transaction ID to the related order for reference.
-		$renewal_order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
+		$renewal_order->update_meta_data( '_payex_paymentorder_id', $payment_order_id );
 
 		// Complete the payment AFTER saving the metadata.
-		$transaction_id = $paid['number'];
+		$transaction_id = $paid ? $paid->getNumber() : null;
 		$renewal_order->payment_complete( $transaction_id );
 	}
 
@@ -269,6 +270,7 @@ class Swedbank_Pay_Subscription {
 
 		$verify_request = new Verify( $payment_order_object );
 		$verify_request->setClient( Swedbank_Pay_Api::get_client() );
+		$verify_request->setExpands( array( 'paid' ) );
 
 		$context = array(
 			'order_id'         => $order->get_id(),

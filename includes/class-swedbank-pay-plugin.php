@@ -301,7 +301,7 @@ class Swedbank_Pay_Plugin {
 	 * Check dependencies
 	 */
 	public static function check_dependencies() {
-		$dependencies = array( 'curl', 'bcmath', 'json' );
+		$dependencies = array( 'curl', 'json' );
 
 		$errors = array();
 		foreach ( $dependencies as $dependency ) {

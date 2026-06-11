@@ -13,7 +13,7 @@ class Redirect extends CheckoutFlow {
 	/**
 	 * Process the payment for the WooCommerce order.
 	 *
-	 * @param \WC_Order $order The WooCommerce order to be processed.
+	 * @param \WC_Order   $order The WooCommerce order to be processed.
 	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
 	 *
 	 * @throws \Exception If there is an error during the payment processing.
@@ -39,10 +39,10 @@ class Redirect extends CheckoutFlow {
 		}
 
 		$redirect_url  = $result->getOperationByRel( 'redirect-checkout', 'href' );
-		$payment_order = $result->getResponseData()['payment_order'];
+		$payment_order = $result->getResponseResource()->getPaymentOrder();
 
 		// Save payment ID.
-		$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
+		$order->update_meta_data( '_payex_paymentorder_id', $payment_order->getId() );
 		$order->save_meta_data();
 
 		return array(
@@ -54,7 +54,7 @@ class Redirect extends CheckoutFlow {
 	/**
 	 * Process a subscription purchase.
 	 *
-	 * @param \WC_Order $order The WooCommerce order to be processed.
+	 * @param \WC_Order   $order The WooCommerce order to be processed.
 	 * @param string|null $instrument The instrument to use for the payment, e.g. 'CreditCard'. This is optional and may not be needed for all flows or gateways.
 	 *
 	 * @throws \Exception If there is an error during the payment processing.
@@ -70,20 +70,43 @@ class Redirect extends CheckoutFlow {
 			);
 		}
 
-		$payment_order = $result->getResponseData()['payment_order'];
+		$payment_order = $result->getResponseResource()->getPaymentOrder();
 		if ( swedbank_pay_is_zero( $order->get_total() ) ) {
 			$order->add_order_note( __( 'The order was successfully verified.', 'swedbank-pay-payment-menu' ) );
-			Swedbank_Pay_Subscription::set_skip_om( $order, $payment_order['created'] );
+			Swedbank_Pay_Subscription::set_skip_om( $order, $payment_order->getCreated() );
 		} else {
 			$order->add_order_note( __( 'The payment was successfully initiated.', 'swedbank-pay-payment-menu' ) );
 		}
 
-		$order->update_meta_data( '_payex_paymentorder_id', $payment_order['id'] );
+		$order->update_meta_data( '_payex_paymentorder_id', $payment_order->getId() );
 		$order->save_meta_data();
 
 		return array(
 			'result'   => 'success',
 			'redirect' => $result->getOperationByRel( 'redirect-checkout', 'href' ),
 		);
+	}
+
+	/**
+	 * Output the payment fields content for the handler.
+	 *
+	 * Mirrors WooCommerce's default WC_Payment_Gateway::payment_fields() behavior
+	 * by rendering the gateway description, which the gateway's payment_fields()
+	 * override no longer does on its own. When called from a split instrument
+	 * gateway, the per-instrument description is rendered instead of the main
+	 * gateway's description.
+	 *
+	 * @param string $gateway_id The gateway ID whose description should be rendered.
+	 *
+	 * @return void
+	 */
+	protected function payment_fields_content( $gateway_id = 'payex_checkout' ) {
+		$gateways = WC()->payment_gateways()->payment_gateways();
+		$gateway  = $gateways[ $gateway_id ] ?? $this->gateway;
+
+		$description = $gateway->get_description();
+		if ( ! empty( $description ) ) {
+			echo wp_kses_post( wpautop( wptexturize( $description ) ) );
+		}
 	}
 }

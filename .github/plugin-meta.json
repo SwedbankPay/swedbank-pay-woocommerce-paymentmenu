@@ -1,0 +1,16 @@
+{
+  "pluginDevZipE2e": {
+    "pages": [
+      {
+        "url": "/wp-admin/admin.php?page=wc-settings&tab=checkout&section=payex_checkout",
+        "assertions": [
+          {
+            "selector": "#mainform",
+            "text": "Swedbank Pay Payment Menu",
+            "match": "contains"
+          }
+        ]
+      }
+    ]
+  }
+}

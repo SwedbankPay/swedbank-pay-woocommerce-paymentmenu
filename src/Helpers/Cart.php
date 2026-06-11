@@ -78,7 +78,7 @@ class Cart extends PaymentDataHelper {
 		foreach ( $formatted_items as $item ) {
 			// Swedbank does not allow negative values in any numeric field which will always be the case for WC_Order_Refund unless the row is a discount.
 			$items[] = array_map(
-				fn( $value ) => is_numeric( $value ) ? ( $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] === Swedbank_Pay_Order_Item::TYPE_DISCOUNT ? $value : abs( $value ) ) : $value,
+				fn( $value ) => is_numeric( $value ) ? ( Swedbank_Pay_Order_Item::TYPE_DISCOUNT === $item[ Swedbank_Pay_Order_Item::FIELD_TYPE ] ? $value : abs( $value ) ) : $value,
 				$item
 			);
 
@@ -186,7 +186,8 @@ class Cart extends PaymentDataHelper {
 				->setFirstName( WC()->customer->get_billing_first_name() )
 				->setLastName( WC()->customer->get_billing_last_name() )
 				->setEmail( WC()->customer->get_billing_email() )
-				->setMsisdn( self::format_phone_number( WC()->customer->get_billing_phone(), WC()->customer->get_billing_country() ) );
+				->setMsisdn( self::format_phone_number( WC()->customer->get_billing_phone(), WC()->customer->get_billing_country() ) )
+				->setCountryCode( WC()->customer->get_billing_country() );
 
 		$needs_shipping = false;
 		foreach ( WC()->cart->get_cart() as $cart_item ) {
@@ -242,14 +243,13 @@ class Cart extends PaymentDataHelper {
 			$items = $this->get_formatted_items();
 
 			$payment_order->setAmount(
-				(int) bcmul(
-					100,
+				(int) round(
 					apply_filters(
 						'swedbank_pay_order_amount',
 						WC()->cart->get_total( 'edit' ),
 						$items,
 						WC()->cart
-					)
+					) * 100
 				)
 			)
 			->setVatAmount(
@@ -279,22 +279,24 @@ class Cart extends PaymentDataHelper {
 	 * This method constructs a Paymentorder object for updating an existing payment order.
 	 *
 	 * @hook swedbank_pay_update_payment_order
+	 *
+	 * @param \WC_Order|null $order The order object to get the order number from if it exists.
+	 *
 	 * @return Paymentorder
 	 */
-	public function get_update_payment_order() {
+	public function get_update_payment_order( $order = null ) {
 		$items                 = $this->get_formatted_items();
 		$this->formatted_items = $items;
 		$payment_order         = ( new Paymentorder() )
 			->setOperation( 'UpdateOrder' )
 			->setAmount(
-				(int) bcmul(
-					100,
+				(int) round(
 					apply_filters(
 						'swedbank_pay_order_amount',
 						WC()->cart->get_total( 'edit' ),
 						$items,
 						WC()->cart
-					)
+					) * 100
 				)
 			)
 			->setVatAmount(
@@ -308,6 +310,13 @@ class Cart extends PaymentDataHelper {
 			->setOrderItems( $this->get_order_items() );
 
 		self::set_client_information( $payment_order ); // Set the client information.
+
+		// If the order is provided, Set the order reference in the payee info to ensure it is updated in Swedbank Pay's system.
+		if ( ! empty( $order ) ) {
+			$payee_info = $payment_order->getPayeeInfo() ?: new PaymentorderPayeeInfo(); // phpcs:ignore Universal.Operators.DisallowShortTernary.Found -- Safe to use short ternary here.
+			$payee_info->setOrderReference( $order->get_order_number() );
+			$payment_order->setPayeeInfo( apply_filters( 'swedbank_pay_payee', $payee_info, $this ) );
+		}
 
 		return apply_filters( 'swedbank_pay_update_payment_order', $payment_order, $this );
 	}
