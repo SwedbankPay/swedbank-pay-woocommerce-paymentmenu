@@ -413,6 +413,47 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Abort a embedded payment.
+	 *
+	 * @param string $abort_reason The reason reported to Swedbank Pay. Defaults to 'CancelledByConsumer'.
+	 *
+	 * @return WP_Error|array
+	 */
+	public function abort_embedded_purchase( $abort_reason = 'CancelledByConsumer' ) {
+		$payment_order_id = WC()->session->get( 'swedbank_pay_paymentorder_id' );
+		if ( empty( $payment_order_id ) ) {
+			return new WP_Error( 'no_payment_order', 'No payment order to abort.' );
+		}
+
+		$parts    = explode( '/', $payment_order_id );
+		$short_id = array_pop( $parts );
+		$context  = array(
+			'payment_order_id' => $short_id,
+		);
+
+		LogUtility::$title = "[CHECKOUT]: Abort embedded checkout for payment order ID #{$short_id}";
+
+		$body   = array(
+			'paymentorder' => array(
+				'operation'   => 'Abort',
+				'abortReason' => $abort_reason,
+			),
+		);
+		$result = $this->request( 'PATCH', $payment_order_id, $body );
+		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
+			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() );
+			Swedbank_Pay()->logger()->error(
+				"[CHECKOUT]: Abort embedded purchase for payment order ID #{$short_id}",
+				$context
+			);
+
+			return $result;
+		}
+
+		return $result;
+	}
+
+	/**
 	 * Do API Request.
 	 *
 	 * @param string              $method HTTP method (GET, POST, etc.).
