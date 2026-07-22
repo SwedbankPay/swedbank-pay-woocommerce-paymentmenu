@@ -125,7 +125,7 @@ function swedbank_pay_get_order_lines( $order ) {
 		// quantity of 0 while still carrying a refund amount. Normalise it to 1 so the
 		// unit price calculation below does not divide by zero and the item stays
 		// consistent (unitPrice * quantity == amount) for Swedbank Pay.
-		if ( 0 === (int) $qty ) {
+		if ( 0.0 === (float) $qty ) {
 			$qty = 1;
 		}
 
