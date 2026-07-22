@@ -413,7 +413,7 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
-	 * Abort a embedded payment.
+	 * Abort an embedded payment.
 	 *
 	 * @param string $abort_reason The reason reported to Swedbank Pay. Defaults to 'CancelledBySystem' since the plugin, not the shopper, initiates the abort. Filterable via 'swedbank_pay_abort_reason'.
 	 *
