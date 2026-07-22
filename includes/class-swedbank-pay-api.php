@@ -415,11 +415,11 @@ class Swedbank_Pay_Api {
 	/**
 	 * Abort a embedded payment.
 	 *
-	 * @param string $abort_reason The reason reported to Swedbank Pay. Defaults to 'CancelledByConsumer'.
+	 * @param string $abort_reason The reason reported to Swedbank Pay. Defaults to 'CancelledBySystem' since the plugin, not the shopper, initiates the abort. Filterable via 'swedbank_pay_abort_reason'.
 	 *
 	 * @return WP_Error|array
 	 */
-	public function abort_embedded_purchase( $abort_reason = 'CancelledByConsumer' ) {
+	public function abort_embedded_purchase( $abort_reason = 'CancelledBySystem' ) {
 		$payment_order_id = WC()->session->get( 'swedbank_pay_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new WP_Error( 'no_payment_order', 'No payment order to abort.' );
@@ -436,7 +436,7 @@ class Swedbank_Pay_Api {
 		$body   = array(
 			'paymentorder' => array(
 				'operation'   => 'Abort',
-				'abortReason' => $abort_reason,
+				'abortReason' => apply_filters( 'swedbank_pay_abort_reason', $abort_reason ),
 			),
 		);
 		$result = $this->request( 'PATCH', $payment_order_id, $body );
