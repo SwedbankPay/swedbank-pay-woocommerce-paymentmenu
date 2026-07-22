@@ -242,7 +242,7 @@ class InlineEmbedded extends CheckoutFlow {
 		}
 
 		// Otherwise keep the session so an in-flight or paid payment can reconcile via the callback.
-		return new WP_Error( 'swedbank_pay_error', $error->get_error_message() );
+		return $error;
 	}
 
 	/**
