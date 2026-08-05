@@ -118,8 +118,16 @@ function swedbank_pay_get_order_lines( $order ) {
 		$price          = $order->get_line_subtotal( $order_item, false, false );
 		$price_with_tax = $order->get_line_subtotal( $order_item, true, false );
 		$tax            = $price_with_tax - $price;
-		$tax_percent    = $tax > 0 ? round( 100 / ( $price / $tax ) ) : 0;
+		$tax_percent    = ( $tax > 0 && (float) $price != 0.0 ) ? round( 100 / ( $price / $tax ) ) : 0;
 		$qty            = $order_item->get_quantity();
+
+		// For amount-only (partial) refunds WooCommerce stores the refund line with a
+		// quantity of 0 while still carrying a refund amount. Normalise it to 1 so the
+		// unit price calculation below does not divide by zero and the item stays
+		// consistent (unitPrice * quantity == amount) for Swedbank Pay.
+		if ( 0.0 === (float) $qty ) {
+			$qty = 1;
+		}
 
 		// Get Product Class.
 		$product_class = $product->get_meta( '_swedbank_pay_product_class' );
