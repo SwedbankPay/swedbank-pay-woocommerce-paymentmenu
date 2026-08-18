@@ -163,7 +163,7 @@ class InlineEmbedded extends CheckoutFlow {
 				// Try to get the payment to ensure it still exists.
 				$get_purchase_result = $this->api->get_embedded_purchase();
 				if ( is_wp_error( $get_purchase_result ) ) {
-					throw new \Exception( $result->get_error_message() );
+					throw new \Exception( $get_purchase_result->get_error_message() );
 				}
 
 				$session_operation = WC()->session->get( 'swedbank_pay_operation' );
@@ -183,7 +183,8 @@ class InlineEmbedded extends CheckoutFlow {
 				$result = $this->api->update_embedded_purchase( null, $this->order );
 				// Check for errors.
 				if ( is_wp_error( $result ) ) {
-					throw new \Exception( $result->get_error_message() );
+					// Abort the payment order before abandoning it, so an in-flight payment (e.g. Swish) is not orphaned.
+					return $this->discard_failed_update( $result );
 				}
 			} else {
 				// No payment order ID in the session, create a new payment.
@@ -218,6 +219,30 @@ class InlineEmbedded extends CheckoutFlow {
 			self::unset_embedded_session_data();
 			return new WP_Error( 'swedbank_pay_error', $e->getMessage() );
 		}
+	}
+
+	/**
+	 * Abort the payment order after a failed update, keeping the session unless the abort is confirmed.
+	 *
+	 * @param \WP_Error $error The error returned by the failed update.
+	 *
+	 * @return \WP_Error
+	 */
+	private function discard_failed_update( $error ) {
+		$abort = $this->api->abort_embedded_purchase();
+
+		// Only treat the payment order as safely dead when the abort is confirmed, i.e. its status is 'Aborted'.
+		$is_aborted = ! is_wp_error( $abort )
+			&& isset( $abort['paymentOrder']['status'] )
+			&& 'Aborted' === $abort['paymentOrder']['status'];
+
+		if ( $is_aborted ) {
+			// Safe to start over with a new payment order on the next render.
+			self::unset_embedded_session_data();
+		}
+
+		// Otherwise keep the session so an in-flight or paid payment can reconcile via the callback.
+		return $error;
 	}
 
 	/**
