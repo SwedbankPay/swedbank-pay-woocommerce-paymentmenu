@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 5.5.1
 WC tested up to: 11.0.1
-Stable tag: 4.6.0
+Stable tag: 4.6.1
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,11 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.08.18    - version 4.6.1 =
+* Tweak         - Updated the link in the WooCommerce order admin leading to the payment order in the Swedbank Pay merchant portal.
+* Fix           - Fixed a fatal error ("Division by zero") that occurred when performing a partial refund by amount from the WooCommerce order admin without specifying a quantity on the order line.
+* Fix           - Fixed an issue in seamless checkout where a completed payment could be left unreconciled and the order cancelled, because a failed update replaced the payment order without aborting it first.
+
 = 2026.06.11    - version 4.6.0 =
 * Feature       - Updated the Swedbank Pay PHP SDK to version 6.3.0.
 * Enhancement   - Added a new "Support" tab in plugin settings with quick access to help links and support resources.
