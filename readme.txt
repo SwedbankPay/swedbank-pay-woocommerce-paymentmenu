@@ -2,10 +2,10 @@
 Contributors: swedbankpay
 Tags: ecommerce, swedbank, payex, payment gateway, woocommerce
 Requires at least: 5.3
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 10.8.1
+WC tested up to: 11.0.1
 Stable tag: 4.6.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
