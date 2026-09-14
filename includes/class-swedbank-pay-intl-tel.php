@@ -33,8 +33,7 @@ class Swedbank_Intl_Tel {
 	const HANDLE = 'swedbank-wc-intl-tel-js';
 
 	/**
-	 * WordPress locales that do not map onto a bundled locale file by simply
-	 * taking the language subtag. Everything else falls back to that subtag.
+	 * Locale overrides for the intl-tel-input library.
 	 *
 	 * @var array<string, string>
 	 */
@@ -98,17 +97,11 @@ class Swedbank_Intl_Tel {
 	 * @return bool
 	 */
 	private function is_enabled() {
-		// is_checkout() is also true on the order-pay and order-received
-		// endpoints, where there is no billing phone field to enhance.
+
 		if ( ! is_checkout() || is_order_received_page() || is_checkout_pay_page() ) {
 			return false;
 		}
 
-		// The block-based checkout renders its address fields with React.
-		// intl-tel-input wraps the input in a container of its own, which React
-		// does not know about, so re-rendering the address form can tear the
-		// field out of that wrapper or fail outright. Enhancing it needs a
-		// block-native integration rather than DOM patching, so stay out.
 		if ( BlocksUtility::is_checkout_block_enabled() ) {
 			return false;
 		}
@@ -142,22 +135,9 @@ class Swedbank_Intl_Tel {
 			'all'
 		);
 
-		/*
-		 * The library itself is deliberately NOT registered as a script handle.
-		 * Its classic build declares a top-level `var intlTelInput`, which lands
-		 * on `window` -- so if another plugin on the site also ships
-		 * intl-tel-input, whichever script runs last wins and the other one
-		 * breaks. Instead, only this wrapper is enqueued, and it pulls the
-		 * library in as an ES module (see script_loader_tag() below). The
-		 * imported binding is module-scoped, so the global is never read or
-		 * written and two plugins doing this cannot collide at any pair of
-		 * versions.
-		 */
 		wp_register_script(
 			self::HANDLE,
 			SWEDBANK_PAY_PLUGIN_URL . "/assets/js/wc-intl-tel{$suffix}.js",
-			// jQuery is needed for `updated_checkout`, which is a jQuery-
-			// synthesised event and never reaches addEventListener().
 			array( 'jquery' ),
 			SWEDBANK_PAY_VERSION,
 			true
@@ -170,9 +150,6 @@ class Swedbank_Intl_Tel {
 
 	/**
 	 * Data handed to the wrapper script.
-	 *
-	 * Note that wp_localize_script() casts every scalar to a string, so only
-	 * strings and arrays of strings belong in here.
 	 *
 	 * @param string $suffix Minified file suffix.
 	 *
@@ -219,10 +196,6 @@ class Swedbank_Intl_Tel {
 	/**
 	 * Load the wrapper as an ES module so it can import the library.
 	 *
-	 * A classic script containing `import(` is a syntax error on engines that
-	 * predate dynamic import -- the whole file would fail to parse. Browsers
-	 * that do not understand modules simply skip the tag instead.
-	 *
 	 * @param string $tag    The script tag.
 	 * @param string $handle Script handle.
 	 * @param string $src    Script source.
@@ -239,8 +212,7 @@ class Swedbank_Intl_Tel {
 	}
 
 	/**
-	 * Locale file to load the translated interface strings from, or null when
-	 * the library ships nothing for the site language.
+	 * Get the locale file name for the current site language, or null if none exists.
 	 *
 	 * @return string|null
 	 */
@@ -259,11 +231,6 @@ class Swedbank_Intl_Tel {
 
 	/**
 	 * Locale used to translate the country names via Intl.DisplayNames.
-	 *
-	 * Must be a valid BCP-47 tag: the library wraps the Intl.DisplayNames
-	 * constructor in a try/catch and falls back to blanking every country name,
-	 * so a tag like `pt-PT-ao90` (from WordPress's pt_PT_ao90) would leave the
-	 * customer with an empty country list.
 	 *
 	 * @return string
 	 */
@@ -293,11 +260,6 @@ class Swedbank_Intl_Tel {
 	/**
 	 * Get the country ISO code to preselect in the country dropdown.
 	 *
-	 * Prefers the customer's billing country: that is also the country
-	 * PaymentDataHelper::format_phone_number() will use when normalising the
-	 * number to E.164, so keeping the two in agreement avoids sending a number
-	 * prefixed with the wrong calling code.
-	 *
 	 * @return string The country ISO code.
 	 */
 	private function get_country() {
@@ -315,9 +277,6 @@ class Swedbank_Intl_Tel {
 			return $default['country'];
 		}
 
-		// Explicitly without the API fallback: with it, WooCommerce makes a
-		// blocking outbound request on every checkout render when the MaxMind
-		// database is not installed.
 		return \WC_Geolocation::geolocate_ip( '', false, false )['country'];
 	}
 }

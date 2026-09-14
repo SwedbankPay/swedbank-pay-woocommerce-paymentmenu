@@ -64,15 +64,7 @@ gulp.task(
 );
 
 /*
- * Third-party assets, copied out of node_modules into assets/vendor/ at build
- * time. Nothing in here is hand-edited -- run `npm run build:vendor` after
- * bumping the dependency in package.json.
- *
- * They live outside assets/js and assets/css on purpose: the css:build and
- * js:build globs above do not descend into subdirectories, so they can never
- * reach these files. That matters, because intlTelInput.js and utils.js are ES
- * modules (uglify would fail to parse `export default`) and the stylesheet uses
- * native CSS nesting (clean-css 4.x would mangle it).
+ * Copy third-party assets from node_modules to assets/vendor.
  */
 const ITI_SRC  = './node_modules/intl-tel-input/dist';
 const ITI_DEST = './assets/vendor/intl-tel-input';
