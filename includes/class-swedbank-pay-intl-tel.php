@@ -159,9 +159,6 @@ class Swedbank_Intl_Tel {
 		$locale = $this->get_locale_file();
 
 		$params = array(
-			// Dynamic imports bypass the `ver` query argument that
-			// wp_enqueue_script() would normally add, so carry it ourselves --
-			// otherwise a library upgrade never reaches returning customers.
 			'lib_script'    => $this->vendor_url( "js/intlTelInput{$suffix}.js" ),
 			'utils_script'  => $this->vendor_url( 'js/utils.js' ),
 			'locale_script' => $locale ? $this->vendor_url( "js/locale/{$locale}.js" ) : '',
