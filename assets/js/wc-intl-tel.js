@@ -100,11 +100,6 @@
 				countryNameLocale: safeLocale( config.name_locale || 'en' ),
 				uiTranslations: translations,
 
-				// Keep the dial code inside the field. With separateDialCode the
-				// input holds only the national part, which is what WooCommerce
-				// posts -- PaymentDataHelper::format_phone_number() would then
-				// prepend the *billing* country's calling code rather than the
-				// one the customer picked, and silently send the wrong MSISDN.
 				separateDialCode: false,
 				numberDisplayFormat: 'INTERNATIONAL',
 
@@ -120,6 +115,26 @@
 		);
 
 		enhanced.push( input );
+
+		/**
+		 * Normalise the phone number to E.164 format.
+		 */
+		function normalise() {
+			if ( ! intlTelInput.utils ) {
+				return;
+			}
+
+			var number = iti.getNumber( 'E164' );
+
+			// Compared the way wc_sanitize_phone_number() will.
+			if ( number && 0 === number.indexOf( '+' ) && number !== input.value.replace( /[^\d+]/g, '' ) ) {
+				iti.setNumber( number );
+			}
+		}
+
+		input.addEventListener( 'countrychange', normalise );
+		input.addEventListener( 'change', normalise );
+		input.addEventListener( 'blur', normalise );
 
 		// Keep the selected country in step with the billing country, so the
 		// number the customer types is interpreted the same way the server will
