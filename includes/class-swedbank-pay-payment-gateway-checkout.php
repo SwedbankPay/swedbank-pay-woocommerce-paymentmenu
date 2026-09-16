@@ -229,23 +229,26 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 */
 	public static function locale_to_culture() {
 		$locale = get_locale();
+		$mapped = $locale;
 
 		// Format exceptions for locales that do not match the expected format, e.g. fi_FI for Finnish in Finland.
-		switch ( $locale ) {
+		switch ( $mapped ) {
 			case 'fi':
-				$locale = 'fi_FI';
+				$mapped = 'fi_FI';
 				break;
 			case 'et':
-				$locale = 'et_EE';
+				$mapped = 'et_EE';
 				break;
 			case 'lv':
-				$locale = 'lv_LV';
+				$mapped = 'lv_LV';
 				break;
 			default:
 				break;
 		}
 
-		return substr( str_replace( '_', '-', $locale ), 0, 5 );
+		$culture = substr( str_replace( '_', '-', $mapped ), 0, 5 );
+
+		return apply_filters( 'swedbank_pay_culture', $culture, $locale );
 	}
 
 	/**
