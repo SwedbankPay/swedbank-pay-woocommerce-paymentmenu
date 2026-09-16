@@ -1417,7 +1417,7 @@ class Swedbank_Pay_Api {
 			$response_service = $request_service->send();
 
 			LogUtility::log_request(
-				'[ORDER MANAGEMENT]: refund amount',
+				'[ORDER MANAGEMENT]: refund checkout',
 				$request_service->getClient(),
 				WC_Log_Levels::DEBUG,
 				$context
@@ -1430,7 +1430,7 @@ class Swedbank_Pay_Api {
 			if ( is_wp_error( $transaction ) ) {
 				$context['error'] = $transaction->get_error_message();
 				LogUtility::log_request(
-					'[ORDER MANAGEMENT]: refund amount',
+					'[ORDER MANAGEMENT]: refund checkout',
 					$request_service->getClient(),
 					WC_Log_Levels::ERROR,
 					$context
@@ -1445,7 +1445,7 @@ class Swedbank_Pay_Api {
 		} catch ( ClientException $e ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $e->getMessage() );
 			LogUtility::log_request(
-				'[ORDER MANAGEMENT]: refund amount',
+				'[ORDER MANAGEMENT]: refund checkout',
 				$request_service->getClient(),
 				WC_Log_Levels::ERROR,
 				$context
