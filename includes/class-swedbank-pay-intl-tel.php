@@ -260,21 +260,14 @@ class Swedbank_Intl_Tel {
 	 * @return string The country ISO code.
 	 */
 	private function get_country() {
-		$customer = WC()->customer ?? null;
-		if ( $customer && ! empty( $customer->get_billing_country() ) ) {
-			return $customer->get_billing_country();
-		}
-
 		if ( function_exists( 'geoip_detect2_get_info_from_ip' ) ) {
 			return geoip_detect2_get_info_from_ip( geoip_detect2_get_client_ip() )->country->isoCode;
 		}
 
-		$default = wc_get_customer_default_location();
-		if ( ! empty( $default['country'] ) ) {
-			return $default['country'];
-		}
+		$country = \WC_Geolocation::geolocate_ip()['country'];
 
-		return \WC_Geolocation::geolocate_ip( '', false, false )['country'];
+		// Fall back to the store's default customer location.
+		return ! empty( $country ) ? $country : wc_get_customer_default_location()['country'];
 	}
 }
 
