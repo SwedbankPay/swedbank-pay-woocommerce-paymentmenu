@@ -63,6 +63,87 @@ gulp.task(
 	}
 );
 
+/*
+ * Copy third-party assets from node_modules to assets/vendor.
+ */
+const ITI_SRC  = './node_modules/intl-tel-input/dist';
+const ITI_DEST = './assets/vendor/intl-tel-input';
+
+gulp.task(
+	'vendor:iti:js',
+	function () {
+		// The ESM build, published under a .js extension: some servers do not
+		// map .mjs to a JavaScript MIME type, which would block the import.
+		return gulp.src( `${ITI_SRC}/js/intlTelInput.mjs` )
+		.pipe( rename( { basename: 'intlTelInput', extname: '.js' } ) )
+		.pipe( gulp.dest( `${ITI_DEST}/js` ) );
+	}
+);
+
+gulp.task(
+	'vendor:iti:js:min',
+	function () {
+		// Upstream ships no minified ESM build, so make one. 136 KB -> ~49 KB.
+		return gulp.src( `${ITI_SRC}/js/intlTelInput.mjs` )
+		.pipe( uglify( { module: true, ecma: 2020 } ) )
+		.pipe( rename( { basename: 'intlTelInput', extname: '.min.js' } ) )
+		.pipe( gulp.dest( `${ITI_DEST}/js` ) );
+	}
+);
+
+gulp.task(
+	'vendor:iti:utils',
+	function () {
+		// Already Closure-compiled upstream -- copy verbatim, do not re-minify.
+		return gulp.src( `${ITI_SRC}/js/utils.js` )
+		.pipe( gulp.dest( `${ITI_DEST}/js` ) );
+	}
+);
+
+gulp.task(
+	'vendor:iti:locale',
+	function () {
+		// One locale is fetched lazily at runtime. index.js re-exports all of
+		// them, which would defeat that, and types.js is not a locale.
+		return gulp.src(
+			[
+				`${ITI_SRC}/js/locale/**/*.js`,
+				`!${ITI_SRC}/js/locale/index.js`,
+				`!${ITI_SRC}/js/locale/types.js`,
+			]
+		).pipe( gulp.dest( `${ITI_DEST}/js/locale` ) );
+	}
+);
+
+gulp.task(
+	'vendor:iti:css',
+	function () {
+		return gulp.src( [`${ITI_SRC}/css/intlTelInput.css`, `${ITI_SRC}/css/intlTelInput.min.css`] )
+		.pipe( gulp.dest( `${ITI_DEST}/css` ) );
+	}
+);
+
+gulp.task(
+	'vendor:iti:img',
+	function () {
+		// The stylesheet references only the webp sprites -- the pngs are unused.
+		return gulp.src( [`${ITI_SRC}/img/flags.webp`, `${ITI_SRC}/img/flags@2x.webp`], { encoding: false } )
+		.pipe( gulp.dest( `${ITI_DEST}/img` ) );
+	}
+);
+
+gulp.task(
+	'vendor:build',
+	gulp.parallel(
+		'vendor:iti:js',
+		'vendor:iti:js:min',
+		'vendor:iti:utils',
+		'vendor:iti:locale',
+		'vendor:iti:css',
+		'vendor:iti:img'
+	)
+);
+
 gulp.task(
 	'i18n:pot',
 	function () {
@@ -120,6 +201,7 @@ gulp.task(
 gulp.task(
 	'default',
 	gulp.series(
+		'vendor:build',
 		gulp.parallel( 'css:build', 'js:build' )
 	)
 );
