@@ -1,0 +1,84 @@
+a.swedbank-pay-transaction-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+}
+
+#swedbank_payment_actions .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+}
+
+.woocommerce-order-data__meta.order_number a[target="_blank"]::after {
+	content: "\f504";
+	font-family: dashicons, sans-serif;
+	font-size: 16px;
+	color: #3c434a;
+	line-height: 1;
+	display: inline-block;
+	vertical-align: text-bottom;
+	margin-left: 2px;
+	text-decoration: none;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+.swedbank-pay-advanced {
+	border-top: 1px solid #dcdcde;
+	margin-top: 12px;
+	padding-top: 10px;
+}
+
+.swedbank-pay-advanced__summary {
+	cursor: pointer;
+	font-weight: 600;
+	list-style: none;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.swedbank-pay-advanced__summary::-webkit-details-marker {
+	display: none;
+}
+
+.swedbank-pay-advanced__summary::before {
+	content: "\f139";
+	font-family: dashicons, sans-serif;
+	font-size: 20px;
+	line-height: 1;
+	color: #3c434a;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+.swedbank-pay-advanced[open] > .swedbank-pay-advanced__summary::before {
+	content: "\f140";
+}
+
+.swedbank-pay-advanced__summary:focus-visible {
+	outline: 2px solid #2271b1;
+	outline-offset: 1px;
+}
+
+.swedbank-pay-advanced__content {
+	margin-top: 8px;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.swedbank-pay-advanced__action {
+	flex: 1 1 110px;
+	display: flex;
+	min-width: 0;
+	margin: 0;
+}
+
+.swedbank-pay-advanced__action .button {
+	width: 100%;
+	padding: 0 4px;
+	text-align: center;
+}

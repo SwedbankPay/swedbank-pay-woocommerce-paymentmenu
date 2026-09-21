@@ -54,6 +54,11 @@ class InlineEmbedded extends CheckoutFlow {
 	 * @return void
 	 */
 	protected function init() {
+		// Only when rendering the checkout page, since process() manages the payment order itself.
+		if ( null !== $this->order ) {
+			return;
+		}
+
 		$this->set_is_payment_complete();
 		if ( ! $this->is_payment_complete ) {
 			// Create a payment from the cart contents.
@@ -174,7 +179,7 @@ class InlineEmbedded extends CheckoutFlow {
 					return array();
 				}
 
-				// A verify operation cannot be updated which is the case for all zero amount order.
+				// A verify operation cannot be updated which is the case for all zero amount orders.
 				if ( PaymentDataHelper::OPERATION_VERIFY === $session_operation ) {
 					return array();
 				}
@@ -246,6 +251,44 @@ class InlineEmbedded extends CheckoutFlow {
 	}
 
 	/**
+	 * Update the payment order with the WooCommerce order number before it is paid.
+	 *
+	 * Unlike create_or_update_embedded_purchase(), the payment order is never
+	 * aborted and the session is never cleared when the update fails. The shopper
+	 * may already have a payment in flight by the time process() runs, e.g. Apple
+	 * Pay authorizing during the place order request, and Swedbank Pay refuses to
+	 * update a payment order while that is the case. Losing the order reference in
+	 * the merchant portal is preferable to orphaning an ongoing payment.
+	 *
+	 * @param \WC_Order $order The WooCommerce order to be processed.
+	 *
+	 * @return void
+	 */
+	private function maybe_update_order_reference( $order ) {
+		$payment_order_id = WC()->session->get( 'swedbank_pay_paymentorder_id' );
+		if ( empty( $payment_order_id ) ) {
+			return;
+		}
+
+		// A verify operation cannot be updated which is the case for all zero amount orders.
+		if ( PaymentDataHelper::OPERATION_VERIFY === WC()->session->get( 'swedbank_pay_operation' ) ) {
+			return;
+		}
+
+		$result = $this->api->update_embedded_purchase( null, $order );
+		if ( is_wp_error( $result ) ) {
+			Swedbank_Pay()->logger()->warning(
+				sprintf(
+					'[PROCESS PAYMENT]: Failed to update the order reference for order #%s, continuing without it: %s',
+					$this->get_order_number( $order ),
+					$result->get_error_message()
+				),
+				array( 'order_id' => $order->get_id() )
+			);
+		}
+	}
+
+	/**
 	 * Process the payment for the WooCommerce order.
 	 *
 	 * @param \WC_Order   $order The WooCommerce order to be processed.
@@ -259,6 +302,8 @@ class InlineEmbedded extends CheckoutFlow {
 		if ( ! $has_subscription && swedbank_pay_is_zero( $order->get_total() ) ) {
 			throw new \Exception( 'Zero order is not supported.' );
 		}
+
+		$this->maybe_update_order_reference( $order );
 
 		// Initiate Payment Order.
 		$result = $this->api->get_embedded_purchase();

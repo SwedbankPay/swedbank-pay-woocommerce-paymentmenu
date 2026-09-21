@@ -36,9 +36,6 @@ class Swedbank_Pay_Admin {
 		// Add meta boxes
 		add_action( 'add_meta_boxes', __CLASS__ . '::add_meta_boxes', 10, 2 );
 
-		// Add action buttons
-		add_action( 'woocommerce_order_item_add_action_buttons', __CLASS__ . '::add_action_buttons', 10, 1 );
-
 		// Add scripts and styles for admin
 		add_action( 'admin_enqueue_scripts', __CLASS__ . '::admin_enqueue_scripts' );
 
@@ -173,38 +170,6 @@ class Swedbank_Pay_Admin {
 	}
 
 	/**
-	 * Add action buttons to Order view
-	 *
-	 * @param WC_Order $order
-	 */
-	public static function add_action_buttons( $order ) {
-		if ( function_exists( 'wcs_is_subscription' ) && wcs_is_subscription( $order ) ) {
-			// Buttons are available for orders only
-			return;
-		}
-
-		// Get Payment Gateway
-		if ( swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
-			// Get Payment Gateway
-			$gateway = swedbank_pay_get_payment_method( $order );
-			if ( ! $gateway ) {
-				return;
-			}
-
-			/** @var \Swedbank_Pay_Payment_Gateway_Checkout $gateway */
-			wc_get_template(
-				'admin/action-buttons.php',
-				array(
-					'gateway' => $gateway,
-					'order'   => $order,
-				),
-				'',
-				__DIR__ . '/../templates/'
-			);
-		}
-	}
-
-	/**
 	 * Enqueue Scripts in admin
 	 *
 	 * @param $hook
@@ -231,6 +196,13 @@ class Swedbank_Pay_Admin {
 				true
 			);
 
+			wp_register_style(
+				'swedbank-pay-admin-css',
+				plugin_dir_url( __FILE__ ) . '../assets/css/admin.css',
+				array( 'dashicons' ),
+				SWEDBANK_PAY_VERSION
+			);
+
 			// Localize the script.
 			$translation_array = array(
 				'ajax_url'  => admin_url( 'admin-ajax.php' ),
@@ -241,6 +213,7 @@ class Swedbank_Pay_Admin {
 			wp_localize_script( 'swedbank-pay-admin-js', 'SwedbankPay_Admin', $translation_array );
 
 			// Enqueued script with localized data.
+			wp_enqueue_style( 'swedbank-pay-admin-css' );
 			wp_enqueue_script( 'swedbank-pay-admin-js' );
 		}
 	}
@@ -501,6 +474,15 @@ class Swedbank_Pay_Admin {
 			'transaction_id'   => $order->get_transaction_id(),
 			'payment_order_id' => $payment_order_id,
 		);
+
+		if ( empty( $gateway ) ) {
+			Swedbank_Pay()->logger()->error(
+				"[ORDER MANAGEMENT]: Unable to resolve the payment gateway for order #{$order->get_order_number()}. The '{$old_status}->{$new_status}' status change was not forwarded to Swedbank Pay.",
+				$context
+			);
+
+			return;
+		}
 
 		try {
 			switch ( $new_status ) {
