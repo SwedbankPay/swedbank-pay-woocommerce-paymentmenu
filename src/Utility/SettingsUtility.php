@@ -18,6 +18,13 @@ class SettingsUtility {
 	private static $settings = null;
 
 	/**
+	 * Whether the default values are being fetched, which can reach this class again through the gateway list.
+	 *
+	 * @var bool
+	 */
+	private static $loading = false;
+
+	/**
 	 * Get the settings for Swedbank gateway.
 	 *
 	 * @return array
@@ -28,11 +35,19 @@ class SettingsUtility {
 
 			// The defaults come from the gateway's form fields. Fetching them while WooCommerce is building its gateway
 			// list would start a second build, so skip them, uncached, until the build is done.
-			if ( doing_filter( 'woocommerce_payment_gateways' ) ) {
+			if ( self::$loading || doing_filter( 'woocommerce_payment_gateways' ) ) {
 				return $settings;
 			}
 
-			self::$settings = wp_parse_args( $settings, self::get_default_values() );
+			// Guards the same loop from a gateway constructor, which WooCommerce runs after that filter.
+			self::$loading = true;
+			try {
+				$defaults = self::get_default_values();
+			} finally {
+				self::$loading = false;
+			}
+
+			self::$settings = wp_parse_args( $settings, $defaults );
 		}
 
 		return self::$settings;

@@ -139,7 +139,9 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 		 *
 		 * @return bool Whether the gateway should be available or not.
 		 */
-		return apply_filters( 'swedbank_pay_split_instrument_gateway_is_available', parent::is_available(), $this->id, $this );
+		$is_available = parent::is_available() && InstrumentsUtility::is_instrument_available( $this->instrument_id );
+
+		return apply_filters( 'swedbank_pay_split_instrument_gateway_is_available', $is_available, $this->id, $this );
 	}
 
 	/**
