@@ -475,6 +475,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		foreach ( InstrumentsUtility::get_instruments() as $key => $instrument ) {
 			$is_available = InstrumentsUtility::is_instrument_available( $instrument['instrument'] );
+			// Lock only unticked ones: an enabled instrument must stay untickable, as the admin notice asks.
+			$is_locked = ! $is_available && ! wc_string_to_bool( SettingsUtility::get_setting( "enable_instrument_$key", 'no' ) );
 
 			$this->form_fields[ "enable_instrument_$key" ] = array(
 				// translators: %s is the name of the payment method/instrument.
@@ -485,7 +487,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'description'       => $is_available ? '' : __( 'Not activated on your Swedbank Pay account. Contact Swedbank Pay to have it enabled.', 'swedbank-pay-payment-menu' ),
 				'default'           => 'no',
 				'class'             => 'instrument-setting instrument-setting-' . $key,
-				'custom_attributes' => $is_available ? array() : array( 'disabled' => 'disabled' ),
+				'custom_attributes' => $is_locked ? array( 'disabled' => 'disabled' ) : array(),
 			);
 		}
 
@@ -630,22 +632,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->init_form_fields();
 
 		return $result;
-	}
-
-	/**
-	 * Keep the stored value of a locked checkbox, since a disabled input is never POSTed.
-	 *
-	 * @param string      $key   Field key.
-	 * @param string|null $value Posted value.
-	 *
-	 * @return string
-	 */
-	public function validate_checkbox_field( $key, $value ) {
-		if ( ! empty( $this->form_fields[ $key ]['custom_attributes']['disabled'] ) ) {
-			return $this->settings[ $key ] ?? 'no';
-		}
-
-		return parent::validate_checkbox_field( $key, $value );
 	}
 
 	/**

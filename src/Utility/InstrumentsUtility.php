@@ -111,6 +111,15 @@ class InstrumentsUtility {
 	const ACCOUNT_INSTRUMENTS_OPTION = 'swedbank_pay_account_instruments';
 
 	/**
+	 * Instruments the configurations endpoint never reports, so they are never locked or filtered out.
+	 *
+	 * BankLink is offered today but absent from the response; pending Swedbank Pay on what it is called there.
+	 *
+	 * @var string[]
+	 */
+	const UNREPORTED_INSTRUMENTS = array( 'BankLink' );
+
+	/**
 	 * See if the given instrument is enabled in the settings or not.
 	 *
 	 * @param string $instrument_key The key of the instrument to check, e.g. 'credit_card'.
@@ -149,6 +158,28 @@ class InstrumentsUtility {
 	}
 
 	/**
+	 * Get the instruments enabled in the settings but not activated on the Swedbank Pay account.
+	 *
+	 * @return array Instruments keyed like get_instruments().
+	 */
+	public static function get_enabled_unavailable_instruments() {
+		// Checked once up front: it parses the checkout page's blocks, and is_instrument_enabled() repeats it per key.
+		if ( ! SettingsUtility::is_separate_instruments_enabled() ) {
+			return array();
+		}
+
+		$unavailable_instruments = array();
+
+		foreach ( self::get_instruments() as $key => $instrument ) {
+			if ( wc_string_to_bool( SettingsUtility::get_setting( "enable_instrument_$key", 'no' ) ) && ! self::is_instrument_available( $instrument['instrument'] ) ) {
+				$unavailable_instruments[ $key ] = $instrument;
+			}
+		}
+
+		return $unavailable_instruments;
+	}
+
+	/**
 	 * Get the instruments activated on the Swedbank Pay account, as stored from the last successful fetch.
 	 *
 	 * Null means unknown (never fetched, or fetched for another payee id/mode) and callers should fail open.
@@ -157,7 +188,7 @@ class InstrumentsUtility {
 	 */
 	public static function get_account_instruments() {
 		$stored = get_option( self::ACCOUNT_INSTRUMENTS_OPTION, null );
-		if ( ! isset( $stored['instruments'] ) || ( $stored['cache_key'] ?? null ) !== self::get_account_instruments_cache_key() ) {
+		if ( ! is_array( $stored['instruments'] ?? null ) || ( $stored['cache_key'] ?? null ) !== self::get_account_instruments_cache_key() ) {
 			return null;
 		}
 
@@ -175,11 +206,12 @@ class InstrumentsUtility {
 	 */
 	public static function is_instrument_available( $instrument ) {
 		$account_instruments = self::get_account_instruments();
-		if ( null === $account_instruments ) {
+		$base_instrument     = self::get_base_instrument( $instrument );
+		if ( null === $account_instruments || in_array( $base_instrument, self::UNREPORTED_INSTRUMENTS, true ) ) {
 			return true;
 		}
 
-		return in_array( self::get_base_instrument( $instrument ), $account_instruments, true );
+		return in_array( $base_instrument, $account_instruments, true );
 	}
 
 	/**
@@ -212,8 +244,18 @@ class InstrumentsUtility {
 			return;
 		}
 
-		$purchase_operation = current( wp_list_filter( $result['operations'] ?? array(), array( 'rel' => 'Purchase' ) ) );
-		if ( ! isset( $purchase_operation['availableInstruments'] ) ) {
+		$operations         = is_array( $result['operations'] ?? null ) ? $result['operations'] : array();
+		$purchase_operation = current( wp_list_filter( $operations, array( 'rel' => 'Purchase' ) ) );
+		$instruments        = $purchase_operation['availableInstruments'] ?? null;
+
+		// Keep only name-shaped strings: the list is rendered in the settings and read on every gateway build.
+		$instruments = is_array( $instruments ) ? array_values( array_filter( $instruments, array( self::class, 'is_instrument_name' ) ) ) : array();
+		if ( empty( $instruments ) ) {
+			Swedbank_Pay()->logger()->error(
+				'[INSTRUMENTS]: Unexpected configurations response, keeping the last known activated instruments.',
+				array( 'response' => wp_json_encode( $result ) )
+			);
+
 			return;
 		}
 
@@ -221,9 +263,20 @@ class InstrumentsUtility {
 			self::ACCOUNT_INSTRUMENTS_OPTION,
 			array(
 				'cache_key'   => self::get_account_instruments_cache_key(),
-				'instruments' => $purchase_operation['availableInstruments'],
+				'instruments' => $instruments,
 			)
 		);
+	}
+
+	/**
+	 * Check that a value from the configurations response looks like an instrument name, e.g. 'CreditCard'.
+	 *
+	 * @param mixed $value The value to check.
+	 *
+	 * @return bool
+	 */
+	private static function is_instrument_name( $value ) {
+		return is_string( $value ) && 1 === preg_match( '/^[A-Za-z0-9-]{1,64}$/', $value );
 	}
 
 	/**

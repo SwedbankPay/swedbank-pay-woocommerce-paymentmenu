@@ -4,7 +4,6 @@ namespace SwedbankPay\Checkout\WooCommerce;
 
 use Krokedil\Swedbank\Pay\Gateways\SplitInstrumentBlockSupport;
 use Krokedil\Swedbank\Pay\Utility\InstrumentsUtility;
-use Krokedil\Swedbank\Pay\Utility\SettingsUtility;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -96,6 +95,16 @@ class Swedbank_Pay_Plugin {
 		// already triggered on settings save.
 		add_action( 'init', array( $this, 'schedule_account_instruments_refresh' ) );
 		add_action( self::REFRESH_INSTRUMENTS_CRON_HOOK, array( InstrumentsUtility::class, 'refresh_account_instruments' ) );
+		register_deactivation_hook( SWEDBANK_PAY_MAIN_FILE, array( __CLASS__, 'unschedule_account_instruments_refresh' ) );
+	}
+
+	/**
+	 * Remove the daily refresh of the account's activated instruments when the plugin is deactivated.
+	 *
+	 * @return void
+	 */
+	public static function unschedule_account_instruments_refresh() {
+		wp_clear_scheduled_hook( self::REFRESH_INSTRUMENTS_CRON_HOOK );
 	}
 
 	/**
@@ -262,18 +271,7 @@ class Swedbank_Pay_Plugin {
 	 * Swedbank Pay account.
 	 */
 	public static function unavailable_instruments_notice() {
-		// Checked once up front: it parses the checkout page's blocks, and is_instrument_enabled() repeats it per key.
-		if ( ! SettingsUtility::is_separate_instruments_enabled() ) {
-			return;
-		}
-
-		$unavailable_names = array();
-		foreach ( InstrumentsUtility::get_instruments() as $key => $instrument ) {
-			if ( wc_string_to_bool( SettingsUtility::get_setting( "enable_instrument_$key", 'no' ) ) && ! InstrumentsUtility::is_instrument_available( $instrument['instrument'] ) ) {
-				$unavailable_names[] = $instrument['name'];
-			}
-		}
-
+		$unavailable_names = wp_list_pluck( InstrumentsUtility::get_enabled_unavailable_instruments(), 'name' );
 		if ( empty( $unavailable_names ) ) {
 			return;
 		}
