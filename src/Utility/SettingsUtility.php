@@ -24,11 +24,15 @@ class SettingsUtility {
 	 */
 	public static function get_settings() {
 		if ( null === self::$settings ) {
-			self::$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+			$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
 
-			// Merge with default values, and ensure all settings are present.
-			$defaults       = self::get_default_values();
-			self::$settings = wp_parse_args( self::$settings, $defaults );
+			// The defaults come from the gateway's form fields. Fetching them while WooCommerce is building its gateway
+			// list would start a second build, so skip them, uncached, until the build is done.
+			if ( doing_filter( 'woocommerce_payment_gateways' ) ) {
+				return $settings;
+			}
+
+			self::$settings = wp_parse_args( $settings, self::get_default_values() );
 		}
 
 		return self::$settings;
