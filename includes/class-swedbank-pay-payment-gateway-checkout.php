@@ -475,10 +475,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			),
 		);
 
+		// Read the option directly: $this->settings isn't loaded yet, and SettingsUtility's first load builds the gateway list.
+		$saved_settings = get_option( $this->get_option_key(), array() );
+
 		foreach ( InstrumentsUtility::get_instruments() as $key => $instrument ) {
 			$is_available = InstrumentsUtility::is_instrument_available( $instrument['instrument'] );
 			// Lock only unticked ones: an enabled instrument must stay untickable, as the admin notice asks.
-			$is_locked = ! $is_available && ! wc_string_to_bool( SettingsUtility::get_setting( "enable_instrument_$key", 'no' ) );
+			$is_locked = ! $is_available && ! wc_string_to_bool( $saved_settings[ "enable_instrument_$key" ] ?? 'no' );
 
 			$this->form_fields[ "enable_instrument_$key" ] = array(
 				// translators: %s is the name of the payment method/instrument.

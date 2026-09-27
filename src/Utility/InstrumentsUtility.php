@@ -287,7 +287,10 @@ class InstrumentsUtility {
 	 * @return string
 	 */
 	private static function get_account_instruments_cache_key() {
-		return md5( SettingsUtility::get_setting( 'payee_id', '' ) . '|' . wc_bool_to_string( SettingsUtility::is_testmode() ) );
+		// Read the option directly: this runs while the gateway is constructed, and SettingsUtility's first load builds the gateway list.
+		$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+
+		return md5( ( $settings['payee_id'] ?? '' ) . '|' . wc_bool_to_string( $settings['testmode'] ?? 'no' ) );
 	}
 
 	/**
