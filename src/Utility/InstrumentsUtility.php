@@ -15,12 +15,7 @@ class InstrumentsUtility {
 	public static function get_instruments() {
 		$instruments = self::get_known_instruments();
 
-		$known_base_names = array_map(
-			function ( $instrument ) {
-				return strtok( $instrument['instrument'], '-' );
-			},
-			$instruments
-		);
+		$known_base_names = array_map( array( self::class, 'get_base_instrument' ), array_column( $instruments, 'instrument' ) );
 
 		// Offer instruments the account reports but this plugin doesn't know yet, labelled with their API name.
 		foreach ( self::get_account_instruments() ?? array() as $account_instrument ) {
@@ -145,7 +140,7 @@ class InstrumentsUtility {
 		$enabled_instruments = array();
 
 		foreach ( self::get_instruments() as $key => $instrument ) {
-			if ( self::is_instrument_enabled( $key ) && self::is_instrument_available( $key ) ) {
+			if ( self::is_instrument_enabled( $key ) && self::is_instrument_available( $instrument['instrument'] ) ) {
 				$enabled_instruments[ $key ] = $instrument;
 			}
 		}
@@ -162,11 +157,7 @@ class InstrumentsUtility {
 	 */
 	public static function get_account_instruments() {
 		$stored = get_option( self::ACCOUNT_INSTRUMENTS_OPTION, null );
-		if ( empty( $stored ) || ! isset( $stored['cache_key'], $stored['instruments'] ) ) {
-			return null;
-		}
-
-		if ( self::get_account_instruments_cache_key() !== $stored['cache_key'] ) {
+		if ( ! isset( $stored['instruments'] ) || ( $stored['cache_key'] ?? null ) !== self::get_account_instruments_cache_key() ) {
 			return null;
 		}
 
@@ -178,26 +169,30 @@ class InstrumentsUtility {
 	 *
 	 * Returns true when the account's instruments are unknown, so a failed fetch never removes a payment method.
 	 *
-	 * @param string $instrument_key The key of the instrument to check, e.g. 'credit_card'.
+	 * @param string $instrument The instrument name, e.g. 'Invoice-PayExFinancingSe'.
 	 *
 	 * @return bool
 	 */
-	public static function is_instrument_available( $instrument_key ) {
+	public static function is_instrument_available( $instrument ) {
 		$account_instruments = self::get_account_instruments();
 		if ( null === $account_instruments ) {
 			return true;
 		}
 
-		$instrument = self::get_instruments()[ $instrument_key ]['instrument'] ?? null;
-		if ( null === $instrument ) {
-			return false;
-		}
+		return in_array( self::get_base_instrument( $instrument ), $account_instruments, true );
+	}
 
-		// The account configuration reports base instrument names (e.g. 'Invoice'), while this plugin
-		// stores/sends sub-typed values (e.g. 'Invoice-PayExFinancingSe') — match on the base name.
-		$base_instrument = strtok( $instrument, '-' );
-
-		return in_array( $base_instrument, $account_instruments, true );
+	/**
+	 * Strip the sub-type from an instrument name, e.g. 'Invoice-PayExFinancingSe' becomes 'Invoice'.
+	 *
+	 * The account configuration reports base names, while this plugin stores and sends sub-typed ones.
+	 *
+	 * @param string $instrument The instrument name.
+	 *
+	 * @return string
+	 */
+	private static function get_base_instrument( $instrument ) {
+		return strtok( $instrument, '-' );
 	}
 
 	/**
@@ -217,15 +212,8 @@ class InstrumentsUtility {
 			return;
 		}
 
-		$purchase_operation = null;
-		foreach ( $result['operations'] ?? array() as $operation ) {
-			if ( 'Purchase' === ( $operation['rel'] ?? null ) ) {
-				$purchase_operation = $operation;
-				break;
-			}
-		}
-
-		if ( null === $purchase_operation || ! isset( $purchase_operation['availableInstruments'] ) ) {
+		$purchase_operation = current( wp_list_filter( $result['operations'] ?? array(), array( 'rel' => 'Purchase' ) ) );
+		if ( ! isset( $purchase_operation['availableInstruments'] ) ) {
 			return;
 		}
 
@@ -234,7 +222,6 @@ class InstrumentsUtility {
 			array(
 				'cache_key'   => self::get_account_instruments_cache_key(),
 				'instruments' => $purchase_operation['availableInstruments'],
-				'fetched_at'  => time(),
 			)
 		);
 	}
@@ -242,14 +229,10 @@ class InstrumentsUtility {
 	/**
 	 * Build the cache key identifying which payee id/mode a stored account-instruments value belongs to.
 	 *
-	 * Reads the option directly: SettingsUtility's static copy predates a settings save in the same request.
-	 *
 	 * @return string
 	 */
 	private static function get_account_instruments_cache_key() {
-		$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
-
-		return md5( ( $settings['payee_id'] ?? '' ) . '|' . wc_bool_to_string( $settings['testmode'] ?? 'no' ) );
+		return md5( SettingsUtility::get_setting( 'payee_id', '' ) . '|' . wc_bool_to_string( SettingsUtility::is_testmode() ) );
 	}
 
 	/**

@@ -4,6 +4,7 @@ namespace SwedbankPay\Checkout\WooCommerce;
 
 use Krokedil\Swedbank\Pay\Gateways\SplitInstrumentBlockSupport;
 use Krokedil\Swedbank\Pay\Utility\InstrumentsUtility;
+use Krokedil\Swedbank\Pay\Utility\SettingsUtility;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -261,9 +262,14 @@ class Swedbank_Pay_Plugin {
 	 * Swedbank Pay account.
 	 */
 	public static function unavailable_instruments_notice() {
+		// Checked once up front: it parses the checkout page's blocks, and is_instrument_enabled() repeats it per key.
+		if ( ! SettingsUtility::is_separate_instruments_enabled() ) {
+			return;
+		}
+
 		$unavailable_names = array();
 		foreach ( InstrumentsUtility::get_instruments() as $key => $instrument ) {
-			if ( InstrumentsUtility::is_instrument_enabled( $key ) && ! InstrumentsUtility::is_instrument_available( $key ) ) {
+			if ( wc_string_to_bool( SettingsUtility::get_setting( "enable_instrument_$key", 'no' ) ) && ! InstrumentsUtility::is_instrument_available( $instrument['instrument'] ) ) {
 				$unavailable_names[] = $instrument['name'];
 			}
 		}

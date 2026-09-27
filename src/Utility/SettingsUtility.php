@@ -35,6 +35,15 @@ class SettingsUtility {
 	}
 
 	/**
+	 * Drop the cached settings so the next read reflects a save made in the same request.
+	 *
+	 * @return void
+	 */
+	public static function reset_settings() {
+		self::$settings = null;
+	}
+
+	/**
 	 * Get the value of a specific setting.
 	 *
 	 * @param string $key           The key of the setting to retrieve.

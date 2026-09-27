@@ -474,22 +474,19 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		);
 
 		foreach ( InstrumentsUtility::get_instruments() as $key => $instrument ) {
-			$is_available = InstrumentsUtility::is_instrument_available( $key );
+			$is_available = InstrumentsUtility::is_instrument_available( $instrument['instrument'] );
 
 			$this->form_fields[ "enable_instrument_$key" ] = array(
 				// translators: %s is the name of the payment method/instrument.
-				'title'       => sprintf( __( 'Enable %s', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
-				'type'        => 'checkbox',
+				'title'             => sprintf( __( 'Enable %s', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
+				'type'              => 'checkbox',
 				// translators: %s is the name of the payment method/instrument.
-				'label'       => sprintf( __( 'Enable %s as a separate payment method', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
-				'description' => $is_available ? '' : __( 'Not activated on your Swedbank Pay account. Contact Swedbank Pay to have it enabled.', 'swedbank-pay-payment-menu' ),
-				'default'     => 'no',
-				'class'       => 'instrument-setting instrument-setting-' . $key,
+				'label'             => sprintf( __( 'Enable %s as a separate payment method', 'swedbank-pay-payment-menu' ), $instrument['name'] ),
+				'description'       => $is_available ? '' : __( 'Not activated on your Swedbank Pay account. Contact Swedbank Pay to have it enabled.', 'swedbank-pay-payment-menu' ),
+				'default'           => 'no',
+				'class'             => 'instrument-setting instrument-setting-' . $key,
+				'custom_attributes' => $is_available ? array() : array( 'disabled' => 'disabled' ),
 			);
-
-			if ( ! $is_available ) {
-				$this->form_fields[ "enable_instrument_$key" ]['custom_attributes'] = array( 'disabled' => 'disabled' );
-			}
 		}
 
 		// Extend with settings with logging option.
@@ -607,22 +604,10 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			}
 		}
 
-		// A locked instrument's checkbox is disabled, so it isn't POSTed — inject its stored value back
-		// into $_POST so WC_Settings_API::validate_checkbox_field() doesn't silently flip it to 'no'.
-		foreach ( InstrumentsUtility::get_instruments() as $key => $instrument ) {
-			if ( InstrumentsUtility::is_instrument_available( $key ) ) {
-				continue;
-			}
-
-			$setting_key = "enable_instrument_$key";
-			if ( wc_string_to_bool( $this->settings[ $setting_key ] ?? 'no' ) ) {
-				$_POST[ $this->get_field_key( $setting_key ) ] = $this->settings[ $setting_key ]; // phpcs:ignore WordPress.Security.NonceVerification
-			}
-		}
-
 		$result = parent::process_admin_options();
 
 		// Reload settings.
+		SettingsUtility::reset_settings();
 		$this->init_settings();
 		$this->access_token = isset( $this->settings['access_token'] ) ? $this->settings['access_token'] : $this->access_token; // phpcs:ignore
 		$this->payee_id     = isset( $this->settings['payee_id'] ) ? $this->settings['payee_id'] : $this->payee_id;
@@ -639,10 +624,28 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			WC_Admin_Settings::add_error( $e->getMessage() );
 		}
 
-		// Refresh the account's activated instruments so a credentials/mode change takes effect immediately.
+		// Refresh the account's activated instruments so a credentials/mode change takes effect immediately,
+		// and rebuild the fields so the page rendered after this save shows the new locks.
 		InstrumentsUtility::refresh_account_instruments();
+		$this->init_form_fields();
 
 		return $result;
+	}
+
+	/**
+	 * Keep the stored value of a locked checkbox, since a disabled input is never POSTed.
+	 *
+	 * @param string      $key   Field key.
+	 * @param string|null $value Posted value.
+	 *
+	 * @return string
+	 */
+	public function validate_checkbox_field( $key, $value ) {
+		if ( ! empty( $this->form_fields[ $key ]['custom_attributes']['disabled'] ) ) {
+			return $this->settings[ $key ] ?? 'no';
+		}
+
+		return parent::validate_checkbox_field( $key, $value );
 	}
 
 	/**
