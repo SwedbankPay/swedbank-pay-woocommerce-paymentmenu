@@ -162,6 +162,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			'multiple_subscriptions',
 		);
 
+		// Set before the form fields, which disable the checkout flow setting when the block checkout is used.
+		$this->block_checkout_enabled = BlocksUtility::is_checkout_block_enabled();
+
 		// Load the form fields.
 		$this->init_form_fields();
 
@@ -187,7 +190,6 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->terms_url                    = $this->settings['terms_url'] ?? get_site_url();
 		$this->autocomplete                 = $this->settings['autocomplete'] ?? 'no';
 		$this->exclude_order_lines          = wc_string_to_bool( $this->settings['exclude_order_lines'] ?? false );
-		$this->block_checkout_enabled       = BlocksUtility::is_checkout_block_enabled();
 		$this->checkout_flow                = ! $this->block_checkout_enabled ?
 			( $this->settings['checkout_flow'] ?? 'redirect' ) : 'redirect'; // Use the setting only if the block checkout is not enabled, otherwise force 'redirect'.
 		$this->separate_instruments_enabled = ( 'redirect' === $this->checkout_flow ) ?
@@ -632,6 +634,22 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 		$this->init_form_fields();
 
 		return $result;
+	}
+
+	/**
+	 * Keep the stored checkout flow while the field is disabled for Block Checkout, since a disabled field is never POSTed.
+	 *
+	 * @param string      $key   Field key.
+	 * @param string|null $value Posted value.
+	 *
+	 * @return string
+	 */
+	public function validate_checkout_flow_field( $key, $value ) {
+		if ( $this->block_checkout_enabled ) {
+			return $this->settings[ $key ] ?? 'redirect';
+		}
+
+		return $this->validate_select_field( $key, $value );
 	}
 
 	/**
