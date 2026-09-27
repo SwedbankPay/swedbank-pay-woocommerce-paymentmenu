@@ -249,8 +249,10 @@ class InstrumentsUtility {
 		$instruments        = $purchase_operation['availableInstruments'] ?? null;
 
 		// Keep only name-shaped strings: the list is rendered in the settings and read on every gateway build.
-		$instruments = is_array( $instruments ) ? array_values( array_filter( $instruments, array( self::class, 'is_instrument_name' ) ) ) : array();
-		if ( empty( $instruments ) ) {
+		$valid_instruments = is_array( $instruments ) ? array_values( array_filter( $instruments, array( self::class, 'is_instrument_name' ) ) ) : array();
+
+		// An explicit empty list is a valid answer; a missing list, or one emptied by the filter, is not.
+		if ( ! is_array( $instruments ) || ( empty( $valid_instruments ) && ! empty( $instruments ) ) ) {
 			Swedbank_Pay()->logger()->error(
 				'[INSTRUMENTS]: Unexpected configurations response, keeping the last known activated instruments.',
 				array( 'response' => wp_json_encode( $result ) )
@@ -263,7 +265,7 @@ class InstrumentsUtility {
 			self::ACCOUNT_INSTRUMENTS_OPTION,
 			array(
 				'cache_key'   => self::get_account_instruments_cache_key(),
-				'instruments' => $instruments,
+				'instruments' => $valid_instruments,
 			)
 		);
 	}
