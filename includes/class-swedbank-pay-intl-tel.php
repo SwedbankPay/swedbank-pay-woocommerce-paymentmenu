@@ -168,9 +168,9 @@ class Swedbank_Intl_Tel {
 		);
 
 		/**
-		 * Filter the options handed to intl-tel-input on the checkout.
+		 * Filters the options handed to the intl-tel-input phone number field in the checkout.
 		 *
-		 * @param array $params
+		 * @param array $params The script URLs ('lib_script', 'utils_script', 'locale_script'), the locale for the country names ('name_locale'), the preselected country ('country') and the countries listed first ('country_order').
 		 */
 		return apply_filters( 'swedbank_pay_intl_tel_params', $params );
 	}

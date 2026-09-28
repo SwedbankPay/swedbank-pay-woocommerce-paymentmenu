@@ -45,7 +45,11 @@
         "lint": "vendor/bin/phpcs . --standard=phpcs.xml --extensions=php -q",
         "lint:fix": "vendor/bin/phpcbf . --standard=phpcs.xml --extensions=php -q",
         "lint:changes": "git diff --name-only HEAD~1 | grep '\\.php$' | xargs vendor/bin/phpcs --standard=phpcs.xml --extensions=php -q",
-        "lint:fix:changes": "git diff --name-only HEAD~1 | grep '\\.php$' | xargs vendor/bin/phpcbf --standard=phpcs.xml --extensions=php -q"
+        "lint:fix:changes": "git diff --name-only HEAD~1 | grep '\\.php$' | xargs vendor/bin/phpcbf --standard=phpcs.xml --extensions=php -q",
+        "doc:hooks": [
+            "@composer install --working-dir=tools/wp-documentor --no-interaction --quiet",
+            "tools/wp-documentor/vendor/bin/wp-documentor parse . --exclude=docs --exclude=tools --exclude=tests --exclude=vendor --exclude=node_modules --exclude=languages --exclude=dependencies --exclude=assets --exclude=templates --exclude=tmp-* --format=markdown --type=filters --output=docs/hooks.md --relative=docs --prefix=swedbank_pay_ --template=docs/templates/template.php"
+        ]
     },
     "minimum-stability": "stable",
     "prefer-stable": true

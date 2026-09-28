@@ -384,6 +384,12 @@ function swedbank_pay_generate_payee_reference( $order_id ) {
 	shuffle( $arr );
 	$reference = $order_id . 'x' . substr( implode( '', $arr ), 0, 5 );
 
+	/**
+	 * Filters the generated payee reference, the unique reference of a payment order or transaction in Swedbank Pay.
+	 *
+	 * @param string     $reference The generated payee reference.
+	 * @param int|string $order_id  The WooCommerce order ID, or a random string when the reference is generated for a cart without an order.
+	 */
 	return apply_filters( 'swedbank_pay_payee_reference', $reference, $order_id );
 }
 

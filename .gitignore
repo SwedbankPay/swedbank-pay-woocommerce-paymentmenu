@@ -29,6 +29,7 @@ yarn-debug.log*
 yarn-error.log*
 
 /vendor/
+/tools/*/vendor/
 dependencies/*
 !dependencies/.gitkeep
 tmp-*

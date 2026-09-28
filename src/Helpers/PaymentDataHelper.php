@@ -77,6 +77,12 @@ abstract class PaymentDataHelper {
 			$order_items->addItem( $order_item );
 		}
 
+		/**
+		 * Filters the order items sent to Swedbank Pay.
+		 *
+		 * @param OrderItemsCollection $order_items The order items.
+		 * @param PaymentDataHelper    $helper      The helper building the payment data, either a Cart or an Order helper.
+		 */
 		return apply_filters( 'swedbank_pay_order_items', $order_items, $this );
 	}
 

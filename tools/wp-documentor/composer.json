@@ -1,0 +1,17 @@
+{
+    "name": "swedbank-pay/woocommerce-payment-menu-wp-documentor",
+    "description": "Isolated install of pronamic/wp-documentor for generating docs/hooks.md. Kept apart from the main composer.json since it requires PHP 8, while the plugin supports PHP 7.4.",
+    "type": "project",
+    "license": "Apache-2.0",
+    "require": {
+        "php": ">=8.0",
+        "pronamic/wp-documentor": "^1.4.0"
+    },
+    "config": {
+        "platform": {
+            "php": "8.0"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

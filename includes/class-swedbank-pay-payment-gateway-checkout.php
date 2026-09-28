@@ -248,6 +248,13 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		$culture = substr( str_replace( '_', '-', $mapped ), 0, 5 );
 
+		/**
+		 * Filters the culture code that sets the language of the Swedbank Pay checkout.
+		 *
+		 * @since 4.6.2
+		 * @param string $culture The Swedbank Pay culture code mapped from the WordPress locale, e.g. 'sv-SE'.
+		 * @param string $locale  The WordPress locale, e.g. 'sv_SE'.
+		 */
 		return apply_filters( 'swedbank_pay_culture', $culture, $locale );
 	}
 
@@ -523,6 +530,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 	 * @return boolean
 	 */
 	public function is_available() {
+		/**
+		 * Filters whether the Swedbank Pay payment gateway is available in the checkout.
+		 *
+		 * @param bool                                  $is_available Whether the gateway is available.
+		 * @param Swedbank_Pay_Payment_Gateway_Checkout $gateway      The gateway instance.
+		 */
 		return apply_filters( 'swedbank_pay_is_available', $this->check_availability(), $this );
 	}
 

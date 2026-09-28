@@ -217,12 +217,22 @@ class Swedbank_Pay_Api {
 				->setHeaders();
 
 		$base_url = $client->getBaseUrl();
-		// Replace payex.com with swedbankpay.com. Can be disabled using the filter `swedbank_pay_replace_base_url` and returning false instead of true.
-		if ( apply_filters( 'swedbank_pay_replace_base_url', true ) && strpos( $base_url, 'payex.com' ) !== false ) {
+		/**
+		 * Filters whether the payex.com domain in the API base URL should be replaced with swedbankpay.com.
+		 *
+		 * @param bool $replace Whether to replace the domain. Default true.
+		 */
+		$replace_base_url = apply_filters( 'swedbank_pay_replace_base_url', true );
+		if ( $replace_base_url && strpos( $base_url, 'payex.com' ) !== false ) {
 			$base_url = str_replace( 'payex.com', 'swedbankpay.com', $base_url );
 			$client->setBaseUrl( $base_url );
 		}
 
+		/**
+		 * Filters the configured Swedbank Pay API client.
+		 *
+		 * @param Client $client The API client, with the access token, payee ID, mode and base URL set.
+		 */
 		return apply_filters( 'swedbank_pay_client', $client );
 	}
 
@@ -448,7 +458,13 @@ class Swedbank_Pay_Api {
 		$body   = array(
 			'paymentorder' => array(
 				'operation'   => 'Abort',
-				'abortReason' => apply_filters( 'swedbank_pay_abort_reason', $abort_reason ),
+				'abortReason' =>
+					/**
+					 * Filters the reason sent to Swedbank Pay when an embedded payment is aborted.
+					 *
+					 * @param string $abort_reason The abort reason, 'CancelledBySystem' or 'CancelledByConsumer'. Default 'CancelledBySystem'.
+					 */
+					apply_filters( 'swedbank_pay_abort_reason', $abort_reason ),
 			),
 		);
 		$result = $this->request( 'PATCH', $payment_order_id, $body );
@@ -1197,6 +1213,11 @@ class Swedbank_Pay_Api {
 		( $helper->get_transaction_data() )
 			->setDescription( $this->get_transaction_description( sprintf( 'Cancel Order #%s', $order->get_order_number() ), $order, self::TYPE_CANCELLATION ) )
 			->setPayeeReference(
+				/**
+				 * Filters the payee reference of the cancel transaction.
+				 *
+				 * @param string $payee_reference The generated payee reference.
+				 */
 				apply_filters(
 					'swedbank_pay_payee_reference',
 					swedbank_pay_generate_payee_reference( $order->get_id() )

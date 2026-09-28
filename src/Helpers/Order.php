@@ -103,6 +103,12 @@ class Order extends PaymentDataHelper {
 	 */
 	public function get_metadata() {
 		$metadata = ( new PaymentorderMetadata() )->setData( 'order_id', $this->order->get_id() );
+		/**
+		 * Filters the metadata of the payment order sent to Swedbank Pay.
+		 *
+		 * @param PaymentorderMetadata $metadata The payment order metadata.
+		 * @param Order                $helper   The order helper building the payment data.
+		 */
 		return apply_filters( 'swedbank_pay_metadata', $metadata, $this );
 	}
 
@@ -115,20 +121,39 @@ class Order extends PaymentDataHelper {
 	 */
 	public function get_payee_info() {
 		$payload = array(
-			'orderReference' => apply_filters(
-				'swedbank_pay_order_reference',
-				$this->order->get_order_number()
-			),
-			'payeeReference' => apply_filters(
-				'swedbank_pay_payee_reference',
-				swedbank_pay_generate_payee_reference( $this->order->get_id() )
-			),
+			'orderReference' =>
+				/**
+				 * Filters the order reference of the payment order, the reference of the order in the store.
+				 *
+				 * @param string $order_reference The order number.
+				 */
+				apply_filters(
+					'swedbank_pay_order_reference',
+					$this->order->get_order_number()
+				),
+			'payeeReference' =>
+				/**
+				 * Filters the payee reference of the payment order.
+				 *
+				 * @param string $payee_reference The generated payee reference.
+				 */
+				apply_filters(
+					'swedbank_pay_payee_reference',
+					swedbank_pay_generate_payee_reference( $this->order->get_id() )
+				),
 			'payeeId'        => $this->gateway->payee_id,
-			'payeeName'      => apply_filters(
-				'swedbank_pay_payee_name',
-				get_bloginfo( 'name' ),
-				$this->gateway->id
-			),
+			'payeeName'      =>
+				/**
+				 * Filters the payee name, the name of the store shown in Swedbank Pay.
+				 *
+				 * @param string $payee_name The payee name. Default the site title.
+				 * @param string $gateway_id The ID of the payment gateway.
+				 */
+				apply_filters(
+					'swedbank_pay_payee_name',
+					get_bloginfo( 'name' ),
+					$this->gateway->id
+				),
 		);
 
 		$subsite = $this->settings['subsite'] ?? '';
@@ -137,6 +162,15 @@ class Order extends PaymentDataHelper {
 		}
 
 		$payee = new PaymentorderPayeeInfo( $payload );
+		/**
+		 * Filters the payee information of the payment order sent to Swedbank Pay.
+		 *
+		 * Can be used to set or override the subsite of the payment order.
+		 *
+		 * @link https://docs.krokedil.com/swedbank-pay-payment-menu/customization/actions-filters/#set-or-override-the-subsite-for-payment-orders Set or override the subsite for payment orders.
+		 * @param PaymentorderPayeeInfo $payee  The payee information.
+		 * @param Order                 $helper The order helper building the payment data.
+		 */
 		return apply_filters( 'swedbank_pay_payee', $payee, $this );
 	}
 
@@ -181,6 +215,12 @@ class Order extends PaymentDataHelper {
 			->setTermsOfService( $this->gateway->terms_url )
 			->setLogoUrl( $this->gateway->logo_url );
 
+		/**
+		 * Filters the URLs of the payment order sent to Swedbank Pay, e.g. the complete, callback and terms of service URLs.
+		 *
+		 * @param PaymentorderUrl $url_data The payment order URLs.
+		 * @param Order           $helper   The order helper building the payment data.
+		 */
 		return apply_filters( 'swedbank_pay_urls', $url_data, $this );
 	}
 
@@ -215,6 +255,12 @@ class Order extends PaymentDataHelper {
 			$payer->setDigitalProducts( true );
 		}
 
+		/**
+		 * Filters the payer information of the payment order sent to Swedbank Pay.
+		 *
+		 * @param PaymentorderPayer $payer  The payer information, with the details of the customer.
+		 * @param Order             $helper The order helper building the payment data.
+		 */
 		return apply_filters( 'swedbank_pay_payer', $payer, $this );
 	}
 
@@ -235,6 +281,12 @@ class Order extends PaymentDataHelper {
 			->setCurrency( $this->order->get_currency() )
 			->setDescription(
 				mb_substr(
+					/**
+					 * Filters the description of the payment order. It is limited to 40 characters.
+					 *
+					 * @param string    $description The description. Default 'Order #{order number}'.
+					 * @param \WC_Order $order       The order.
+					 */
 					apply_filters(
 						'swedbank_pay_payment_description',
 						sprintf(
@@ -263,6 +315,13 @@ class Order extends PaymentDataHelper {
 
 			$payment_order->setAmount(
 				(int) round(
+					/**
+					 * Filters the total amount of the payment order, in major units. It is converted to minor units before it is sent to Swedbank Pay.
+					 *
+					 * @param float     $total The total amount, e.g. 199.95.
+					 * @param array     $items The formatted order items.
+					 * @param \WC_Order $order The order.
+					 */
 					apply_filters(
 						'swedbank_pay_order_amount',
 						$this->order->get_total(),
@@ -272,6 +331,13 @@ class Order extends PaymentDataHelper {
 				)
 			)
 			->setVatAmount(
+				/**
+				 * Filters the total VAT amount of the payment order, in minor units.
+				 *
+				 * @param int       $vat_amount The VAT amount.
+				 * @param array     $items      The formatted order items.
+				 * @param \WC_Order $order      The order.
+				 */
 				apply_filters(
 					'swedbank_pay_order_vat',
 					$this->calculate_vat_amount( $items ),
@@ -288,6 +354,12 @@ class Order extends PaymentDataHelper {
 		self::set_client_information( $payment_order ); // Set the client information.
 
 		$payment_order->setPayer( $this->get_payer() );
+		/**
+		 * Filters the payment order sent to Swedbank Pay when a payment is created.
+		 *
+		 * @param Paymentorder $payment_order The payment order.
+		 * @param Order        $helper        The order helper building the payment data.
+		 */
 		return apply_filters( 'swedbank_pay_payment_order', $payment_order, $this );
 	}
 
@@ -304,6 +376,11 @@ class Order extends PaymentDataHelper {
 		$order_items = $this->get_order_items();
 		$items       = $this->get_formatted_items();
 
+		/**
+		 * Filters the payee reference of the transaction.
+		 *
+		 * @param string $payee_reference The generated payee reference.
+		 */
 		$payee_reference = apply_filters(
 			'swedbank_pay_payee_reference',
 			swedbank_pay_generate_payee_reference( $this->order->get_id() )
@@ -319,6 +396,12 @@ class Order extends PaymentDataHelper {
 			$transaction_data->setReceiptReference( $payee_reference );
 		}
 
+		/**
+		 * Filters the transaction data sent to Swedbank Pay, e.g. when capturing, cancelling or refunding a payment.
+		 *
+		 * @param TransactionData $transaction_data The transaction data.
+		 * @param Order           $helper           The order helper building the payment data.
+		 */
 		return apply_filters( 'swedbank_pay_transaction_data', $transaction_data, $this );
 	}
 
@@ -343,6 +426,12 @@ class Order extends PaymentDataHelper {
 			$payer_reference = uniqid( $this->order->get_billing_email() );
 		}
 
+		/**
+		 * Filters the payer reference, the reference that identifies the customer in Swedbank Pay.
+		 *
+		 * @param string|int $payer_reference The payer reference. The user ID for logged in customers, otherwise a unique ID based on the email address.
+		 * @param int        $user_id         The user ID of the customer, 0 for guests.
+		 */
 		return apply_filters( 'swedbank_pay_generate_uuid', $payer_reference, $user_id );
 	}
 }

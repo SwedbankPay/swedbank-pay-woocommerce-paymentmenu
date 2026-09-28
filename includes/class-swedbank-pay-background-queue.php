@@ -262,6 +262,14 @@ class Swedbank_Pay_Background_Queue extends WC_Background_Process {
 	public function dispatch_queue() {
 		if ( ! empty( $this->data ) ) {
 			$this->save();
+			/**
+			 * Filters whether the background queue should be dispatched right away, at the end of the current request.
+			 *
+			 * Return false to leave the queued items to the scheduled cron event instead.
+			 *
+			 * @param bool                          $dispatch Whether to dispatch the queue at shutdown. Default true.
+			 * @param Swedbank_Pay_Background_Queue $queue    The background queue instance.
+			 */
 			if ( apply_filters( 'swedbank_pay_dispatch_queue_at_shutdown', true, $this ) ) {
 				$this->dispatch();
 			} else {
