@@ -1111,7 +1111,9 @@ class Swedbank_Pay_Api {
 		);
 
 		$helper           = new Order( $order, $items );
-		$transaction_data = $helper->get_transaction_data()->setDescription( sprintf( 'Capture for Order #%s', $order->get_order_number() ) );
+		$transaction_data = $helper->get_transaction_data()->setDescription(
+			$this->get_transaction_description( sprintf( 'Capture for Order #%s', $order->get_order_number() ), $order, self::TYPE_CAPTURE )
+		);
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
@@ -1193,7 +1195,7 @@ class Swedbank_Pay_Api {
 
 		$transaction_data =
 		( $helper->get_transaction_data() )
-			->setDescription( sprintf( 'Cancel Order #%s', $order->get_order_number() ) )
+			->setDescription( $this->get_transaction_description( sprintf( 'Cancel Order #%s', $order->get_order_number() ), $order, self::TYPE_CANCELLATION ) )
 			->setPayeeReference(
 				apply_filters(
 					'swedbank_pay_payee_reference',
@@ -1313,7 +1315,7 @@ class Swedbank_Pay_Api {
 		$transaction_data = $helper->get_transaction_data();
 
 		$this->scale_transaction_to_amount( $transaction_data, (int) round( $amount * 100 ) );
-		$transaction_data->setDescription( sprintf( 'Refund Order #%s.', $order->get_order_number() ) );
+		$transaction_data->setDescription( $this->get_transaction_description( sprintf( 'Refund Order #%s.', $order->get_order_number() ), $order, self::TYPE_REVERSAL ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
@@ -1374,6 +1376,34 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Get the description for a capture, cancel or refund transaction.
+	 *
+	 * Swedbank Pay rejects a transaction description longer than 40 characters, so it is truncated.
+	 *
+	 * @param string   $description The default description.
+	 * @param WC_Order $order The order the transaction belongs to.
+	 * @param string   $type The transaction type, one of the TYPE_* constants.
+	 *
+	 * @return string
+	 */
+	private function get_transaction_description( $description, $order, $type ) {
+		return mb_substr(
+			/**
+			 * Filters the description sent with a capture, cancel or refund transaction.
+			 *
+			 * The description is truncated to 40 characters, the maximum Swedbank Pay accepts.
+			 *
+			 * @param string   $description The default description.
+			 * @param WC_Order $order The order the transaction belongs to. For a refund, this is the parent order.
+			 * @param string   $type The transaction type: 'Capture', 'Cancellation' or 'Reversal'.
+			 */
+			(string) apply_filters( 'swedbank_pay_transaction_description', $description, $order, $type ),
+			0,
+			40
+		);
+	}
+
+	/**
 	 * Scale a transaction built from the whole order down to the amount being reversed.
 	 *
 	 * Swedbank Pay wants vatAmount to match the summed vatAmount of the order items when items
@@ -1424,7 +1454,7 @@ class Swedbank_Pay_Api {
 		$transaction_data = $helper->get_transaction_data();
 		$amount           = $transaction_data->getAmount();
 		$transaction_data = $transaction_data
-			->setDescription( sprintf( 'Refund Order #%s', $order->get_order_number() ) );
+			->setDescription( $this->get_transaction_description( sprintf( 'Refund Order #%s', $order->get_order_number() ), $order, self::TYPE_REVERSAL ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
