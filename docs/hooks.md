@@ -238,6 +238,30 @@ Source: [./includes/class-swedbank-pay-api.php](../includes/class-swedbank-pay-a
 
 
 ---
+### `swedbank_pay_transaction_description`
+
+*Filters the description sent with a capture, cancel or refund transaction.*
+
+The description is truncated to 40 characters, the maximum Swedbank Pay accepts.
+
+**Arguments**
+
+Argument | Type | Description
+-------- | ---- | -----------
+`$description` | `string` | The default description.
+`$order` | `\WC_Order` | The order the transaction belongs to. For a refund, this is the parent order.
+`$type` | `string` | The transaction type: 'Capture', 'Cancellation' or 'Reversal'.
+
+**Changelog**
+
+Version | Description
+------- | -----------
+`4.6.3` | 
+
+Source: [./includes/class-swedbank-pay-api.php](../includes/class-swedbank-pay-api.php), [line 1412](../includes/class-swedbank-pay-api.php#L1412-L1422)
+
+
+---
 ### `swedbank_pay_split_instrument_gateway_is_available`
 
 *Filters whether a separate payment method gateway, e.g. the card or Swish gateway, is available in the checkout.*

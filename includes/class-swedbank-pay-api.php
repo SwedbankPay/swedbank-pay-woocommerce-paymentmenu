@@ -1414,6 +1414,7 @@ class Swedbank_Pay_Api {
 			 *
 			 * The description is truncated to 40 characters, the maximum Swedbank Pay accepts.
 			 *
+			 * @since 4.6.3
 			 * @param string   $description The default description.
 			 * @param WC_Order $order The order the transaction belongs to. For a refund, this is the parent order.
 			 * @param string   $type The transaction type: 'Capture', 'Cancellation' or 'Reversal'.
