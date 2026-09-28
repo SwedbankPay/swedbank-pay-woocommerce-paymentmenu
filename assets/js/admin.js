@@ -19,8 +19,9 @@ jQuery(document).ready(function ($) {
 
             switch (response.data['mode']) {
                 case 'items':
-                    $('.refund_line_total.wc_input_price').prop('readonly', true);
-                    $('.refund_line_tax.wc_input_price').prop('readonly', true);
+                    // Shipping and fee rows have no quantity input to refund by.
+                    $('tr.item .refund_line_total.wc_input_price').prop('readonly', true);
+                    $('tr.item .refund_line_tax.wc_input_price').prop('readonly', true);
                     $('#refund_amount').prop('readonly', true);
 
                     break;

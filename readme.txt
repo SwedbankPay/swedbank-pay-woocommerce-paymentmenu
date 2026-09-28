@@ -5,8 +5,8 @@ Requires at least: 5.3
 Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 11.1.1
-Stable tag: 4.6.2
+WC tested up to: 11.1.2
+Stable tag: 4.6.3
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,15 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.09.28    - version 4.6.3 =
+* Enhancement   - Added a new `swedbank_pay_transaction_description` filter for changing the description sent to Swedbank Pay with a capture, cancellation or refund.
+* Enhancement   - Shoppers now see a generic error message when a Swedbank Pay payment fails, instead of the raw API error with internal field names. The full error is still recorded in the plugin log.
+* Fix           - Fixed an issue where the checkout could not be started when the payment order description exceeded Swedbank Pay's 40-character limit, for example after being extended through the `swedbank_pay_payment_description` filter.
+* Fix           - Fixed an issue where refunding an order by entering an amount, rather than selecting line items, was rejected by Swedbank Pay on any order that included VAT.
+* Fix           - Fixed an issue where the record of already refunded items was stored with duplicated rows and inflated quantities, which made the quantities offered for a later refund of the same order wrong.
+* Fix           - Fixed an issue where the shipping cost was left out of a refund, so the shipping was never returned to the customer even though WooCommerce showed the order as refunded.
+* Fix           - Fixed an issue where the shipping and fee amounts could not be entered on the order screen when taxes were enabled, which made it impossible to refund the shipping cost.
+
 = 2026.09.21    - version 4.6.2 =
 * Enhancement   - Added a new `swedbank_pay_culture` filter for overriding the checkout language.
 * Fix           - Fixed an issue in the inline embedded checkout where placing an order could abort a payment that was already in progress, leaving the order on Pending payment after the customer had paid.

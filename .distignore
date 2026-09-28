@@ -61,3 +61,5 @@ tsconfig.json
 .changelogs
 
 build-phar.sh
+
+tools

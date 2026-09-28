@@ -121,6 +121,13 @@ class Swedbank_Pay_Scheduler {
 			return false;
 		}
 
+		/**
+		 * Fires after a queued Swedbank Pay callback has been processed and the payment has been finalized for the order.
+		 *
+		 * @param \WC_Order                               $order        The order the callback was for.
+		 * @param \Swedbank_Pay_Payment_Gateway_Checkout $gateway      The payment gateway of the order.
+		 * @param string                                 $webhook_data The callback data from Swedbank Pay, in JSON format.
+		 */
 		do_action( 'swedbank_pay_scheduler_run_after', $order, $gateway, $webhook_data );
 
 		Swedbank_Pay()->logger()->info( "[SCHEDULER]: Successfully processed payment for order #{$order->get_order_number()} with payment number #{$context['payment_number']}.", $context );

@@ -8,6 +8,7 @@
 namespace SwedbankPay\Checkout\WooCommerce;
 
 use Krokedil\Swedbank\Pay\Helpers\PaymentDataHelper;
+use Krokedil\Swedbank\Pay\Utility\ErrorUtility;
 use Krokedil\Swedbank\Pay\Utility\LogUtility;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\UnscheduledPurchase;
@@ -648,8 +649,7 @@ class Swedbank_Pay_Subscription {
 		$reason = __( 'The payment method was changed by the customer.', 'swedbank-pay-payment-menu' );
 		$result = $this->save_subscription_token( $subscription, $gateway, true, $reason );
 		if ( is_wp_error( $result ) && function_exists( 'wc_print_notice' ) ) {
-			// translators: Error message.
-			wc_print_notice( sprintf( __( 'Failed to update payment method. Reason: %s', 'swedbank-pay-payment-menu' ), $result->get_error_message() ), 'error' );
+			wc_print_notice( ErrorUtility::customer_message( $result, $subscription ), 'error' );
 		}
 	}
 

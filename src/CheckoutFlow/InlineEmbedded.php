@@ -2,6 +2,7 @@
 namespace Krokedil\Swedbank\Pay\CheckoutFlow;
 
 use Krokedil\Swedbank\Pay\Helpers\PaymentDataHelper;
+use Krokedil\Swedbank\Pay\Utility\ErrorUtility;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\Request\Paymentorder;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use WP_Error;
@@ -65,7 +66,7 @@ class InlineEmbedded extends CheckoutFlow {
 			$result = $this->create_or_update_embedded_purchase();
 
 			if ( is_wp_error( $result ) ) {
-				wc_add_notice( $result->get_error_message(), 'error' );
+				wc_add_notice( ErrorUtility::customer_message( $result ), 'error' );
 				return;
 			}
 		} else { // If this is on the payment complete return, verify the payment to make sure no errors occurred.
@@ -148,7 +149,7 @@ class InlineEmbedded extends CheckoutFlow {
 		$result = $this->api->update_embedded_purchase();
 
 		if ( is_wp_error( $result ) ) {
-			wc_add_notice( $result->get_error_message(), 'error' );
+			wc_add_notice( ErrorUtility::customer_message( $result ), 'error' );
 		}
 	}
 
@@ -308,10 +309,9 @@ class InlineEmbedded extends CheckoutFlow {
 		// Initiate Payment Order.
 		$result = $this->api->get_embedded_purchase();
 		if ( is_wp_error( $result ) ) {
-			$code    = \is_int( $result->get_error_code() ) ? \intval( $result->get_error_code() ) : 500;
-			$message = ! empty( $result->get_error_message() ) ? $result->get_error_message() : __( 'The payment could not be initiated.', 'swedbank-pay-payment-menu' );
+			$code = \is_int( $result->get_error_code() ) ? \intval( $result->get_error_code() ) : 500;
 			throw new \Exception(
-				esc_html( $message ),
+				esc_html( ErrorUtility::customer_message( $result, $order ) ),
 				absint( $code )
 			);
 		}
@@ -377,7 +377,8 @@ class InlineEmbedded extends CheckoutFlow {
 			}
 		} catch ( \Exception $e ) {
 			self::unset_embedded_session_data();
-			wc_add_notice( $e->getMessage(), 'error' );
+			$order = swedbank_pay_get_order_by_payee_reference( $this->payee_reference );
+			wc_add_notice( ErrorUtility::customer_message( new WP_Error( 'swedbank_pay_error', $e->getMessage() ), $order ), 'error' );
 			wp_safe_redirect( wc_get_checkout_url() );
 			exit;
 		}

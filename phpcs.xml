@@ -6,6 +6,7 @@
     <exclude-pattern>*/node_modules/*</exclude-pattern>
     <exclude-pattern>*/vendor/*</exclude-pattern>
     <exclude-pattern>*/dependencies/*</exclude-pattern>
+    <exclude-pattern>*/docs/*</exclude-pattern>
 
     <!-- Exclude the tests folder -->
     <exclude-pattern>tests/*</exclude-pattern>

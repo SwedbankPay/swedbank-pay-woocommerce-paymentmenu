@@ -16,6 +16,7 @@ use WC_Payment_Gateway;
 use Swedbank_Pay_Payment_Gateway_Checkout;
 use Krokedil\Swedbank\Pay\Helpers\Order;
 use Krokedil\Swedbank\Pay\Helpers\Cart;
+use Krokedil\Swedbank\Pay\Utility\ErrorUtility;
 use Krokedil\Swedbank\Pay\Utility\LogUtility;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Exception as ClientException;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface as ResponseServiceInterface;
@@ -25,6 +26,7 @@ use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\Tran
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\GetPaymentorder;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Resource\Response\PaymentorderResponse;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\TransactionObject;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Transaction\Resource\Request\Transaction as TransactionData;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\V3\Request\Purchase;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Paymentorder\Resource\PaymentorderObject;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Client\Client;
@@ -215,12 +217,22 @@ class Swedbank_Pay_Api {
 				->setHeaders();
 
 		$base_url = $client->getBaseUrl();
-		// Replace payex.com with swedbankpay.com. Can be disabled using the filter `swedbank_pay_replace_base_url` and returning false instead of true.
-		if ( apply_filters( 'swedbank_pay_replace_base_url', true ) && strpos( $base_url, 'payex.com' ) !== false ) {
+		/**
+		 * Filters whether the payex.com domain in the API base URL should be replaced with swedbankpay.com.
+		 *
+		 * @param bool $replace Whether to replace the domain. Default true.
+		 */
+		$replace_base_url = apply_filters( 'swedbank_pay_replace_base_url', true );
+		if ( $replace_base_url && strpos( $base_url, 'payex.com' ) !== false ) {
 			$base_url = str_replace( 'payex.com', 'swedbankpay.com', $base_url );
 			$client->setBaseUrl( $base_url );
 		}
 
+		/**
+		 * Filters the configured Swedbank Pay API client.
+		 *
+		 * @param Client $client The API client, with the access token, payee ID, mode and base URL set.
+		 */
 		return apply_filters( 'swedbank_pay_client', $client );
 	}
 
@@ -446,7 +458,13 @@ class Swedbank_Pay_Api {
 		$body   = array(
 			'paymentorder' => array(
 				'operation'   => 'Abort',
-				'abortReason' => apply_filters( 'swedbank_pay_abort_reason', $abort_reason ),
+				'abortReason' =>
+					/**
+					 * Filters the reason sent to Swedbank Pay when an embedded payment is aborted.
+					 *
+					 * @param string $abort_reason The abort reason, 'CancelledBySystem' or 'CancelledByConsumer'. Default 'CancelledBySystem'.
+					 */
+					apply_filters( 'swedbank_pay_abort_reason', $abort_reason ),
 			),
 		);
 		$result = $this->request( 'PATCH', $payment_order_id, $body );
@@ -1109,7 +1127,9 @@ class Swedbank_Pay_Api {
 		);
 
 		$helper           = new Order( $order, $items );
-		$transaction_data = $helper->get_transaction_data()->setDescription( sprintf( 'Capture for Order #%s', $order->get_order_number() ) );
+		$transaction_data = $helper->get_transaction_data()->setDescription(
+			$this->get_transaction_description( sprintf( 'Capture for Order #%s', $order->get_order_number() ), $order, self::TYPE_CAPTURE )
+		);
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
@@ -1191,8 +1211,13 @@ class Swedbank_Pay_Api {
 
 		$transaction_data =
 		( $helper->get_transaction_data() )
-			->setDescription( sprintf( 'Cancel Order #%s', $order->get_order_number() ) )
+			->setDescription( $this->get_transaction_description( sprintf( 'Cancel Order #%s', $order->get_order_number() ), $order, self::TYPE_CANCELLATION ) )
 			->setPayeeReference(
+				/**
+				 * Filters the payee reference of the cancel transaction.
+				 *
+				 * @param string $payee_reference The generated payee reference.
+				 */
 				apply_filters(
 					'swedbank_pay_payee_reference',
 					swedbank_pay_generate_payee_reference( $order->get_id() )
@@ -1308,10 +1333,10 @@ class Swedbank_Pay_Api {
 		);
 
 		$helper           = new Order( $order );
-		$transaction_data = $helper->get_transaction_data()
-			->setAmount( round( $amount * 100 ) )
-			->setVatAmount( 0 )
-			->setDescription( sprintf( 'Refund Order #%s.', $order->get_order_number() ) );
+		$transaction_data = $helper->get_transaction_data();
+
+		$this->scale_transaction_to_amount( $transaction_data, (int) round( $amount * 100 ) );
+		$transaction_data->setDescription( $this->get_transaction_description( sprintf( 'Refund Order #%s.', $order->get_order_number() ), $order, self::TYPE_REVERSAL ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
@@ -1372,6 +1397,64 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Get the description for a capture, cancel or refund transaction.
+	 *
+	 * Swedbank Pay rejects a transaction description longer than 40 characters, so it is truncated.
+	 *
+	 * @param string   $description The default description.
+	 * @param WC_Order $order The order the transaction belongs to.
+	 * @param string   $type The transaction type, one of the TYPE_* constants.
+	 *
+	 * @return string
+	 */
+	private function get_transaction_description( $description, $order, $type ) {
+		return mb_substr(
+			/**
+			 * Filters the description sent with a capture, cancel or refund transaction.
+			 *
+			 * The description is truncated to 40 characters, the maximum Swedbank Pay accepts.
+			 *
+			 * @since 4.6.3
+			 * @param string   $description The default description.
+			 * @param WC_Order $order The order the transaction belongs to. For a refund, this is the parent order.
+			 * @param string   $type The transaction type: 'Capture', 'Cancellation' or 'Reversal'.
+			 */
+			(string) apply_filters( 'swedbank_pay_transaction_description', $description, $order, $type ),
+			0,
+			40
+		);
+	}
+
+	/**
+	 * Scale a transaction built from the whole order down to the amount being reversed.
+	 *
+	 * Swedbank Pay wants vatAmount to match the summed vatAmount of the order items when items
+	 * are present, and to stay below the transaction amount. A partial amount cannot do both
+	 * while carrying the whole order's items, so the items go and the VAT is prorated. Prorated
+	 * rather than read off the refund, because an amount-mode refund leaves WC_Order_Refund with
+	 * no line items and no taxes. Approximate on an order mixing VAT rates.
+	 *
+	 * @param TransactionData $transaction_data The transaction describing the whole order.
+	 * @param int             $amount The amount to reverse, in minor units.
+	 *
+	 * @return void
+	 */
+	private function scale_transaction_to_amount( TransactionData $transaction_data, $amount ) {
+		$order_amount = (int) $transaction_data->getAmount();
+		$order_vat    = (int) $transaction_data->getVatAmount();
+
+		$transaction_data->setAmount( $amount );
+
+		// The whole order: the VAT already matches the items it carries.
+		if ( $amount === $order_amount ) {
+			return;
+		}
+
+		$transaction_data->offsetUnset( TransactionData::ORDER_ITEMS );
+		$transaction_data->setVatAmount( $order_amount > 0 ? (int) round( $amount * $order_vat / $order_amount ) : 0 );
+	}
+
+	/**
 	 * Refund Checkout.
 	 *
 	 * @param \WC_Order_Refund $refund_order The refund order object.
@@ -1393,7 +1476,7 @@ class Swedbank_Pay_Api {
 		$transaction_data = $helper->get_transaction_data();
 		$amount           = $transaction_data->getAmount();
 		$transaction_data = $transaction_data
-			->setDescription( sprintf( 'Refund Order #%s', $order->get_order_number() ) );
+			->setDescription( $this->get_transaction_description( sprintf( 'Refund Order #%s', $order->get_order_number() ), $order, self::TYPE_REVERSAL ) );
 
 		$transaction = new TransactionObject();
 		$transaction->setTransaction( $transaction_data );
@@ -1513,13 +1596,13 @@ class Swedbank_Pay_Api {
 					strpos( $problem['name'], 'HomePhoneNumber' ) !== false ||
 					strpos( $problem['name'], 'WorkPhoneNumber' ) !== false
 				) {
-					$message = 'Your phone number format is wrong. Please input with country code, for example like this +46707777777'; //phpcs:ignore
+					$message = ErrorUtility::get_invalid_phone_message();
 
 					break;
 				}
 
 				if ( strpos( $problem['name'], 'StreetAddress' ) !== false ) {
-					$message = 'Street address can have a max length of 40 and only contain normal characters';
+					$message = ErrorUtility::get_invalid_street_address_message();
 
 					break;
 				}

@@ -172,9 +172,10 @@ function swedbank_pay_get_order_lines( $order ) {
 	}
 
 	// Add Shipping Total.
-	if ( (float) $order->get_shipping_total() > 0 ) {
-		$shipping          = (float) $order->get_shipping_total();
-		$tax               = (float) $order->get_shipping_tax();
+	// A refund order stores its totals as negatives.
+	$shipping = abs( (float) $order->get_shipping_total() );
+	if ( $shipping > 0 ) {
+		$tax               = abs( (float) $order->get_shipping_tax() );
 		$shipping_with_tax = $shipping + $tax;
 		$tax_percent       = $tax > 0 ? round( 100 / ( $shipping / $tax ) ) : 0;
 		$shipping_method   = trim( $order->get_shipping_method() );
@@ -383,6 +384,12 @@ function swedbank_pay_generate_payee_reference( $order_id ) {
 	shuffle( $arr );
 	$reference = $order_id . 'x' . substr( implode( '', $arr ), 0, 5 );
 
+	/**
+	 * Filters the generated payee reference, the unique reference of a payment order or transaction in Swedbank Pay.
+	 *
+	 * @param string     $reference The generated payee reference.
+	 * @param int|string $order_id  The WooCommerce order ID, or a random string when the reference is generated for a cart without an order.
+	 */
 	return apply_filters( 'swedbank_pay_payee_reference', $reference, $order_id );
 }
 

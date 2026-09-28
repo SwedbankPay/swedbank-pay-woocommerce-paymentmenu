@@ -201,10 +201,10 @@ class Swedbank_Pay_Payment_Actions {
 		$this->validate_items( $order, $lines );
 
 		// Filter items.
+		// Shipping and fee rows carry no quantity in the refund form, so they are
+		// kept on their refunded amount alone.
 		foreach ( $lines as $item_id => $line ) {
-			$qty          = (int) $line['qty'];
-			$refund_total = (float) $line['refund_total'];
-			if ( $qty === 0 || $refund_total <= 0.01 ) {
+			if ( (float) $line['refund_total'] <= 0.01 ) {
 				unset( $lines[ $item_id ] );
 			}
 		}
@@ -305,6 +305,14 @@ class Swedbank_Pay_Payment_Actions {
 						$product_class = $product->get_meta( '_swedbank_pay_product_class' );
 
 						if ( empty( $product_class ) ) {
+							/**
+							 * Filters the class of a product order line sent to Swedbank Pay when refunding an order.
+							 *
+							 * Only applied when the product has no class set in its '_swedbank_pay_product_class' meta.
+							 *
+							 * @param string     $class   The product class. Default 'ProductGroup1'.
+							 * @param WC_Product $product The product of the order line.
+							 */
 							$product_class = apply_filters(
 								'swedbank_pay_product_class',
 								'ProductGroup1',
@@ -339,7 +347,13 @@ class Swedbank_Pay_Payment_Actions {
 					/** @var WC_Order_Item_Shipping $item */
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = 'shipping';
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_SHIPPING;
-					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = apply_filters(
+					/**
+					 * Filters the class of the shipping order line sent to Swedbank Pay when refunding an order.
+					 *
+					 * @param string   $class The order line class. Default 'ProductGroup1'.
+					 * @param WC_Order $order The order being refunded.
+					 */
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] = apply_filters(
 						'swedbank_pay_product_class_shipping',
 						'ProductGroup1',
 						$order
@@ -350,7 +364,13 @@ class Swedbank_Pay_Payment_Actions {
 					/** @var WC_Order_Item_Fee $item */
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = 'fee';
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_OTHER;
-					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = apply_filters(
+					/**
+					 * Filters the class of a fee order line sent to Swedbank Pay when refunding an order.
+					 *
+					 * @param string   $class The order line class. Default 'ProductGroup1'.
+					 * @param WC_Order $order The order being refunded.
+					 */
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] = apply_filters(
 						'swedbank_pay_product_class_fee',
 						'ProductGroup1',
 						$order
@@ -361,7 +381,13 @@ class Swedbank_Pay_Payment_Actions {
 					/** @var WC_Order_Item_Coupon $item */
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = 'coupon';
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_OTHER;
-					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = apply_filters(
+					/**
+					 * Filters the class of a coupon order line sent to Swedbank Pay when refunding an order.
+					 *
+					 * @param string   $class The order line class. Default 'ProductGroup1'.
+					 * @param WC_Order $order The order being refunded.
+					 */
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] = apply_filters(
 						'swedbank_pay_product_class_coupon',
 						'ProductGroup1',
 						$order
@@ -372,7 +398,13 @@ class Swedbank_Pay_Payment_Actions {
 					/** @var WC_Order_Item $item */
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] = 'other';
 					$order_item[ Swedbank_Pay_Order_Item::FIELD_TYPE ]      = Swedbank_Pay_Order_Item::TYPE_OTHER;
-					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ]     = apply_filters(
+					/**
+					 * Filters the class of an order line of any other type sent to Swedbank Pay when refunding an order.
+					 *
+					 * @param string   $class The order line class. Default 'ProductGroup1'.
+					 * @param WC_Order $order The order being refunded.
+					 */
+					$order_item[ Swedbank_Pay_Order_Item::FIELD_CLASS ] = apply_filters(
 						'swedbank_pay_product_class_other',
 						'ProductGroup1',
 						$order
@@ -561,6 +593,14 @@ class Swedbank_Pay_Payment_Actions {
 		}
 	}
 
+	/**
+	 * Save the refunded items to order meta.
+	 *
+	 * @param WC_Order $order The order that was refunded.
+	 * @param array    $lines The refunded lines, keyed by order item ID.
+	 *
+	 * @return void
+	 */
 	private function save_refunded_items( WC_Order $order, array $lines ) {
 		$order_lines = array();
 		foreach ( $lines as $item_id => $line ) {
@@ -592,28 +632,27 @@ class Swedbank_Pay_Payment_Actions {
 			);
 		}
 
-		// Append to exists list if applicable
 		$current_items = $order->get_meta( '_payex_refunded_items' );
 		$current_items = empty( $current_items ) ? array() : (array) $current_items;
-		if ( count( $current_items ) > 0 ) {
+
+		foreach ( $order_lines as $order_line ) {
+			$is_found = false;
 			foreach ( $current_items as &$current_item ) {
-				foreach ( $order_lines as $order_line ) {
-					if ( $order_line[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] === $current_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ) {
-						$current_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] += $order_line[ Swedbank_Pay_Order_Item::FIELD_QTY ];
-						break;
-					} else {
-						$current_items[] = $order_line;
-					}
+				if ( $current_item[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] === $order_line[ Swedbank_Pay_Order_Item::FIELD_REFERENCE ] ) {
+					$current_item[ Swedbank_Pay_Order_Item::FIELD_QTY ] += $order_line[ Swedbank_Pay_Order_Item::FIELD_QTY ];
+					$is_found = true;
+
+					break;
 				}
 			}
 
-			$order->update_meta_data( '_payex_refunded_items', $current_items );
-			$order->save_meta_data();
-
-			return;
+			if ( ! $is_found ) {
+				$current_items[] = $order_line;
+			}
 		}
+		unset( $current_item );
 
-		$order->update_meta_data( '_payex_refunded_items', $order_lines );
+		$order->update_meta_data( '_payex_refunded_items', $current_items );
 		$order->save_meta_data();
 	}
 }

@@ -1,6 +1,7 @@
 <?php
 namespace Krokedil\Swedbank\Pay\CheckoutFlow;
 
+use Krokedil\Swedbank\Pay\Utility\ErrorUtility;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use WC_Order;
 
@@ -33,7 +34,7 @@ class Redirect extends CheckoutFlow {
 		$result = $this->api->initiate_purchase( $order, $instrument );
 		if ( is_wp_error( $result ) ) {
 			throw new \Exception(
-				esc_html( $result->get_error_message() ?? __( 'The payment could not be initiated.', 'swedbank-pay-payment-menu' ) ),
+				esc_html( ErrorUtility::customer_message( $result, $order ) ),
 				absint( $result->get_error_code() )
 			);
 		}
@@ -64,8 +65,7 @@ class Redirect extends CheckoutFlow {
 		$result = swedbank_pay_is_zero( $order->get_total() ) ? Swedbank_Pay_Subscription::approve_for_renewal( $order ) : $this->api->initiate_purchase( $order, $instrument );
 		if ( is_wp_error( $result ) ) {
 			throw new \Exception(
-				// translators: %s: order number.
-				esc_html( sprintf( __( 'The payment change could not be initiated. Please contact store, and provide them the order number %s for more information.', 'swedbank-pay-payment-menu' ), $order->get_order_number() ) ),
+				esc_html( ErrorUtility::customer_message( $result, $order ) ),
 				absint( $result->get_error_code() )
 			);
 		}
