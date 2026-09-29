@@ -131,7 +131,7 @@ class InlineEmbedded extends CheckoutFlow {
 	 */
 	private static function billing_country_changed() {
 		$session_country = WC()->session->get( 'swedbank_pay_billing_country' );
-		return ! empty( $session_country ) && WC()->customer->get_billing_country() !== $session_country;
+		return null !== $session_country && WC()->customer->get_billing_country() !== $session_country;
 	}
 
 	/**
