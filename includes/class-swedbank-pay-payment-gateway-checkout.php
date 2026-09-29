@@ -869,7 +869,7 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return new WP_Error( 'refund', __( 'Amount must be specified.', 'swedbank-pay-payment-menu' ) );
 		}
 
-		if ( 0 === absint( $amount ) ) {
+		if ( (int) round( (float) $amount * 100 ) <= 0 ) {
 			return new WP_Error( 'refund', __( 'Amount must be positive.', 'swedbank-pay-payment-menu' ) );
 		}
 
