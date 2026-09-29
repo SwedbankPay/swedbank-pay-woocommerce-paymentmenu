@@ -517,7 +517,7 @@ class Swedbank_Pay_Payment_Actions {
 
 				// Skip zero products
 				$price_with_tax = (float) $order->get_line_subtotal( $item, true, false );
-				if ( $price_with_tax >= 0 && $price_with_tax <= 0.01 ) {
+				if ( $price_with_tax >= 0 && $price_with_tax < 0.01 ) {
 					continue;
 				}
 
