@@ -18,7 +18,7 @@ class InstrumentsUtility {
 		// This runs while the gateway is constructed, so read the settings without defaults.
 		$settings = SettingsUtility::get_stored_settings();
 
-		// One the account has since dropped stays while enabled, so its gateway remains for refunds and it can be disabled.
+		// An instrument the account has since dropped stays listed while enabled, so its gateway remains for refunds and it can be disabled.
 		$derived = array_filter(
 			(array) get_option( self::DERIVED_INSTRUMENTS_OPTION, array() ),
 			function ( $name, $key ) use ( $settings ) {
@@ -200,7 +200,7 @@ class InstrumentsUtility {
 	/**
 	 * Get all enabled instruments based on the settings, which decides the separate gateways that get registered.
 	 *
-	 * One not activated on the account is included so refunds on its orders still work; is_available() hides it at checkout.
+	 * An instrument not activated on the account is included so refunds on its orders still work; is_available() hides it at checkout.
 	 *
 	 * @return array An array of enabled instruments, each instrument is an array with 'instrument' and 'name' keys.
 	 */
