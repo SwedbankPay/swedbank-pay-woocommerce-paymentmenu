@@ -204,7 +204,7 @@ class Swedbank_Pay_Payment_Actions {
 		// Shipping and fee rows carry no quantity in the refund form, so they are
 		// kept on their refunded amount alone.
 		foreach ( $lines as $item_id => $line ) {
-			if ( (float) $line['refund_total'] <= 0.01 ) {
+			if ( (float) $line['refund_total'] < 0.01 ) {
 				unset( $lines[ $item_id ] );
 			}
 		}
@@ -517,7 +517,7 @@ class Swedbank_Pay_Payment_Actions {
 
 				// Skip zero products
 				$price_with_tax = (float) $order->get_line_subtotal( $item, true, false );
-				if ( $price_with_tax >= 0 && $price_with_tax <= 0.01 ) {
+				if ( $price_with_tax >= 0 && $price_with_tax < 0.01 ) {
 					continue;
 				}
 
