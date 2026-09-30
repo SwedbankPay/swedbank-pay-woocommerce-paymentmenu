@@ -15,11 +15,11 @@ class InstrumentsUtility {
 	public static function get_instruments() {
 		$instruments = self::get_known_instruments();
 
-		// Read the option directly: this runs while the gateway is constructed, see get_account_instruments_cache_key().
-		$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+		// This runs while the gateway is constructed, so read the settings without defaults.
+		$settings = SettingsUtility::get_stored_settings();
 
 		// One the account has since dropped stays while enabled, so its gateway remains for refunds and it can be disabled.
-		$remembered = array_filter(
+		$derived = array_filter(
 			(array) get_option( self::DERIVED_INSTRUMENTS_OPTION, array() ),
 			function ( $name, $key ) use ( $settings ) {
 				return self::is_instrument_name( $name ) && wc_string_to_bool( $settings[ "enable_instrument_$key" ] ?? 'no' );
@@ -28,9 +28,9 @@ class InstrumentsUtility {
 		);
 
 		// Offer instruments the account reports but this plugin doesn't know yet, labelled with their API name.
-		foreach ( array_merge( self::get_account_instruments() ?? array(), array_values( $remembered ) ) as $name ) {
+		foreach ( array_merge( self::get_account_instruments() ?? array(), array_values( $derived ) ) as $name ) {
 			$key = self::get_derived_key( $name );
-			if ( empty( $key ) || isset( $instruments[ $key ] ) || self::is_known_instrument( $name ) ) {
+			if ( isset( $instruments[ $key ] ) || ! self::is_derived_instrument( $name, $key ) ) {
 				continue;
 			}
 
@@ -54,6 +54,18 @@ class InstrumentsUtility {
 	 */
 	private static function get_derived_key( $instrument ) {
 		return sanitize_key( strtolower( preg_replace( '/(?<!^)[A-Z]/', '_$0', $instrument ) ) );
+	}
+
+	/**
+	 * Check whether a reported instrument is one this plugin doesn't list, and its derived key is usable.
+	 *
+	 * @param string $instrument The instrument name from the configurations response.
+	 * @param string $key        Its key from get_derived_key().
+	 *
+	 * @return bool
+	 */
+	private static function is_derived_instrument( $instrument, $key ) {
+		return ! empty( $key ) && ! isset( self::get_known_instruments()[ $key ] ) && ! self::is_known_instrument( $instrument );
 	}
 
 	/**
@@ -147,7 +159,7 @@ class InstrumentsUtility {
 	const ACCOUNT_INSTRUMENTS_OPTION = 'swedbank_pay_account_instruments';
 
 	/**
-	 * The option name used to remember every instrument the account has reported that this plugin doesn't list.
+	 * The option name used to store every derived instrument, i.e. one the account reported that this plugin doesn't list.
 	 *
 	 * @var string
 	 */
@@ -295,7 +307,8 @@ class InstrumentsUtility {
 			return;
 		}
 
-		$result = $gateway->api->request( 'GET', '/psp/paymentorders/configurations' );
+		LogUtility::$title = '[INSTRUMENTS]: Fetch the instruments activated on the account';
+		$result            = $gateway->api->request( 'GET', '/psp/paymentorders/configurations' );
 		if ( is_wp_error( $result ) ) {
 			// The request already logged the failure; keep the last known-good value.
 			return;
@@ -331,24 +344,24 @@ class InstrumentsUtility {
 	}
 
 	/**
-	 * Remember the reported instruments this plugin doesn't list, so they stay known once the account drops them.
+	 * Store the derived instruments the account reports, so they stay known once the account drops them.
 	 *
 	 * @param string[] $instruments Instrument names from the configurations response.
 	 *
 	 * @return void
 	 */
 	private static function remember_derived_instruments( $instruments ) {
-		$remembered = (array) get_option( self::DERIVED_INSTRUMENTS_OPTION, array() );
-		$updated    = $remembered;
+		$derived = (array) get_option( self::DERIVED_INSTRUMENTS_OPTION, array() );
+		$updated = $derived;
 
 		foreach ( $instruments as $name ) {
 			$key = self::get_derived_key( $name );
-			if ( ! empty( $key ) && ! isset( $updated[ $key ] ) && ! self::is_known_instrument( $name ) && ! isset( self::get_known_instruments()[ $key ] ) ) {
+			if ( ! isset( $updated[ $key ] ) && self::is_derived_instrument( $name, $key ) ) {
 				$updated[ $key ] = $name;
 			}
 		}
 
-		if ( $updated !== $remembered ) {
+		if ( $updated !== $derived ) {
 			update_option( self::DERIVED_INSTRUMENTS_OPTION, $updated );
 		}
 	}
@@ -370,8 +383,7 @@ class InstrumentsUtility {
 	 * @return string
 	 */
 	private static function get_account_instruments_cache_key() {
-		// Read the option directly: this runs while the gateway is constructed, and SettingsUtility's first load builds the gateway list.
-		$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+		$settings = SettingsUtility::get_stored_settings();
 
 		return md5( ( $settings['payee_id'] ?? '' ) . '|' . wc_bool_to_string( $settings['testmode'] ?? 'no' ) );
 	}

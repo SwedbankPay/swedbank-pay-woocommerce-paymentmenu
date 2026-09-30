@@ -475,8 +475,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			),
 		);
 
-		// Read the option directly: $this->settings isn't loaded yet, and SettingsUtility's first load builds the gateway list.
-		$saved_settings = get_option( $this->get_option_key(), array() );
+		// $this->settings isn't loaded yet, and SettingsUtility's full load would build the gateway list again.
+		$saved_settings = SettingsUtility::get_stored_settings();
 
 		foreach ( InstrumentsUtility::get_instruments() as $key => $instrument ) {
 			$is_available = InstrumentsUtility::is_instrument_available( $instrument['instrument'] );

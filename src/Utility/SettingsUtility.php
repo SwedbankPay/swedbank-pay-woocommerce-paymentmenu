@@ -22,7 +22,7 @@ class SettingsUtility {
 	 *
 	 * @var bool
 	 */
-	private static $loading = false;
+	private static $loading_defaults = false;
 
 	/**
 	 * Get the settings for Swedbank gateway.
@@ -31,26 +31,35 @@ class SettingsUtility {
 	 */
 	public static function get_settings() {
 		if ( null === self::$settings ) {
-			$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+			$settings = self::get_stored_settings();
 
 			// The defaults come from the gateway's form fields. Fetching them while WooCommerce is building its gateway
 			// list would start a second build, so skip them, uncached, until the build is done.
-			if ( self::$loading || doing_filter( 'woocommerce_payment_gateways' ) ) {
+			if ( self::$loading_defaults || doing_filter( 'woocommerce_payment_gateways' ) ) {
 				return $settings;
 			}
 
 			// Guards the same loop from a gateway constructor, which WooCommerce runs after that filter.
-			self::$loading = true;
+			self::$loading_defaults = true;
 			try {
 				$defaults = self::get_default_values();
 			} finally {
-				self::$loading = false;
+				self::$loading_defaults = false;
 			}
 
 			self::$settings = wp_parse_args( $settings, $defaults );
 		}
 
 		return self::$settings;
+	}
+
+	/**
+	 * Get the stored settings without defaults, which is safe to call while WooCommerce builds its gateway list.
+	 *
+	 * @return array
+	 */
+	public static function get_stored_settings() {
+		return (array) get_option( 'woocommerce_payex_checkout_settings', array() );
 	}
 
 	/**
