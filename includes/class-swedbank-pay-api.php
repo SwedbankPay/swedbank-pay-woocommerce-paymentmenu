@@ -818,7 +818,7 @@ class Swedbank_Pay_Api {
 				if ( $is_full_refund ) {
 					remove_action(
 						'woocommerce_order_status_changed',
-						__CLASS__ . '::order_status_changed_transaction',
+						Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
 						0
 					);
 
