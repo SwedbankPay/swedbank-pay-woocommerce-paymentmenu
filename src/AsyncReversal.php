@@ -10,6 +10,7 @@
 namespace Krokedil\Swedbank\Pay;
 
 use Krokedil\Swedbank\Pay\Utility\LogUtility;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Admin;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -285,11 +286,9 @@ class AsyncReversal {
 			return $result;
 		}
 
-		// Confirming a reversal moves the order to refunded, and that status change would other-
-		// wise re-enter the refund handler and attempt a second reversal. Same guard the admin
-		// payment actions use. Only put back what was there: the handler is not registered in
-		// every context, and adding it here would switch on order management that was never on.
-		$status_hook     = 'Swedbank_Pay_Admin::order_status_changed_transaction';
+		// Unhook so moving the order to refunded does not trigger a second reversal. Only restore
+		// it if it was hooked, since it is not registered in every context.
+		$status_hook     = Swedbank_Pay_Admin::class . '::order_status_changed_transaction';
 		$status_priority = has_action( 'woocommerce_order_status_changed', $status_hook );
 		if ( false !== $status_priority ) {
 			remove_action( 'woocommerce_order_status_changed', $status_hook, $status_priority );
