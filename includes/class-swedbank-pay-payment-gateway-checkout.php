@@ -906,6 +906,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			return new WP_Error( 'refund', __( 'Amount must be positive.', 'swedbank-pay-payment-menu' ) );
 		}
 
+		// Block new refunds while a previous reversal is awaiting confirmation from Swedbank Pay.
+		$pending_reversal_error = $this->api->maybe_block_pending_reversal( $order );
+		if ( is_wp_error( $pending_reversal_error ) ) {
+			return $pending_reversal_error;
+		}
+
 		// It uses transient `sb_refund_parameters_` to get items.
 		$args = get_transient( 'sb_refund_parameters_' . $order->get_id() );
 		if ( empty( $args ) ) {
