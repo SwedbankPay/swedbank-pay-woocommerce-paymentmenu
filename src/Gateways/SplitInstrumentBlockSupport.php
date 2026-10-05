@@ -99,7 +99,7 @@ class SplitInstrumentBlockSupport extends AbstractPaymentMethodType {
 				'gateway_id'  => $gateway_id,
 				'name'        => $instrument['name'],
 				'supports'    => $instrument['supports'] ?? array( 'products', 'refunds' ),
-				'enabled'     => wc_string_to_bool( $settings['enabled'] ?? 'yes' ),
+				'enabled'     => wc_string_to_bool( $settings['enabled'] ?? 'yes' ) && InstrumentsUtility::is_instrument_available( $instrument['instrument'] ),
 				'title'       => $settings['title'] ?? $instrument['name'],
 				'description' => $settings['description'] ?? '',
 			);

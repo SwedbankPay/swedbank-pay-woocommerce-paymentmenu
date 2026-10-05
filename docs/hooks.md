@@ -17,7 +17,7 @@ Argument | Type | Description
 `$gateway` | `\Swedbank_Pay_Payment_Gateway_Checkout` | The payment gateway of the order.
 `$webhook_data` | `string` | The callback data from Swedbank Pay, in JSON format.
 
-Source: [./includes/class-swedbank-pay-scheduler.php](../includes/class-swedbank-pay-scheduler.php), [line 124](../includes/class-swedbank-pay-scheduler.php#L124-L131)
+Source: [./includes/class-swedbank-pay-scheduler.php](../includes/class-swedbank-pay-scheduler.php), [line 135](../includes/class-swedbank-pay-scheduler.php#L135-L142)
 
 
 ---
@@ -55,7 +55,7 @@ Version | Description
 ------- | -----------
 `4.6.2` | 
 
-Source: [./includes/class-swedbank-pay-payment-gateway-checkout.php](../includes/class-swedbank-pay-payment-gateway-checkout.php), [line 251](../includes/class-swedbank-pay-payment-gateway-checkout.php#L251-L258)
+Source: [./includes/class-swedbank-pay-payment-gateway-checkout.php](../includes/class-swedbank-pay-payment-gateway-checkout.php), [line 253](../includes/class-swedbank-pay-payment-gateway-checkout.php#L253-L260)
 
 
 ---
@@ -70,7 +70,7 @@ Argument | Type | Description
 `$is_available` | `bool` | Whether the gateway is available.
 `$gateway` | `\Swedbank_Pay_Payment_Gateway_Checkout` | The gateway instance.
 
-Source: [./includes/class-swedbank-pay-payment-gateway-checkout.php](../includes/class-swedbank-pay-payment-gateway-checkout.php), [line 533](../includes/class-swedbank-pay-payment-gateway-checkout.php#L533-L539)
+Source: [./includes/class-swedbank-pay-payment-gateway-checkout.php](../includes/class-swedbank-pay-payment-gateway-checkout.php), [line 544](../includes/class-swedbank-pay-payment-gateway-checkout.php#L544-L550)
 
 
 ---
@@ -234,7 +234,7 @@ Argument | Type | Description
 -------- | ---- | -----------
 `$payee_reference` | `string` | The generated payee reference.
 
-Source: [./includes/class-swedbank-pay-api.php](../includes/class-swedbank-pay-api.php), [line 1214](../includes/class-swedbank-pay-api.php#L1214-L1222)
+Source: [./includes/class-swedbank-pay-api.php](../includes/class-swedbank-pay-api.php), [line 1226](../includes/class-swedbank-pay-api.php#L1226-L1234)
 
 
 ---
@@ -258,7 +258,7 @@ Version | Description
 ------- | -----------
 `4.6.3` | 
 
-Source: [./includes/class-swedbank-pay-api.php](../includes/class-swedbank-pay-api.php), [line 1412](../includes/class-swedbank-pay-api.php#L1412-L1422)
+Source: [./includes/class-swedbank-pay-api.php](../includes/class-swedbank-pay-api.php), [line 1432](../includes/class-swedbank-pay-api.php#L1432-L1442)
 
 
 ---
@@ -274,7 +274,7 @@ Argument | Type | Description
 `$gateway_id` | `string` | The ID of the gateway being checked, e.g. 'swedbank_pay_credit_card'.
 `$gateway_instance` | `\Krokedil\Swedbank\Pay\Gateways\SplitInstrumentGateway` | The instance of the gateway being checked.
 
-Source: [./src/Gateways/SplitInstrumentGateway.php](../src/Gateways/SplitInstrumentGateway.php), [line 133](../src/Gateways/SplitInstrumentGateway.php#L133-L140)
+Source: [./src/Gateways/SplitInstrumentGateway.php](../src/Gateways/SplitInstrumentGateway.php), [line 135](../src/Gateways/SplitInstrumentGateway.php#L135-L142)
 
 
 ---

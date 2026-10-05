@@ -7,7 +7,7 @@
  * Author URI: https://profiles.wordpress.org/swedbankpay/
  * License: Apache License 2.0
  * License URI: http://www.apache.org/licenses/LICENSE-2.0
- * Version: 4.6.3
+ * Version: 4.7.0
  * Text Domain: swedbank-pay-payment-menu
  * Domain Path: /languages
  *
@@ -19,6 +19,7 @@
  */
 
 use Krokedil\Swedbank\Pay\Assets;
+use Krokedil\Swedbank\Pay\AsyncReversal;
 use Krokedil\Swedbank\Pay\Gateways\SplitInstrumentGateway;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Plugin;
 use Krokedil\Swedbank\Pay\OrderManagement;
@@ -27,7 +28,7 @@ use KrokedilSwedbankPayDeps\Krokedil\Support\SystemReport;
 
 
 defined( 'ABSPATH' ) || exit;
-define( 'SWEDBANK_PAY_VERSION', '4.6.3' );
+define( 'SWEDBANK_PAY_VERSION', '4.7.0' );
 define( 'SWEDBANK_PAY_MAIN_FILE', __FILE__ );
 define( 'SWEDBANK_PAY_PLUGIN_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
 define( 'SWEDBANK_PAY_PLUGIN_URL', untrailingslashit( plugin_dir_url( __FILE__ ) ) );
@@ -55,6 +56,13 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 * @var OrderManagement
 	 */
 	private $order_management;
+
+	/**
+	 * Async Reversal handler.
+	 *
+	 * @var AsyncReversal
+	 */
+	private $async_reversal;
 
 	/**
 	 * Logger instance.
@@ -125,6 +133,15 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 	 */
 	public function order_management() {
 		return $this->order_management;
+	}
+
+	/**
+	 * Handle for the async reversal instance.
+	 *
+	 * @return AsyncReversal
+	 */
+	public function async_reversal() {
+		return $this->async_reversal;
 	}
 
 	/**
@@ -219,6 +236,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		);
 		$this->system_report    = new SystemReport( 'payex_checkout', 'Swedbank Pay', $system_report_options );
 		$this->order_management = OrderManagement::get_instance();
+		$this->async_reversal   = AsyncReversal::get_instance();
 		$this->assets           = new Assets();
 		// Register the split instruments for the gateway as soon as possible.
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateways' ) );

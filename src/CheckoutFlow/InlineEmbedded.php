@@ -121,6 +121,17 @@ class InlineEmbedded extends CheckoutFlow {
 		WC()->session->__unset( 'swedbank_pay_payee_reference' );
 		WC()->session->__unset( 'swedbank_pay_should_reset_session' );
 		WC()->session->__unset( 'swedbank_pay_operation' );
+		WC()->session->__unset( 'swedbank_pay_billing_country' );
+	}
+
+	/**
+	 * Check if the billing country has changed since the payment order was created.
+	 *
+	 * @return bool
+	 */
+	private static function billing_country_changed() {
+		$session_country = WC()->session->get( 'swedbank_pay_billing_country' );
+		return null !== $session_country && WC()->customer->get_billing_country() !== $session_country;
 	}
 
 	/**
@@ -134,7 +145,7 @@ class InlineEmbedded extends CheckoutFlow {
 			return;
 		}
 
-		if ( WC()->session->get( 'swedbank_pay_should_reset_session' ) ) {
+		if ( WC()->session->get( 'swedbank_pay_should_reset_session' ) || self::billing_country_changed() ) {
 			self::unset_embedded_session_data();
 			WC()->session->set( 'reload_checkout', true );
 			return;
@@ -174,7 +185,7 @@ class InlineEmbedded extends CheckoutFlow {
 
 				$session_operation = WC()->session->get( 'swedbank_pay_operation' );
 				$is_zero_order     = Swedbank_Pay_Subscription::cart_has_zero_order();
-				if ( ( PaymentDataHelper::OPERATION_PURCHASE === $session_operation && $is_zero_order ) || ( PaymentDataHelper::OPERATION_VERIFY === $session_operation && ! $is_zero_order ) ) {
+				if ( ( PaymentDataHelper::OPERATION_PURCHASE === $session_operation && $is_zero_order ) || ( PaymentDataHelper::OPERATION_VERIFY === $session_operation && ! $is_zero_order ) || self::billing_country_changed() ) {
 					// clear the session.
 					WC()->session->set( 'swedbank_pay_should_reset_session', true );
 					return array();
@@ -214,6 +225,7 @@ class InlineEmbedded extends CheckoutFlow {
 				WC()->session->set( 'swedbank_pay_update_order_url', $update_order_url );
 				WC()->session->set( 'swedbank_pay_view_checkout_url', $view_checkout_url );
 				WC()->session->set( 'swedbank_pay_operation', $operation );
+				WC()->session->set( 'swedbank_pay_billing_country', WC()->customer->get_billing_country() );
 			}
 
 			if ( is_wp_error( $result ) ) {

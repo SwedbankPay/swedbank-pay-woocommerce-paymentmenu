@@ -18,20 +18,57 @@ class SettingsUtility {
 	private static $settings = null;
 
 	/**
+	 * Whether the default values are being fetched, which can reach this class again through the gateway list.
+	 *
+	 * @var bool
+	 */
+	private static $loading_defaults = false;
+
+	/**
 	 * Get the settings for Swedbank gateway.
 	 *
 	 * @return array
 	 */
 	public static function get_settings() {
 		if ( null === self::$settings ) {
-			self::$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+			$settings = self::get_stored_settings();
 
-			// Merge with default values, and ensure all settings are present.
-			$defaults       = self::get_default_values();
-			self::$settings = wp_parse_args( self::$settings, $defaults );
+			// The defaults come from the gateway's form fields. Fetching them while WooCommerce is building its gateway
+			// list would start a second build, so skip them, uncached, until the build is done.
+			if ( self::$loading_defaults || doing_filter( 'woocommerce_payment_gateways' ) ) {
+				return $settings;
+			}
+
+			// Guards the same loop from a gateway constructor, which WooCommerce runs after that filter.
+			self::$loading_defaults = true;
+			try {
+				$defaults = self::get_default_values();
+			} finally {
+				self::$loading_defaults = false;
+			}
+
+			self::$settings = wp_parse_args( $settings, $defaults );
 		}
 
 		return self::$settings;
+	}
+
+	/**
+	 * Get the stored settings without defaults, which is safe to call while WooCommerce builds its gateway list.
+	 *
+	 * @return array
+	 */
+	public static function get_stored_settings() {
+		return (array) get_option( 'woocommerce_payex_checkout_settings', array() );
+	}
+
+	/**
+	 * Drop the cached settings so the next read reflects a save made in the same request.
+	 *
+	 * @return void
+	 */
+	public static function reset_settings() {
+		self::$settings = null;
 	}
 
 	/**

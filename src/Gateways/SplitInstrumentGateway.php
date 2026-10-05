@@ -130,6 +130,8 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 	 * @return bool True if the gateway is available, false otherwise.
 	 */
 	public function is_available() {
+		$is_available = parent::is_available() && InstrumentsUtility::is_instrument_available( $this->instrument_id );
+
 		/**
 		 * Filters whether a separate payment method gateway, e.g. the card or Swish gateway, is available in the checkout.
 		 *
@@ -137,7 +139,7 @@ class SplitInstrumentGateway extends \WC_Payment_Gateway {
 		 * @param string                 $gateway_id       The ID of the gateway being checked, e.g. 'swedbank_pay_credit_card'.
 		 * @param SplitInstrumentGateway $gateway_instance The instance of the gateway being checked.
 		 */
-		return apply_filters( 'swedbank_pay_split_instrument_gateway_is_available', parent::is_available(), $this->id, $this );
+		return apply_filters( 'swedbank_pay_split_instrument_gateway_is_available', $is_available, $this->id, $this );
 	}
 
 	/**

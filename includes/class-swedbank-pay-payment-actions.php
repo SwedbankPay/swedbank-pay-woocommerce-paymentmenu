@@ -204,7 +204,7 @@ class Swedbank_Pay_Payment_Actions {
 		// Shipping and fee rows carry no quantity in the refund form, so they are
 		// kept on their refunded amount alone.
 		foreach ( $lines as $item_id => $line ) {
-			if ( (float) $line['refund_total'] <= 0.01 ) {
+			if ( (float) $line['refund_total'] < 0.01 ) {
 				unset( $lines[ $item_id ] );
 			}
 		}
@@ -433,19 +433,23 @@ class Swedbank_Pay_Payment_Actions {
 			return $result;
 		}
 
-		$transaction_id = $result['number'];
+		$is_pending = ! empty( $result['pending'] );
 
-		$order->add_order_note(
-			\sprintf(
-			/* translators: 1: transaction 2: state 3: reason */                __(
-				'Refund process has been executed from order admin. Transaction ID: %1$s. State: %2$s. Reason: %3$s', //phpcs:ignore
-				'swedbank-pay-payment-menu' //phpcs:ignore
-			), //phpcs:ignore
-				$transaction_id,
-				$result['state'],
-				empty( $reason ) ? '-' : $reason
-			)
-		);
+		if ( ! $is_pending ) {
+			$transaction_id = $result['number'];
+
+			$order->add_order_note(
+				\sprintf(
+				/* translators: 1: transaction 2: state 3: reason */                    __(
+					'Refund process has been executed from order admin. Transaction ID: %1$s. State: %2$s. Reason: %3$s', //phpcs:ignore
+					'swedbank-pay-payment-menu' //phpcs:ignore
+				), //phpcs:ignore
+					$transaction_id,
+					$result['state'],
+					empty( $reason ) ? '-' : $reason
+				)
+			);
+		}
 
 		$this->save_refunded_items( $order, $lines );
 
@@ -466,6 +470,7 @@ class Swedbank_Pay_Payment_Actions {
 					'restock_items'  => true,
 				)
 			);
+
 			if ( is_wp_error( $refund ) ) {
 				$context['error'] = join( '; ', $refund->get_error_messages() );
 				Swedbank_Pay()->logger()->error(
@@ -517,7 +522,7 @@ class Swedbank_Pay_Payment_Actions {
 
 				// Skip zero products
 				$price_with_tax = (float) $order->get_line_subtotal( $item, true, false );
-				if ( $price_with_tax >= 0 && $price_with_tax <= 0.01 ) {
+				if ( $price_with_tax >= 0 && $price_with_tax < 0.01 ) {
 					continue;
 				}
 

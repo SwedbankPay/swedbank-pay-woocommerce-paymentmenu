@@ -3,6 +3,7 @@
 namespace SwedbankPay\Checkout\WooCommerce;
 
 use Krokedil\Swedbank\Pay\Gateways\SplitInstrumentBlockSupport;
+use Krokedil\Swedbank\Pay\Utility\InstrumentsUtility;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -26,11 +27,12 @@ class Swedbank_Pay_Plugin {
 		'payex_checkout',
 	);
 
-	const PLUGIN_NAME             = 'Swedbank Pay Payment Menu';
-	const SUPPORT_EMAIL           = 'support.ecom@payex.com';
-	const DB_VERSION              = '1.0.0';
-	const DB_VERSION_SLUG         = 'swedbank_pay_menu_version';
-	const ADMIN_UPGRADE_PAGE_SLUG = 'swedbank-pay-menu-upgrade';
+	const PLUGIN_NAME                   = 'Swedbank Pay Payment Menu';
+	const SUPPORT_EMAIL                 = 'support.ecom@payex.com';
+	const DB_VERSION                    = '1.0.0';
+	const DB_VERSION_SLUG               = 'swedbank_pay_menu_version';
+	const ADMIN_UPGRADE_PAGE_SLUG       = 'swedbank-pay-menu-upgrade';
+	const REFRESH_INSTRUMENTS_CRON_HOOK = 'swedbank_pay_refresh_account_instruments';
 
 	/**
 	 * @var Swedbank_Pay_Background_Queue
@@ -88,6 +90,32 @@ class Swedbank_Pay_Plugin {
 		);
 
 		add_action( 'woocommerce_blocks_loaded', array( $this, 'woocommerce_blocks_support' ) );
+
+		// Keep the activated-instruments cache fresh with a daily refresh, in addition to the refresh
+		// already triggered on settings save.
+		add_action( 'init', array( $this, 'schedule_account_instruments_refresh' ) );
+		add_action( self::REFRESH_INSTRUMENTS_CRON_HOOK, array( InstrumentsUtility::class, 'refresh_account_instruments' ) );
+		register_deactivation_hook( SWEDBANK_PAY_MAIN_FILE, array( __CLASS__, 'unschedule_account_instruments_refresh' ) );
+	}
+
+	/**
+	 * Remove the daily refresh of the account's activated instruments when the plugin is deactivated.
+	 *
+	 * @return void
+	 */
+	public static function unschedule_account_instruments_refresh() {
+		wp_clear_scheduled_hook( self::REFRESH_INSTRUMENTS_CRON_HOOK );
+	}
+
+	/**
+	 * Schedule the daily refresh of the instruments activated on the Swedbank Pay account, if not already scheduled.
+	 *
+	 * @return void
+	 */
+	public function schedule_account_instruments_refresh() {
+		if ( ! wp_next_scheduled( self::REFRESH_INSTRUMENTS_CRON_HOOK ) ) {
+			wp_schedule_event( time(), 'daily', self::REFRESH_INSTRUMENTS_CRON_HOOK );
+		}
 	}
 
 	/**
@@ -231,6 +259,40 @@ class Swedbank_Pay_Plugin {
 				'\SwedbankPay\Payments\WooCommerce\WC_Swedbank_Plugin::wrong_decimals_notice'
 			);
 		}
+
+		// Warn about instruments that are enabled in the settings but no longer activated on the account.
+		if ( current_user_can( 'manage_woocommerce' ) && null !== InstrumentsUtility::get_account_instruments() ) {
+			add_action( 'admin_notices', __CLASS__ . '::unavailable_instruments_notice' );
+		}
+	}
+
+	/**
+	 * Notice listing instruments that are enabled in the settings but no longer activated on the
+	 * Swedbank Pay account.
+	 */
+	public static function unavailable_instruments_notice() {
+		$unavailable_names = wp_list_pluck( InstrumentsUtility::get_enabled_unavailable_instruments(), 'name' );
+		if ( empty( $unavailable_names ) ) {
+			return;
+		}
+		?>
+		<div id="message" class="error">
+			<p class="main">
+				<strong><?php echo esc_html__( 'Swedbank Pay: some enabled payment methods are not activated on your account.', 'swedbank-pay-payment-menu' ); ?></strong>
+			</p>
+			<p>
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %s: comma-separated list of instrument names */
+						__( 'The following separate instruments are enabled in the settings but not activated on your Swedbank Pay account, so they will not be offered at checkout: %s. Contact Swedbank Pay to have them enabled, or disable them in the settings.', 'swedbank-pay-payment-menu' ),
+						implode( ', ', $unavailable_names )
+					)
+				);
+				?>
+			</p>
+		</div>
+		<?php
 	}
 
 	/**

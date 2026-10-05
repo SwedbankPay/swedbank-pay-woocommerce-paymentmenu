@@ -835,7 +835,7 @@ class Swedbank_Pay_Api {
 				if ( $is_full_refund ) {
 					remove_action(
 						'woocommerce_order_status_changed',
-						__CLASS__ . '::order_status_changed_transaction',
+						Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
 						0
 					);
 
@@ -1119,6 +1119,11 @@ class Swedbank_Pay_Api {
 			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
 		}
 
+		$pending_reversal_error = $this->maybe_block_pending_reversal( $order );
+		if ( is_wp_error( $pending_reversal_error ) ) {
+			return $pending_reversal_error;
+		}
+
 		$context = array(
 			'order_id'         => $order->get_id(),
 			'order_number'     => $order->get_order_number(),
@@ -1198,6 +1203,11 @@ class Swedbank_Pay_Api {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 		if ( empty( $payment_order_id ) ) {
 			return new \WP_Error( 'missing_payment_id', 'Unable to get the payment order ID' );
+		}
+
+		$pending_reversal_error = $this->maybe_block_pending_reversal( $order );
+		if ( is_wp_error( $pending_reversal_error ) ) {
+			return $pending_reversal_error;
 		}
 
 		$context = array(
@@ -1324,6 +1334,11 @@ class Swedbank_Pay_Api {
 			return new WP_Error( 0, 'Unable to get the payment order ID' );
 		}
 
+		$pending_reversal_error = $this->maybe_block_pending_reversal( $order );
+		if ( is_wp_error( $pending_reversal_error ) ) {
+			return $pending_reversal_error;
+		}
+
 		$context = array(
 			'order_id'         => $order->get_id(),
 			'order_number'     => $order->get_order_number(),
@@ -1360,6 +1375,11 @@ class Swedbank_Pay_Api {
 				WC_Log_Levels::DEBUG,
 				$context
 			);
+
+			$pending = $this->maybe_init_async_reversal( $request_service, $order, $transaction_data );
+			if ( null !== $pending ) {
+				return $pending;
+			}
 
 			$transaction = $this->financial_transaction_to_array(
 				$response_service->getResponseResource()->getLatestFinancialTransaction()
@@ -1472,6 +1492,12 @@ class Swedbank_Pay_Api {
 		if ( empty( $payment_order_id ) ) {
 			return new WP_Error( 0, 'Unable to get the payment order ID' );
 		}
+
+		$pending_reversal_error = $this->maybe_block_pending_reversal( $order );
+		if ( is_wp_error( $pending_reversal_error ) ) {
+			return $pending_reversal_error;
+		}
+
 		$helper           = new Order( $refund_order );
 		$transaction_data = $helper->get_transaction_data();
 		$amount           = $transaction_data->getAmount();
@@ -1507,6 +1533,11 @@ class Swedbank_Pay_Api {
 				WC_Log_Levels::DEBUG,
 				$context
 			);
+
+			$pending = $this->maybe_init_async_reversal( $request_service, $order, $transaction_data );
+			if ( null !== $pending ) {
+				return $pending;
+			}
 
 			$transaction = $this->financial_transaction_to_array(
 				$response_service->getResponseResource()->getLatestFinancialTransaction()
@@ -1544,6 +1575,72 @@ class Swedbank_Pay_Api {
 	}
 
 	/**
+	 * Block post purchase operations while a reversal is awaiting confirmation.
+	 *
+	 * Swedbank Pay accepts no further capture, cancel or reversal on a payment order that
+	 * has a reversal in progress, so the request is stopped here rather than being rejected
+	 * by the API. Re-checks the payment order first, so an order whose callback never
+	 * arrived heals itself the next time an operation is attempted.
+	 *
+	 * @param WC_Order $order The order to check.
+	 *
+	 * @return WP_Error|false `pending_reversal` when a reversal is still awaiting confirmation,
+	 *                        `pending_reversal_check_failed` when its status could not be
+	 *                        verified, false when nothing is pending.
+	 */
+	public function maybe_block_pending_reversal( WC_Order $order ) {
+		$async_reversal = Swedbank_Pay()->async_reversal();
+		if ( ! $async_reversal->has_pending( $order ) ) {
+			return false;
+		}
+
+		// Try to resolve the pending reversal(s) before blocking.
+		$recheck = $async_reversal->check_pending_reversals( $order );
+
+		if ( ! $async_reversal->has_pending( $order ) ) {
+			return false;
+		}
+
+		// Still pending, but distinguish the two reasons: waiting on Swedbank Pay is not the
+		// same as being unable to ask them. Both block the operation, since the outcome is
+		// unknown either way, but the merchant should be told which it is.
+		if ( is_wp_error( $recheck ) ) {
+			return new WP_Error(
+				'pending_reversal_check_failed',
+				sprintf(
+					// translators: %s: the error reported while checking the reversal.
+					__( 'A refund on this order is awaiting confirmation from Swedbank Pay, and its status could not be verified: %s. Please try again in a moment.', 'swedbank-pay-payment-menu' ),
+					$recheck->get_error_message()
+				)
+			);
+		}
+
+		return new WP_Error(
+			'pending_reversal',
+			__( 'A refund on this order is still awaiting confirmation from Swedbank Pay. Please wait until it has been confirmed before performing another action on the payment.', 'swedbank-pay-payment-menu' )
+		);
+	}
+
+	/**
+	 * Register the reversal as pending when Swedbank Pay accepted it without completing it.
+	 *
+	 * HTTP 202 means the reversal is not in the response; the outcome arrives via the callback.
+	 *
+	 * @param mixed    $request_service The reversal request that was sent.
+	 * @param WC_Order $order The order being refunded.
+	 * @param mixed    $transaction_data The transaction data sent in the request.
+	 *
+	 * @return array|null The pending transaction array, or null when the reversal completed.
+	 */
+	private function maybe_init_async_reversal( $request_service, $order, $transaction_data ) {
+		if ( 202 !== (int) $request_service->getClient()->getResponseCode() ) {
+			return null;
+		}
+
+		return Swedbank_Pay()->async_reversal()->init_pending( $order, $transaction_data );
+	}
+
+	/**
 	 * Bridge a typed v3.1 FinancialTransaction to the array shape that
 	 * {@see process_transaction()} expects.
 	 *
@@ -1561,6 +1658,8 @@ class Swedbank_Pay_Api {
 		return array(
 			'number'         => $ft->getNumber(),
 			'type'           => $ft->getType(),
+			// Financial transactions only appear in the list once they are completed.
+			'state'          => 'Completed',
 			'amount'         => $ft->getAmount(),
 			'created'        => $ft->getCreated(),
 			'updated'        => $ft->getUpdated(),
