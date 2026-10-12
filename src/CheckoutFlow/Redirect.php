@@ -1,6 +1,7 @@
 <?php
 namespace Krokedil\Swedbank\Pay\CheckoutFlow;
 
+use Krokedil\Swedbank\Pay\Helpers\Order;
 use Krokedil\Swedbank\Pay\Utility\ErrorUtility;
 use Krokedil\Swedbank\Pay\Utility\LogUtility;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface;
@@ -78,8 +79,16 @@ class Redirect extends CheckoutFlow {
 		);
 
 		LogUtility::$title = "[PROCESS PAYMENT]: Get previous payment order for order #{$this->get_order_number( $order )}";
-		$result            = $this->api->request( 'GET', $payment_order_id );
+		$result            = $this->api->request( 'GET', $payment_order_id . '?$expand=payeeinfo' );
 		$status            = is_wp_error( $result ) ? null : ( $result['paymentOrder']['status'] ?? null );
+
+		$reference = is_wp_error( $result ) ? null : ( $result['paymentOrder']['payeeInfo']['orderReference'] ?? null );
+		$expected  = ( new Order( $order ) )->get_payee_info()->getOrderReference();
+		if ( null !== $status && (string) $expected !== (string) $reference ) {
+			$context['order_reference'] = $reference;
+			Swedbank_Pay()->logger()->warning( "[PROCESS PAYMENT]: Previous payment order does not belong to order #{$this->get_order_number( $order )}.", $context );
+			return null;
+		}
 
 		if ( 'Paid' === $status ) {
 			Swedbank_Pay()->logger()->info( "[PROCESS PAYMENT]: Previous payment order for order #{$this->get_order_number( $order )} is already paid.", $context );
