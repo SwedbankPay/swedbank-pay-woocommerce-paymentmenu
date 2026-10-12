@@ -5,8 +5,8 @@ Requires at least: 5.3
 Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 5.5.1
-WC tested up to: 11.1.2
-Stable tag: 4.7.0
+WC tested up to: 11.2.1
+Stable tag: 4.7.1
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,12 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.10.12    - version 4.7.1 =
+* Fix           - Setting an order's status to Refunded now refunds the payment at Swedbank Pay, including what is left on a partly refunded order. It can be turned off with the new "Refund on status change" setting.
+* Fix           - Fixed an issue where an order was marked as paid when its order received page was opened, even if the customer had not paid. The order is now only marked as paid once Swedbank Pay has confirmed the payment.
+* Fix           - Fixed an issue where unticking the "Logging" setting did not stop the plugin from writing to its log. Requests and callbacks are no longer logged once the setting is turned off.
+* Fix           - Removed the "Detailed logging" setting, which had no effect on what was logged.
+
 = 2026.10.05    - version 4.7.0 =
 * Feature       - Added support for refunds that Swedbank Pay confirms after a delay, such as Banklink refunds in the Baltics. The refund is registered in WooCommerce right away, and the order is put on hold if Swedbank Pay later turns the refund down or never confirms it.
 * Feature       - Added a check that limits the separate instruments to the ones activated on the Swedbank Pay account, so a payment method that is not activated can no longer be enabled or offered at checkout.

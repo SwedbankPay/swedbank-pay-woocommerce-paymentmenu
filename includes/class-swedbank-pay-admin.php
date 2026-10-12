@@ -42,17 +42,14 @@ class Swedbank_Pay_Admin {
 		// Add Admin Backend Actions
 		add_action( 'wp_ajax_swedbank_pay_capture', array( $this, 'ajax_swedbank_pay_capture' ) );
 		add_action( 'wp_ajax_swedbank_pay_cancel', array( $this, 'ajax_swedbank_pay_cancel' ) );
-		add_action( 'wp_ajax_swedbank_pay_refund', array( $this, 'ajax_swedbank_pay_refund' ) );
 		add_action( 'wp_ajax_swedbank_pay_get_refund_mode', array( $this, 'ajax_swedbank_pay_get_refund_mode' ) );
 
-		// Remove "Order fully refunded" hook. See wc_order_fully_refunded()
-		remove_action( 'woocommerce_order_status_refunded', 'wc_order_fully_refunded' );
+		add_action( 'woocommerce_order_status_refunded', __CLASS__ . '::refund_before_core_fallback', 1, 3 );
 		add_action( 'woocommerce_order_status_changed', __CLASS__ . '::order_status_changed_transaction', 0, 3 );
 
 		// Refund actions
 		add_action( 'woocommerce_create_refund', array( $this, 'save_refund_parameters' ), 10, 2 );
 		add_action( 'woocommerce_order_refunded', array( $this, 'remove_refund_parameters' ), 10, 2 );
-		add_action( 'woocommerce_order_fully_refunded', array( $this, 'prevent_online_refund' ), 10, 2 );
 
 		add_filter(
 			'woocommerce_admin_order_should_render_refunds',
@@ -62,16 +59,18 @@ class Swedbank_Pay_Admin {
 		);
 	}
 
-	public function prevent_online_refund( $order_id, $refund_id ) {
-		$order = wc_get_order( $order_id );
-		if ( swedbank_pay_is_payment_swedbank_method( $order->get_payment_method() ) ) {
-			// Prevent online refund when order status changed to "refunded"
-			set_transient(
-				'sb_refund_prevent_online_refund_' . $order_id,
-				$refund_id,
-				5 * MINUTE_IN_SECONDS
-			);
-		}
+	/**
+	 * Refund ahead of core's wc_order_fully_refunded() at priority 10, so core finds
+	 * nothing left to refund and adds no second refund record of its own.
+	 *
+	 * @param int      $order_id The order ID.
+	 * @param WC_Order $order The order.
+	 * @param array    $status_transition The status transition, with the old status under 'from'.
+	 * @return void
+	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+	 */
+	public static function refund_before_core_fallback( $order_id, $order, $status_transition = array() ) {
+		self::order_status_changed_transaction( $order_id, $status_transition['from'] ?? '', 'refunded' );
 	}
 
 	/**
@@ -277,48 +276,6 @@ class Swedbank_Pay_Admin {
 	}
 
 	/**
-	 * Action for Full Refund.
-	 *
-	 * @SuppressWarnings(PHPMD.Superglobals)
-	 * @SuppressWarnings(PHPMD.ExitExpression)
-	 */
-	public function ajax_swedbank_pay_refund() {
-		check_ajax_referer( 'swedbank_pay', 'nonce' );
-
-		remove_action(
-			'woocommerce_order_status_changed',
-			__CLASS__ . '::order_status_changed_transaction',
-			0
-		);
-
-		$order_id = filter_input( INPUT_POST, 'order_id', FILTER_SANITIZE_NUMBER_INT );
-		$order    = wc_get_order( $order_id );
-		$gateway  = swedbank_pay_get_payment_method( $order );
-		if ( ! $gateway ) {
-			throw new Exception( 'Payment gateway is not available' );
-		}
-
-		// Do refund
-		$result = $gateway->payment_actions_handler->refund_payment(
-			$order,
-			swedbank_pay_get_available_line_items_for_refund( $order ),
-			__( 'Full refund.', 'swedbank-pay-payment-menu' ),
-			true
-		);
-		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
-			/** @var \WP_Error $result */
-			wp_send_json_error( join( '; ', $result->get_error_messages() ) );
-
-			return;
-		}
-
-		// @todo Create credit memo with order lines
-
-		// Refund will be created on transaction processing
-		wp_send_json_success( __( 'Refund has been successful.', 'swedbank-pay-payment-menu' ) );
-	}
-
-	/**
 	 * Retrieves the refund mode.
 	 *
 	 * This method checks the refund mode for a given Swedbank Pay transaction based on the provided order ID.
@@ -464,6 +421,13 @@ class Swedbank_Pay_Admin {
 			}
 		}
 
+		if ( 'refunded' === $new_status ) {
+			$settings = get_option( 'woocommerce_payex_checkout_settings', array() );
+			if ( ! wc_string_to_bool( $settings['enable_order_refund'] ?? 'yes' ) ) {
+				return;
+			}
+		}
+
 		$gateway = swedbank_pay_get_payment_method( $order );
 
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
@@ -522,21 +486,23 @@ class Swedbank_Pay_Admin {
 				case 'refunded':
 					$context['action'] = 'refund_order';
 					Swedbank_Pay()->logger()->info( "[ORDER MANAGEMENT]: Trying to refund #{$order->get_order_number()}", $context );
-					$transient_id = "sb_refund_prevent_online_refund_{$order_id}";
-					$refund_id    = get_transient( $transient_id );
-					if ( ! empty( $refund_id ) ) {
-						Swedbank_Pay()->logger()->info( "[ORDER MANAGEMENT]: The order {$order->get_order_number()} is flagged as not eligible for online refund.", $context );
-						delete_transient( $transient_id );
+					// Already fully refunded, e.g. by a manual refund, which then sets this status.
+					if ( (float) $order->get_remaining_refund_amount() <= 0 ) {
+						Swedbank_Pay()->logger()->info( "[ORDER MANAGEMENT]: The order {$order->get_order_number()} has nothing left to refund.", $context );
 						return;
 					}
 
-					$lines  = swedbank_pay_get_available_line_items_for_refund( $order );
-					$result = $gateway->payment_actions_handler->refund_payment(
-						$order,
-						$lines,
-						__( 'Order status changed to refunded.', 'swedbank-pay-payment-menu' ),
-						true
-					);
+					$reason = __( 'Order status changed to refunded.', 'swedbank-pay-payment-menu' );
+					if ( $order->get_total_refunded() > 0 ) {
+						$result = $gateway->payment_actions_handler->refund_remaining_amount( $order, $reason );
+					} else {
+						$result = $gateway->payment_actions_handler->refund_payment(
+							$order,
+							swedbank_pay_get_available_line_items_for_refund( $order ),
+							$reason,
+							true
+						);
+					}
 					if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 						/** @var \WP_Error $result */
 						throw new Exception( $result->get_error_message() );
@@ -547,12 +513,12 @@ class Swedbank_Pay_Admin {
 
 					break;
 			}
-		} catch ( Exception $exception ) {
+		} catch ( \Throwable $exception ) {
 			$context['error'] = $exception->getMessage();
 			Swedbank_Pay()->logger()->error( "[ORDER MANAGEMENT]: Order status change action error for order #{$order->get_order_number()}: {$exception->getMessage()}", $context );
 			\WC_Admin_Meta_Boxes::add_error( "Order status change action error: {$exception->getMessage()}" );
 
-			// Rollback status.
+			// Prevent re-entry when the order note below is saved.
 			remove_action(
 				'woocommerce_order_status_changed',
 				__CLASS__ . '::order_status_changed_transaction',
@@ -568,6 +534,12 @@ class Swedbank_Pay_Admin {
 					$exception->getMessage()
 				)
 			);
+
+			// The money was not returned, so flag the order for attention instead of showing it as refunded.
+			if ( 'refunded' === $new_status ) {
+				remove_action( 'woocommerce_order_status_refunded', 'wc_order_fully_refunded' );
+				$order->update_status( 'on-hold', __( 'The refund could not be completed at Swedbank Pay.', 'swedbank-pay-payment-menu' ) );
+			}
 		}
 	}
 

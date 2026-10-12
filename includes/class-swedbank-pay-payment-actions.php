@@ -176,6 +176,52 @@ class Swedbank_Pay_Payment_Actions {
 	}
 
 	/**
+	 * Refund what is left of a partly refunded order, and record it in WooCommerce.
+	 * Uses the amount, since the refunded-items record misses refunds made by amount.
+	 *
+	 * @param WC_Order $order The order.
+	 * @param string   $reason The refund reason.
+	 *
+	 * @return \WP_Error|true
+	 */
+	public function refund_remaining_amount( $order, $reason ) {
+		$amount = (float) $order->get_remaining_refund_amount();
+		if ( $amount <= 0 ) {
+			return true;
+		}
+
+		// Recorded first, so WooCommerce never misses a refund that Swedbank Pay has made.
+		$refund = wc_create_refund(
+			array(
+				'order_id'       => $order->get_id(),
+				'amount'         => $amount,
+				'reason'         => $reason,
+				'refund_payment' => false,
+				'restock_items'  => false,
+			)
+		);
+		if ( is_wp_error( $refund ) ) {
+			$order->add_order_note(
+				\sprintf(
+					'Refund could not be created. Error: %s',
+					join( '; ', $refund->get_error_messages() )
+				)
+			);
+
+			return $refund;
+		}
+
+		$result = $this->refund_payment_amount( $order, $amount );
+		if ( is_wp_error( $result ) ) {
+			$refund->delete( true );
+
+			return $result;
+		}
+
+		return true;
+	}
+
+	/**
 	 * Perform Refund.
 	 *
 	 * @param WC_Order $order
@@ -422,13 +468,62 @@ class Swedbank_Pay_Payment_Actions {
 			0
 		);
 
-		$refund_order = $order->get_refunds();
-		$refund_order = reset( $refund_order );
-		$result       = $this->gateway->api->refund_checkout( $refund_order );
+		// Create Credit Memo. refund_checkout() builds the reversal from it, so it must exist first.
+		$refund = null;
+		if ( $create_credit_memo ) {
+			$amount = 0;
+			foreach ( $items as $item ) {
+				$amount += $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] / 100;
+			}
+
+			$refund = wc_create_refund(
+				array(
+					'order_id'       => $order->get_id(),
+					'amount'         => $amount,
+					'reason'         => $reason,
+					'line_items'     => $lines,
+					'refund_payment' => false,
+					// Restocked below, once Swedbank Pay has accepted the reversal.
+					'restock_items'  => false,
+				)
+			);
+			if ( is_wp_error( $refund ) ) {
+				$context['error'] = join( '; ', $refund->get_error_messages() );
+				Swedbank_Pay()->logger()->error(
+					\sprintf(
+						'[REFUND]: Refund could not be created. Error: %s',
+						join( '; ', $refund->get_error_messages() )
+					),
+					$context
+				);
+
+				$order->add_order_note(
+					\sprintf(
+						'Refund could not be created. Error: %s',
+						join( '; ', $refund->get_error_messages() )
+					)
+				);
+
+				return $refund;
+			}
+		}
+
+		$refunds      = $order->get_refunds();
+		$refund_order = $refund ? $refund : reset( $refunds );
+		if ( ! $refund_order instanceof \WC_Order_Refund ) {
+			return new \WP_Error( 'error', 'Unable to retrieve the refund to send to Swedbank Pay.' );
+		}
+
+		$result = $this->gateway->api->refund_checkout( $refund_order );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$order->add_order_note(
 				'Refund has been failed. Error: ' . $result->get_error_message()
 			);
+
+			// Drop it, so core's wc_order_fully_refunded() fallback still sees an unrefunded order.
+			if ( $refund ) {
+				$refund->delete( true );
+			}
 
 			return $result;
 		}
@@ -453,41 +548,8 @@ class Swedbank_Pay_Payment_Actions {
 
 		$this->save_refunded_items( $order, $lines );
 
-		// Create Credit Memo.
-		if ( $create_credit_memo ) {
-			$amount = 0;
-			foreach ( $items as $item ) {
-				$amount += $item[ Swedbank_Pay_Order_Item::FIELD_AMOUNT ] / 100;
-			}
-
-			$refund = wc_create_refund(
-				array(
-					'order_id'       => $order->get_id(),
-					'amount'         => $amount,
-					'reason'         => $reason,
-					'line_items'     => $lines,
-					'refund_payment' => false,
-					'restock_items'  => true,
-				)
-			);
-
-			if ( is_wp_error( $refund ) ) {
-				$context['error'] = join( '; ', $refund->get_error_messages() );
-				Swedbank_Pay()->logger()->error(
-					\sprintf(
-						'[REFUND]: Refund could not be created. Error: %s',
-						join( '; ', $refund->get_error_messages() )
-					),
-					$context
-				);
-
-				$order->add_order_note(
-					\sprintf(
-						'Refund could not be created. Error: %s',
-						join( '; ', $refund->get_error_messages() )
-					)
-				);
-			}
+		if ( $refund ) {
+			wc_restock_refunded_items( $order, $lines );
 		}
 
 		return true;

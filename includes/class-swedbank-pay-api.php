@@ -833,10 +833,16 @@ class Swedbank_Pay_Api {
 
 				// Update order status.
 				if ( $is_full_refund ) {
+					// Already reversed at Swedbank Pay, so the status change must not refund again.
 					remove_action(
 						'woocommerce_order_status_changed',
 						Swedbank_Pay_Admin::class . '::order_status_changed_transaction',
 						0
+					);
+					remove_action(
+						'woocommerce_order_status_refunded',
+						Swedbank_Pay_Admin::class . '::refund_before_core_fallback',
+						1
 					);
 
 					// Prevent refund creation.

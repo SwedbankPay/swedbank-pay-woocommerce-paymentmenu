@@ -465,6 +465,12 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 				'label'   => __( 'Cancel payment on order status change to Cancelled', 'swedbank-pay-payment-menu' ),
 				'default' => 'yes',
 			),
+			'enable_order_refund'         => array(
+				'title'   => __( 'Refund on status change', 'swedbank-pay-payment-menu' ),
+				'type'    => 'checkbox',
+				'label'   => __( 'Refund payment on order status change to Refunded', 'swedbank-pay-payment-menu' ),
+				'default' => 'yes',
+			),
 
 			'separate_instruments'        => array(
 				'title' => __( 'Separate Instruments', 'swedbank-pay-payment-menu' ),
@@ -505,6 +511,9 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		// Extend with settings with logging option.
 		$this->form_fields = Swedbank_Pay()->logger()->add_settings_fields( $this->form_fields );
+
+		// Detailed logging is not supported by this plugin, so hide the setting krokedil/support adds.
+		unset( $this->form_fields['extended_logging'] );
 	}
 
 	/**
@@ -702,28 +711,42 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 			InlineEmbedded::unset_embedded_session_data();
 		}
 
-		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
-		if ( $payment_order_id ) {
-			$order->update_meta_data( '_payex_finalized', 1 );
-			$order->save_meta_data();
+		// The callback often completes the order first, and then there is nothing to ask Swedbank Pay.
+		if ( ! $order->is_paid() ) {
+			// One check per order at a time, and a short cooldown after one that found no payment.
+			$busy_key     = "swedbank_pay_finalizing_{$order_id}";
+			$cooldown_key = "swedbank_pay_thankyou_cooldown_{$order_id}";
+			if ( get_transient( $busy_key ) || get_transient( $cooldown_key ) ) {
+				return;
+			}
+			set_transient( $busy_key, 1, 5 * MINUTE_IN_SECONDS ); // Outlasts four calls at the SDK's 60 second timeout.
+
+			try {
+				// Only a real Authorization, Sale or Verification completes the order. Reaching this page proves nothing.
+				$result  = $this->api->finalize_payment( $order, null );
+				$order   = wc_get_order( $order_id ); // The callback may have finalized it in parallel, even if this call failed.
+				$is_paid = $order && $order->is_paid();
+				if ( ! $is_paid ) {
+					set_transient( $cooldown_key, 1, 30 );
+				}
+			} finally {
+				delete_transient( $busy_key );
+			}
+
+			if ( ! $is_paid ) {
+				$context['error'] = is_wp_error( $result ) ? $result->get_error_message() : 'The order is not paid.';
+				Swedbank_Pay()->logger()->info( "[THANK YOU]: No paid transaction for order #{$context['order_number']}, leaving it to the callback.", $context );
+				return;
+			}
 		}
 
+		$order->update_meta_data( '_payex_finalized', 1 );
+		$order->save_meta_data();
+
 		// WC will always capture an order that doesn't need processing. Therefore, we only have to set it is as completed if it needs it.
-		if ( wc_string_to_bool( $this->autocomplete ) ) {
-			$this->api->finalize_payment( $order, null );
+		if ( wc_string_to_bool( $this->autocomplete ) && ! $order->has_status( 'completed' ) ) {
 			$order->update_status( 'completed', __( 'Order automatically captured after payment.', 'swedbank-pay-payment-menu' ) );
 			$order->save();
-
-		} else {
-			LogUtility::$title = "[THANK YOU]: Fetch payment info for finalizing order #{$order->get_order_number()}";
-			$response          = $gateway->api->request( 'GET', "$payment_order_id/paid" );
-			if ( ! is_wp_error( $response ) ) {
-				$order->payment_complete( $response['paid']['number'] );
-				$order->add_order_note( __( 'Payment completed successfully.', 'swedbank-pay-payment-menu' ) );
-			} else {
-				$order->payment_complete();
-				$order->add_order_note( __( 'Payment completed successfully. Transaction number will soon be updated through callback.', 'swedbank-pay-payment-menu' ) );
-			}
 		}
 	}
 

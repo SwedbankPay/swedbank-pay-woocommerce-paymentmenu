@@ -7,12 +7,12 @@
  * Author URI: https://profiles.wordpress.org/swedbankpay/
  * License: Apache License 2.0
  * License URI: http://www.apache.org/licenses/LICENSE-2.0
- * Version: 4.7.0
+ * Version: 4.7.1
  * Text Domain: swedbank-pay-payment-menu
  * Domain Path: /languages
  *
  * WC requires at least: 5.5.1
- * WC tested up to: 11.1.2
+ * WC tested up to: 11.2.1
  * Requires Plugins: woocommerce
  *
  * @package SwedbankPay
@@ -28,7 +28,7 @@ use KrokedilSwedbankPayDeps\Krokedil\Support\SystemReport;
 
 
 defined( 'ABSPATH' ) || exit;
-define( 'SWEDBANK_PAY_VERSION', '4.7.0' );
+define( 'SWEDBANK_PAY_VERSION', '4.7.1' );
 define( 'SWEDBANK_PAY_MAIN_FILE', __FILE__ );
 define( 'SWEDBANK_PAY_PLUGIN_PATH', untrailingslashit( plugin_dir_path( __FILE__ ) ) );
 define( 'SWEDBANK_PAY_PLUGIN_URL', untrailingslashit( plugin_dir_url( __FILE__ ) ) );
@@ -218,7 +218,7 @@ class Swedbank_Pay_Payment_Menu extends Swedbank_Pay_Plugin {
 		include_once __DIR__ . '/includes/class-swedbank-pay-payment-gateway-checkout.php';
 
 		$plugin_settings = get_option( 'woocommerce_payex_checkout_settings', array() );
-		$this->logger    = new Logger( 'swedbank_pay', wc_string_to_bool( $plugin_settings['logger'] ?? true ) );
+		$this->logger    = new Logger( 'swedbank_pay', wc_string_to_bool( $plugin_settings['logging'] ?? true ) );
 
 		$system_report_options  = array(
 			array(
