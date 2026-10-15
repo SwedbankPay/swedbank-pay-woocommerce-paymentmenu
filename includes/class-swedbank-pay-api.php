@@ -447,20 +447,32 @@ class Swedbank_Pay_Api {
 			return new WP_Error( 'no_payment_order', 'No payment order to abort.' );
 		}
 
+		return $this->abort_purchase( $payment_order_id, $abort_reason );
+	}
+
+	/**
+	 * Abort a payment order.
+	 *
+	 * @param string $payment_order_id The payment order ID, e.g. '/psp/paymentorders/{id}'.
+	 * @param string $abort_reason The reason reported to Swedbank Pay. Defaults to 'CancelledBySystem' since the plugin, not the shopper, initiates the abort. Filterable via 'swedbank_pay_abort_reason'.
+	 *
+	 * @return WP_Error|array
+	 */
+	public function abort_purchase( $payment_order_id, $abort_reason = 'CancelledBySystem' ) {
 		$parts    = explode( '/', $payment_order_id );
 		$short_id = array_pop( $parts );
 		$context  = array(
 			'payment_order_id' => $short_id,
 		);
 
-		LogUtility::$title = "[CHECKOUT]: Abort embedded checkout for payment order ID #{$short_id}";
+		LogUtility::$title = "[CHECKOUT]: Abort payment order ID #{$short_id}";
 
 		$body   = array(
 			'paymentorder' => array(
 				'operation'   => 'Abort',
 				'abortReason' =>
 					/**
-					 * Filters the reason sent to Swedbank Pay when an embedded payment is aborted.
+					 * Filters the reason sent to Swedbank Pay when a payment order is aborted.
 					 *
 					 * @param string $abort_reason The abort reason, 'CancelledBySystem' or 'CancelledByConsumer'. Default 'CancelledBySystem'.
 					 */
@@ -471,7 +483,7 @@ class Swedbank_Pay_Api {
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$context['error'] = sprintf( '%s: API Exception: %s', __METHOD__, $result->get_error_message() );
 			Swedbank_Pay()->logger()->error(
-				"[CHECKOUT]: Abort embedded purchase for payment order ID #{$short_id}",
+				"[CHECKOUT]: Abort payment order ID #{$short_id}",
 				$context
 			);
 
