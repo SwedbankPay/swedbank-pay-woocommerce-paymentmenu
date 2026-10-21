@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bf327a324d3ef0a73165a1b3e30a1ce9",
+    "content-hash": "c8173c7bcadfc0e25486cad27cdbd00a",
     "packages": [
         {
             "name": "krokedil/settings-page",
@@ -53,16 +53,16 @@
         },
         {
             "name": "krokedil/support",
-            "version": "1.0.2",
+            "version": "1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/krokedil/support.git",
-                "reference": "99059b1b27cc4ed7667c1d04968aec45413fe533"
+                "reference": "c02f7469de457fd492f30d3a8d65ebc630d9f8d9"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/krokedil/support/zipball/99059b1b27cc4ed7667c1d04968aec45413fe533",
-                "reference": "99059b1b27cc4ed7667c1d04968aec45413fe533",
+                "url": "https://api.github.com/repos/krokedil/support/zipball/c02f7469de457fd492f30d3a8d65ebc630d9f8d9",
+                "reference": "c02f7469de457fd492f30d3a8d65ebc630d9f8d9",
                 "shasum": ""
             },
             "require": {
@@ -102,10 +102,10 @@
             ],
             "description": "The support library allows you to extend your plugin with logging that can be optionally toggled through your plugin settings, generate an entry in the system report from your plugin settings, and report issues to the system report.",
             "support": {
-                "source": "https://github.com/krokedil/support/tree/1.0.2",
+                "source": "https://github.com/krokedil/support/tree/1.1.0",
                 "issues": "https://github.com/krokedil/support/issues"
             },
-            "time": "2025-10-08T12:47:46+00:00"
+            "time": "2026-10-16T08:17:58+00:00"
         },
         {
             "name": "paragonie/random_compat",
@@ -418,15 +418,15 @@
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": [],
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": ">=7.4"
     },
-    "platform-dev": {},
+    "platform-dev": [],
     "platform-overrides": {
         "php": "7.4"
     },
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.6.0"
 }
