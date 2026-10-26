@@ -276,7 +276,8 @@ class Swedbank_Pay_Payment_Gateway_Checkout extends WC_Payment_Gateway {
 
 		// Add embedded option if block checkout is not enabled since it does not support it yet.
 		if ( ! $this->block_checkout_enabled ) {
-			$flow_options['embedded_inline'] = __( 'Seamless Menu', 'swedbank-pay-payment-menu' );
+			$flow_options['embedded_inline']  = __( 'Seamless Menu', 'swedbank-pay-payment-menu' );
+			$flow_options['embedded_overlay'] = __( 'Overlay Menu', 'swedbank-pay-payment-menu' );
 		}
 
 		$this->form_fields = array(

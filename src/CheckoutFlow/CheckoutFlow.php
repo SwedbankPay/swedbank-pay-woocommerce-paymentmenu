@@ -119,6 +119,8 @@ abstract class CheckoutFlow {
 		switch ( $flow_setting ) {
 			case 'embedded_inline':
 				return new InlineEmbedded( $order );
+			case 'embedded_overlay':
+				return new Overlay( $order );
 			case 'redirect':
 			default:
 				return new Redirect( $order );

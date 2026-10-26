@@ -1,7 +1,10 @@
 <?php
 namespace Krokedil\Swedbank\Pay\CheckoutFlow;
 
+use Krokedil\Swedbank\Pay\Helpers\Order;
 use Krokedil\Swedbank\Pay\Utility\ErrorUtility;
+use Krokedil\Swedbank\Pay\Utility\LogUtility;
+use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use WC_Order;
 
@@ -21,6 +24,14 @@ class Redirect extends CheckoutFlow {
 	 * @return array{redirect: array|bool|string, result: string}
 	 */
 	public function process( $order, $instrument = null ) {
+
+		if ( ! Swedbank_Pay_Subscription::is_change_payment_method() ) {
+			$settled = $this->settle_previous_payment_order( $order );
+			if ( null !== $settled ) {
+				return $settled;
+			}
+		}
+
 		$has_subscription = Swedbank_Pay_Subscription::order_has_subscription( $order );
 		if ( $has_subscription || ( Swedbank_Pay_Subscription::is_change_payment_method() && $has_subscription ) ) {
 			return $this->process_subscription( $order, $instrument );
@@ -39,17 +50,73 @@ class Redirect extends CheckoutFlow {
 			);
 		}
 
-		$redirect_url  = $result->getOperationByRel( 'redirect-checkout', 'href' );
 		$payment_order = $result->getResponseResource()->getPaymentOrder();
 
 		// Save payment ID.
 		$order->update_meta_data( '_payex_paymentorder_id', $payment_order->getId() );
 		$order->save_meta_data();
 
-		return array(
-			'result'   => 'success',
-			'redirect' => $redirect_url,
+		return $this->get_process_result( $order, $result );
+	}
+
+	/**
+	 * Settle the order's previous payment order before a new one replaces it on a retry.
+	 *
+	 * @param \WC_Order $order The WooCommerce order.
+	 *
+	 * @throws \Exception If the previous payment order cannot be confirmed as unpaid and aborted.
+	 * @return array{redirect: string, result: string}|null The result to return if it was already paid, otherwise null.
+	 */
+	private function settle_previous_payment_order( $order ) {
+		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
+		if ( empty( $payment_order_id ) ) {
+			return null;
+		}
+
+		$context = array(
+			'order_id'         => $order->get_id(),
+			'payment_order_id' => $payment_order_id,
 		);
+
+		LogUtility::$title = "[PROCESS PAYMENT]: Get previous payment order for order #{$this->get_order_number( $order )}";
+		$result            = $this->api->request( 'GET', $payment_order_id . '?$expand=payeeinfo' );
+		$status            = is_wp_error( $result ) ? null : ( $result['paymentOrder']['status'] ?? null );
+
+		$reference = is_wp_error( $result ) ? null : ( $result['paymentOrder']['payeeInfo']['orderReference'] ?? null );
+		$expected  = ( new Order( $order ) )->get_payee_info()->getOrderReference();
+		if ( null !== $status && (string) $expected !== (string) $reference ) {
+			$context['order_reference'] = $reference;
+			Swedbank_Pay()->logger()->warning( "[PROCESS PAYMENT]: Previous payment order does not belong to order #{$this->get_order_number( $order )}.", $context );
+			return null;
+		}
+
+		if ( 'Paid' === $status ) {
+			Swedbank_Pay()->logger()->info( "[PROCESS PAYMENT]: Previous payment order for order #{$this->get_order_number( $order )} is already paid.", $context );
+
+			// The thank-you page finalizes the order.
+			return array(
+				'result'   => 'success',
+				'redirect' => $this->gateway->get_return_url( $order ),
+			);
+		}
+
+		if ( in_array( $status, array( 'Aborted', 'Failed', 'Cancelled', 'Reversed' ), true ) ) {
+			return null;
+		}
+
+		if ( null !== $status ) {
+			$abort  = $this->api->abort_purchase( $payment_order_id );
+			$status = is_wp_error( $abort ) ? $status : ( $abort['paymentOrder']['status'] ?? $status );
+			if ( 'Aborted' === $status ) {
+				return null;
+			}
+		}
+
+		// Unknown state or the abort was refused, e.g. a payment is in progress.
+		$context['status'] = $status;
+		Swedbank_Pay()->logger()->warning( "[PROCESS PAYMENT]: Could not abort the previous payment order for order #{$this->get_order_number( $order )}.", $context );
+
+		throw new \Exception( esc_html__( 'A payment for this order may still be in progress. Please wait a moment and try again.', 'swedbank-pay-payment-menu' ) );
 	}
 
 	/**
@@ -81,6 +148,18 @@ class Redirect extends CheckoutFlow {
 		$order->update_meta_data( '_payex_paymentorder_id', $payment_order->getId() );
 		$order->save_meta_data();
 
+		return $this->get_process_result( $order, $result );
+	}
+
+	/**
+	 * Get the result to return from process_payment once the payment order is created.
+	 *
+	 * @param \WC_Order         $order The WooCommerce order.
+	 * @param ResponseInterface $result The response from initiating the payment order.
+	 *
+	 * @return array{redirect: array|bool|string, result: string}
+	 */
+	protected function get_process_result( $order, $result ) {
 		return array(
 			'result'   => 'success',
 			'redirect' => $result->getOperationByRel( 'redirect-checkout', 'href' ),
