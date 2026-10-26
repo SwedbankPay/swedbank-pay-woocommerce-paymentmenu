@@ -6,7 +6,7 @@ Tested up to: 7.1
 Requires PHP: 7.4
 WC requires at least: 5.5.1
 WC tested up to: 11.2.1
-Stable tag: 4.7.1
+Stable tag: 4.8.0
 License: Apache License 2.0
 License URI: http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,6 +95,10 @@ You are now done with configuring our plugin.
 Please update to version 1.2.0.
 
 == Changelog ==
+= 2026.10.26    - version 4.8.0 =
+* Feature       - Added the "Overlay Menu" checkout flow, which displays the Swedbank Pay payment menu over the checkout page so customers can pay without leaving the store.
+* Fix           - Viewing the WooCommerce system status report no longer writes a PHP deprecation notice to the error log when a logged request has no error message.
+
 = 2026.10.12    - version 4.7.1 =
 * Fix           - Setting an order's status to Refunded now refunds the payment at Swedbank Pay, including what is left on a partly refunded order. It can be turned off with the new "Refund on status change" setting.
 * Fix           - Fixed an issue where an order was marked as paid when its order received page was opened, even if the customer had not paid. The order is now only marked as paid once Swedbank Pay has confirmed the payment.
