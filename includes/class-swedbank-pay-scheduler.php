@@ -125,7 +125,7 @@ class Swedbank_Pay_Scheduler {
 		// The callback names the transaction it is about. `paid` keeps reporting the
 		// authorization, which is absent from the transactions list after a capture.
 		Swedbank_Pay()->logger()->info( "[SCHEDULER]: Attempting to finalize payment for order #{$context['order_number']} with payment number #{$context['payment_number']}.", $context );
-		$result = $gateway->api->finalize_payment( $order, $payment_number );
+		$result = $gateway->api->finalize_payment( $order, $payment_number, Swedbank_Pay_Api::SOURCE_CALLBACK );
 		if ( is_wp_error( Swedbank_Pay()->system_report()->request( $result ) ) ) {
 			$context['error'] = join( '; ', $result->get_error_messages() );
 			Swedbank_Pay()->logger()->error( '[SCHEDULER]: Failed to finalize payment.', $context );

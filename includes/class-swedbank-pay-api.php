@@ -65,6 +65,16 @@ class Swedbank_Pay_Api {
 	public const TYPE_CANCELLATION  = 'Cancellation';
 	public const TYPE_REVERSAL      = 'Reversal';
 
+	// What triggered a transaction to be processed, shown in the order note.
+	public const SOURCE_CALLBACK         = 'callback';
+	public const SOURCE_QUEUE            = 'queue';
+	public const SOURCE_THANKYOU         = 'thankyou';
+	public const SOURCE_ORDER_MANAGEMENT = 'order_management';
+	public const SOURCE_REVERSAL_CHECK   = 'reversal_check';
+
+	// Payment order statuses that can no longer be paid.
+	public const PAYMENT_ORDER_FINAL_STATUSES = array( 'Aborted', 'Failed', 'Cancelled', 'Reversed' );
+
 	/**
 	 * The access token for authenticating with the Swedbank Pay API.
 	 *
@@ -623,16 +633,18 @@ class Swedbank_Pay_Api {
 	 *
 	 * @param WC_Order    $order WC order.
 	 * @param string|null $transaction_number Swedbank transaction ID.
+	 * @param string      $source What triggered this, one of the SOURCE_* constants.
 	 *
 	 * @return true|WP_Error
 	 */
-	public function finalize_payment( $order, $transaction_number = null ) {
+	public function finalize_payment( $order, $transaction_number = null, $source = '' ) {
 		$payment_order_id = $order->get_meta( '_payex_paymentorder_id' );
 
 		$context = array(
 			'order_id'         => $order->get_id(),
 			'order_number'     => $order->get_order_number(),
 			'payment_order_id' => $payment_order_id,
+			'source'           => $source,
 		);
 
 		Swedbank_Pay()->logger()->info( "[FINALIZE]: Finalize payment for order #{$order->get_order_number()}. Payment ID: {$payment_order_id}. Transaction number: {$transaction_number}", $context );
@@ -668,7 +680,7 @@ class Swedbank_Pay_Api {
 		foreach ( $transactions_list as $transaction ) {
 			if ( $transaction_number === $transaction['number'] ) {
 				Swedbank_Pay()->logger()->debug( "[FINALIZE]: Handle transaction #{$transaction_number} for order #{$order->get_order_number()}.", $context );
-				return $this->process_transaction( $order, $transaction );
+				return $this->process_transaction( $order, $transaction, $source );
 			}
 		}
 
@@ -677,19 +689,35 @@ class Swedbank_Pay_Api {
 		if ( 0 === count( $transactions_list ) ) {
 			Swedbank_Pay()->logger()->debug( "[FINALIZE]: Transaction list is empty for order #{$order->get_order_number()}. Run workaround/failback for transaction #{$transaction_number}", $context );
 
+			$type                 = $data['paid']['transactionType'] ?? '';
+			$fallback_paid_number = $data['paid']['number'] ?? '';
+
+			// A cancellation has no financial transaction, and `paid` still reports the authorization.
+			if ( (string) $transaction_number !== (string) ( $data['paid']['number'] ?? '' ) ) {
+				$payment_order = $this->get_payment_order( $payment_order_id );
+				if ( ! is_wp_error( $payment_order ) && 'Cancelled' === $payment_order->getStatus() ) {
+					Swedbank_Pay()->logger()->debug( "[FINALIZE]: Payment order is cancelled. Handle transaction #{$transaction_number} for order #{$order->get_order_number()} as a cancellation.", $context );
+					$type = self::TYPE_CANCELLATION;
+
+					// The type was not read from `paid`, so don't say so in the order note.
+					$fallback_paid_number = '';
+				}
+			}
+
 			$transaction = array(
-				'id'             => "{$payment_order_id}/financialtransactions/" . uniqid( 'fake' ),
-				'created'        => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
-				'updated'        => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
-				'type'           => $data['paid']['transactionType'] ?? '',
-				'number'         => $transaction_number,
-				'amount'         => $data['paid']['amount'] ?? 0,
-				'vatAmount'      => 0,
-				'description'    => $data['paid']['id'],
-				'payeeReference' => $data['paid']['payeeReference'] ?? '',
+				'id'                   => "{$payment_order_id}/financialtransactions/" . uniqid( 'fake' ),
+				'created'              => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
+				'updated'              => date( 'Y-m-d H:i:s' ), // phpcs:ignore WordPress.DateTime.RestrictedFunctions.date_date
+				'type'                 => $type,
+				'number'               => $transaction_number,
+				'amount'               => $data['paid']['amount'] ?? 0,
+				'vatAmount'            => 0,
+				'description'          => $data['paid']['id'],
+				'payeeReference'       => $data['paid']['payeeReference'] ?? '',
+				'fallback_paid_number' => $fallback_paid_number,
 			);
 
-			return $this->process_transaction( $order, $transaction );
+			return $this->process_transaction( $order, $transaction, $source );
 		}
 
 		return new WP_Error(
@@ -706,20 +734,23 @@ class Swedbank_Pay_Api {
 	 *
 	 * @param WC_Order $order The WooCommerce order object to process the transaction for.
 	 * @param array    $transaction An associative array containing transaction details, such as 'number', 'type', 'amount', etc.
+	 * @param string   $source What triggered this, one of the SOURCE_* constants.
 	 *
 	 * @return true|WP_Error
 	 */
-	public function process_transaction( WC_Order $order, array $transaction ) {
+	public function process_transaction( WC_Order $order, array $transaction, $source = '' ) {
 		$transaction_id = $transaction['number'];
 		$context        = array(
 			'order_id'         => $order->get_id(),
 			'order_number'     => $order->get_order_number(),
 			'transaction_id'   => $transaction_id,
 			'transaction_type' => $transaction['type'],
+			'source'           => $source,
 		);
 
 		// Reload order meta to ensure we have the latest changes and avoid conflicts from parallel scripts.
 		$order->read_meta_data();
+		$old_status = $order->get_status();
 
 		// Don't update order status if transaction ID was applied before.
 		$transactions = $order->get_meta( '_swedbank_pay_transactions' );
@@ -760,20 +791,39 @@ class Swedbank_Pay_Api {
 			case self::TYPE_VERIFICATION: // This is always the case for free trial subscription orders.
 			case self::TYPE_AUTHORIZATION:
 			case self::TYPE_SALE:
-				if ( empty( $order->get_date_paid() ) ) {
-					// List of different messages based on the transaction type.
-					$messages = array(
-						// translators: 1: transaction ID.
-						self::TYPE_SALE          => __( 'Payment has been completed. Transaction: %s', 'swedbank-pay-payment-menu' ),
-						// translators: 1: transaction ID.
-						self::TYPE_AUTHORIZATION => __( 'Payment has been authorized. Transaction: %s', 'swedbank-pay-payment-menu' ),
-						// translators: 1: transaction ID.
-						self::TYPE_VERIFICATION  => __( 'Payment has been verified. Transaction: %s', 'swedbank-pay-payment-menu' ),
+				// WooCommerce lets payment_complete() reopen a cancelled order, so check that the payment is still valid.
+				$payment_order_status = $payment_order->getStatus();
+				if ( in_array( $payment_order_status, self::PAYMENT_ORDER_FINAL_STATUSES, true ) ) {
+					Swedbank_Pay()->logger()->warning( "[PROCESS TRANSACTION]: Skip {$transaction['type']} #{$transaction_id} for order #{$order->get_order_number()}. The payment order is {$payment_order_status}.", $context );
+					$message = sprintf(
+						// translators: 1: transaction type, 2: transaction ID, 3: payment order status.
+						__( 'Payment was not completed. %1$s %2$s was skipped because the payment is %3$s in Swedbank Pay.', 'swedbank-pay-payment-menu' ),
+						$transaction['type'],
+						$transaction_id,
+						$payment_order_status
 					);
-					$message  = sprintf( $messages[ $transaction['type'] ], $transaction_id );
-					$order->payment_complete( $transaction_id );
-					$order->add_order_note( $message );
+					$order->add_order_note( $this->get_transaction_note( $message, $order, $transaction, $source, $old_status ) );
+					break;
 				}
+
+				// List of different messages based on the transaction type.
+				$messages = array(
+					// translators: 1: transaction ID.
+					self::TYPE_SALE          => __( 'Payment has been completed. Transaction: %s', 'swedbank-pay-payment-menu' ),
+					// translators: 1: transaction ID.
+					self::TYPE_AUTHORIZATION => __( 'Payment has been authorized. Transaction: %s', 'swedbank-pay-payment-menu' ),
+					// translators: 1: transaction ID.
+					self::TYPE_VERIFICATION  => __( 'Payment has been verified. Transaction: %s', 'swedbank-pay-payment-menu' ),
+				);
+				$message  = sprintf( $messages[ $transaction['type'] ], $transaction_id );
+
+				if ( empty( $order->get_date_paid() ) ) {
+					$order->payment_complete( $transaction_id );
+				} else {
+					$message .= '. ' . __( 'Not applied, the order is already paid.', 'swedbank-pay-payment-menu' );
+				}
+
+				$order->add_order_note( $this->get_transaction_note( $message, $order, $transaction, $source, $old_status ) );
 				break;
 			case self::TYPE_CAPTURE:
 				$remaining_capture = $payment_order->getRemainingCaptureAmount();
@@ -803,7 +853,7 @@ class Swedbank_Pay_Api {
 						$transaction_id,
 						$captured_amount
 					);
-					$order->add_order_note( $message );
+					$order->add_order_note( $this->get_transaction_note( $message, $order, $transaction, $source, $old_status ) );
 				} else {
 					$price   = wc_price( $remaining_capture / 100, array( 'currency' => $order->get_currency() ) );
 					$message = sprintf(
@@ -813,16 +863,23 @@ class Swedbank_Pay_Api {
 						$captured_amount,
 						$price
 					);
-					$order->add_order_note( $message );
+					$order->add_order_note( $this->get_transaction_note( $message, $order, $transaction, $source, $old_status ) );
 				}
 				break;
 			case self::TYPE_CANCELLATION:
+				// WooCommerce adds a status change to this note itself, so only add the status when it won't change.
 				$this->update_order_status(
 					$order,
 					'cancelled',
 					$transaction_id,
-					// translators: 1: transaction ID.
-					sprintf( __( 'Payment has been cancelled. Transaction: %s', 'swedbank-pay-payment-menu' ), $transaction_id )
+					$this->get_transaction_note(
+						// translators: 1: transaction ID.
+						sprintf( __( 'Payment has been cancelled. Transaction: %s', 'swedbank-pay-payment-menu' ), $transaction_id ),
+						$order,
+						$transaction,
+						$source,
+						$order->has_status( 'cancelled' ) ? $old_status : null
+					)
 				);
 
 				break;
@@ -869,10 +926,15 @@ class Swedbank_Pay_Api {
 						$transaction['amount'] / 100
 					);
 
-					$order->update_status(
-						'refunded',
-						$message
-					);
+					// WooCommerce drops the note when the status doesn't change, e.g. a refund started by setting Refunded.
+					if ( $order->has_status( 'refunded' ) ) {
+						$order->add_order_note( $this->get_transaction_note( $message, $order, $transaction, $source, $old_status ) );
+					} else {
+						$order->update_status(
+							'refunded',
+							$this->get_transaction_note( $message, $order, $transaction, $source )
+						);
+					}
 				} else {
 					$remaining_amount = $remaining_reversal / 100;
 
@@ -884,7 +946,7 @@ class Swedbank_Pay_Api {
 					);
 
 					$order->add_order_note(
-						$message
+						$this->get_transaction_note( $message, $order, $transaction, $source, $old_status )
 					);
 				}
 
@@ -904,6 +966,59 @@ class Swedbank_Pay_Api {
 		Swedbank_Pay()->logger()->debug( "[PROCESS TRANSACTION]: Transaction #{$transaction['number']} for order #{$order->get_order_number()} has been processed.", $context );
 
 		return true;
+	}
+
+	/**
+	 * Add what triggered a transaction, and how the order status changed, to its order note.
+	 *
+	 * @param string      $message The order note.
+	 * @param WC_Order    $order The order.
+	 * @param array       $transaction The processed transaction.
+	 * @param string      $source One of the SOURCE_* constants.
+	 * @param string|null $old_status The status before processing. Pass null when WooCommerce notes the change itself.
+	 * @return string
+	 */
+	private function get_transaction_note( $message, WC_Order $order, array $transaction, $source, $old_status = null ) {
+		$parts = array( $message );
+
+		if ( ! empty( $source ) ) {
+			// translators: 1: what triggered the transaction, e.g. "callback".
+			$parts[] = sprintf( __( 'Source: %s', 'swedbank-pay-payment-menu' ), $this->get_source_label( $source ) );
+		}
+
+		if ( ! empty( $transaction['fallback_paid_number'] ) && (string) $transaction['fallback_paid_number'] !== (string) $transaction['number'] ) {
+			// translators: 1: the paid transaction number the type was read from.
+			$parts[] = sprintf( __( 'Transaction type read from paid transaction %s', 'swedbank-pay-payment-menu' ), $transaction['fallback_paid_number'] );
+		}
+
+		if ( null !== $old_status ) {
+			$new_status = $order->get_status();
+			$parts[]    = $old_status === $new_status
+				// translators: 1: order status.
+				? sprintf( __( 'Order status: %s', 'swedbank-pay-payment-menu' ), wc_get_order_status_name( $new_status ) )
+				// translators: 1: previous order status, 2: new order status.
+				: sprintf( __( 'Order status: %1$s → %2$s', 'swedbank-pay-payment-menu' ), wc_get_order_status_name( $old_status ), wc_get_order_status_name( $new_status ) );
+		}
+
+		return implode( '. ', array_map( fn( $part ) => rtrim( $part, '.' ), $parts ) ) . '.';
+	}
+
+	/**
+	 * Get a readable label for a transaction source.
+	 *
+	 * @param string $source One of the SOURCE_* constants.
+	 * @return string
+	 */
+	private function get_source_label( $source ) {
+		$labels = array(
+			self::SOURCE_CALLBACK         => __( 'callback', 'swedbank-pay-payment-menu' ),
+			self::SOURCE_QUEUE            => __( 'callback queue', 'swedbank-pay-payment-menu' ),
+			self::SOURCE_THANKYOU         => __( 'order received page', 'swedbank-pay-payment-menu' ),
+			self::SOURCE_ORDER_MANAGEMENT => __( 'order management', 'swedbank-pay-payment-menu' ),
+			self::SOURCE_REVERSAL_CHECK   => __( 'reversal check', 'swedbank-pay-payment-menu' ),
+		);
+
+		return $labels[ $source ] ?? $source;
 	}
 
 	/**
@@ -1192,7 +1307,7 @@ class Swedbank_Pay_Api {
 				return $transaction;
 			}
 
-			$this->process_transaction( $order, $transaction );
+			$this->process_transaction( $order, $transaction, self::SOURCE_ORDER_MANAGEMENT );
 
 			return $transaction;
 		} catch ( ClientException $e ) {
@@ -1281,7 +1396,7 @@ class Swedbank_Pay_Api {
 			if ( ! empty( $financial_transaction ) ) {
 				$transaction = $this->financial_transaction_to_array( $financial_transaction );
 
-				$this->process_transaction( $order, $transaction );
+				$this->process_transaction( $order, $transaction, self::SOURCE_ORDER_MANAGEMENT );
 
 				return $transaction;
 			}
@@ -1314,6 +1429,24 @@ class Swedbank_Pay_Api {
 				? __( 'Payment has been cancelled.', 'swedbank-pay-payment-menu' )
 				// translators: 1: transaction ID.
 				: sprintf( __( 'Payment has been cancelled. Transaction: %s', 'swedbank-pay-payment-menu' ), $transaction_id );
+
+			$message = $this->get_transaction_note(
+				$message,
+				$order,
+				array(),
+				self::SOURCE_ORDER_MANAGEMENT,
+				$order->has_status( 'cancelled' ) ? $order->get_status() : null
+			);
+
+			// Record it as handled, like process_transaction() does, so its callback is skipped.
+			if ( ! empty( $transaction_id ) ) {
+				// Reload so a callback processed in parallel isn't overwritten.
+				$order->read_meta_data( true );
+				$transactions   = $order->get_meta( '_swedbank_pay_transactions' );
+				$transactions   = empty( $transactions ) ? array() : (array) $transactions;
+				$transactions[] = $transaction_id;
+				$order->update_meta_data( '_swedbank_pay_transactions', $transactions );
+			}
 
 			$this->update_order_status( $order, 'cancelled', $transaction_id, $message );
 
@@ -1415,7 +1548,7 @@ class Swedbank_Pay_Api {
 				return $transaction;
 			}
 
-			$this->process_transaction( $order, $transaction );
+			$this->process_transaction( $order, $transaction, self::SOURCE_ORDER_MANAGEMENT );
 
 			return $transaction;
 		} catch ( ClientException $e ) {
@@ -1573,7 +1706,7 @@ class Swedbank_Pay_Api {
 				return $transaction;
 			}
 
-			$this->process_transaction( $order, $transaction );
+			$this->process_transaction( $order, $transaction, self::SOURCE_ORDER_MANAGEMENT );
 
 			return $transaction;
 		} catch ( ClientException $e ) {

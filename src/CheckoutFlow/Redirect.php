@@ -5,6 +5,7 @@ use Krokedil\Swedbank\Pay\Helpers\Order;
 use Krokedil\Swedbank\Pay\Utility\ErrorUtility;
 use Krokedil\Swedbank\Pay\Utility\LogUtility;
 use KrokedilSwedbankPayDeps\SwedbankPay\Api\Service\Data\ResponseInterface;
+use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api;
 use SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Subscription;
 use WC_Order;
 
@@ -100,7 +101,7 @@ class Redirect extends CheckoutFlow {
 			);
 		}
 
-		if ( in_array( $status, array( 'Aborted', 'Failed', 'Cancelled', 'Reversed' ), true ) ) {
+		if ( in_array( $status, Swedbank_Pay_Api::PAYMENT_ORDER_FINAL_STATUSES, true ) ) {
 			return null;
 		}
 

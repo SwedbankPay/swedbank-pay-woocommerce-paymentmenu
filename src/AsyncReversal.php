@@ -310,7 +310,7 @@ class AsyncReversal {
 				}
 
 				// process_transaction() adds the refund order note and moves the order status.
-				$process_result = $api->process_transaction( $order, $transaction );
+				$process_result = $api->process_transaction( $order, $transaction, \SwedbankPay\Checkout\WooCommerce\Swedbank_Pay_Api::SOURCE_REVERSAL_CHECK );
 				if ( is_wp_error( $process_result ) ) {
 					Swedbank_Pay()->logger()->error( "[ASYNC REVERSAL]: Failed to process confirmed reversal #{$transaction['number']} for order #{$order->get_order_number()}: {$process_result->get_error_message()}", $context );
 					continue;
