@@ -1,3 +1,7 @@
+Version 4.8.1
+* Enhancement   - The order notes added by the plugin now say what triggered them, such as a callback, the order received page or an action in the order admin, and how the order status changed. A note is also added when a payment notification is skipped, for example because the order is already paid.
+* Fix           - Fixed an issue where a cancelled order could be reopened and set to Processing by a late or repeated payment notification, which reduced the stock again and sent the customer another order confirmation. An order is no longer marked as paid when its payment has been cancelled, aborted, failed or reversed in Swedbank Pay.
+
 Version 4.8.0
 * Feature       - Added the "Overlay Menu" checkout flow, which displays the Swedbank Pay payment menu over the checkout page so customers can pay without leaving the store.
 * Fix           - Viewing the WooCommerce system status report no longer writes a PHP deprecation notice to the error log when a logged request has no error message.
